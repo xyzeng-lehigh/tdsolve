@@ -1,6 +1,6 @@
 CC		= g++
 #CC		= /usr/bin/clang++
-PROG	= TumorDyn
+PROG	= TumorDynRun
 #PROG	= HCL_Solve_test
 PROG_O	= TumorDyn.o
 EXC		= ./bin
