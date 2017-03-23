@@ -10,6 +10,7 @@ TDInput::TDInput(void) {
   tdCoef.delta  = 1.0;
   tdCoef.alpha  = 1.0;
   tdCoef.theta  = 1.0;
+  tdCoef.sigma  = 1.0;
   tdCoef.D      = 1.0;
   tdCoef.m      = 1.0;
   tdCoef.beta   = 1.0;
@@ -22,11 +23,13 @@ TDInput::TDInput(void) {
   tdMesh.x_f    = NULL;
   tdMesh.x_c    = NULL;
 
+  tdSetup.bmark = false;
   tdSetup.cfl   = 0.9;
   tdSetup.ic    = 0;
   tdSetup.schem = 0;
   tdSetup.scell = 0;
   tdSetup.vel   = 0;
+  tdSetup.lbc   = 1;
   tdSetup.Tinit = 0.0;
   tdSetup.Tterm = 1.0;
 
@@ -42,6 +45,8 @@ TDInput::TDInput(void) {
 
   strcpy(delims," =:\t");
   strcpy(delims_nospace,"=:");
+  strcpy(outputFile,"sol.dat");
+  strcpy(radiusFile,"rad.dat");
 }
 
 TDInput::~TDInput(void) {
@@ -93,6 +98,8 @@ void TDInput::parse(void) {
       tdCoef.alpha = atof(value);
     else if (strcmp(name,"theta")==0)
       tdCoef.theta = atof(value);
+    else if (strcmp(name,"sigma")==0)
+      tdCoef.sigma= atof(value);
     else if (strcmp(name,"D")==0)
       tdCoef.D = atof(value);
     else if (strcmp(name,"m")==0)
@@ -107,6 +114,8 @@ void TDInput::parse(void) {
       tdMesh.x_r = atof(value);
     else if (strcmp(name,"Nx")==0)
       tdMesh.Nx = atoi(value);
+    else if (strcmp(name,"benchmark")==0)
+      tdSetup.bmark = (atoi(value) == 1);
     else if (strcmp(name,"cfl")==0)
       tdSetup.cfl = atof(value);
     else if (strcmp(name,"ic")==0)
@@ -117,6 +126,8 @@ void TDInput::parse(void) {
       tdSetup.schem = atoi(value);
     else if (strcmp(name,"vel")==0)
       tdSetup.vel = atoi(value);
+    else if (strcmp(name,"bc")==0)
+      tdSetup.lbc = atoi(value); // 0 -- hom. Neumann; 1 -- ODE bc.
     else if (strcmp(name,"Tinit")==0)
       tdSetup.Tinit = atof(value);
     else if (strcmp(name,"Tterm")==0)
@@ -179,6 +190,8 @@ void TDInput::parse(void) {
       tdLin.KrylovCap = atoi(value);
     else if (strcmp(name,"outputDataFile")==0)
       strcpy(outputFile,(const char*)value);
+    else if (strcmp(name,"radiusDataFile")==0)
+      strcpy(radiusFile,(const char*)value);
     else {
       fprintf(stderr,"Warning: the following line in the input file %s is not recogonized:\n",inputFile);
       fprintf(stderr,"         %s\n",file_line_s.c_str());

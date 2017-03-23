@@ -45,9 +45,17 @@ class TDSolve {
     void update_vel(const int nt);
 
     void update_rad(const int fr, const int to);
+
     void update_cells_upw(const int fr, const int to);
+    void update_cells_pade_be(const int fr, const int to) {};
+    void update_cells_pade_be_all(const int fr, const int to) {};
+
     void update_chem_upw_be(const int fr, const int to);
+    void update_chem_pade_be(const int fr, const int to) {};
+    
+    void update_vel_upw(const int nt);
     void update_vel_cd(const int nt);
+    void update_vel_pade(const int nt) {};
 
     // Linear solver
     LinMat*   mat;

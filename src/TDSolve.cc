@@ -115,9 +115,9 @@ void TDSolve::set_ic(void) {
     case 0: 
       {
         data_r[0] = 2.0;
-        (*data_g[0]) = 0.84 * tdCoef->theta;
-        (*data_h[0]) = 0.10 * tdCoef->theta;
-        (*data_n[0]) = 0.06 * tdCoef->theta;
+        (*data_g[0]) = 0.84;
+        (*data_h[0]) = 0.10;
+        (*data_n[0]) = 0.06;
         DType chem_A = 8.0, chem_a = 1.0;
         for ( int i = 0; i < Nx+1; i++ ) {
           DType tvar = 2.0 * x_f[i] / chem_a;
@@ -141,8 +141,14 @@ void TDSolve::update_sol(const int fr, const int to) {
   update_rad( fr, to );
 
   switch( tdSetup->scell ) {
-    case 0:
+    case 0: // Explicit first-order upwind
       update_cells_upw( fr, to );
+      break;
+    case 1: // Implicit fourth-order Pade method separately
+      update_cells_pade_be( fr, to );
+      break;
+    case 2: // Implicit fourth-order Pade method for all
+      update_cells_pade_be_all( fr, to );
       break;
     default:
       std::cout << "Warning: The spatial scheme for cell not defined, "
@@ -152,8 +158,11 @@ void TDSolve::update_sol(const int fr, const int to) {
   }
 
   switch( tdSetup->schem ) {
-    case 0:
+    case 0: // IMEX first-order upwind for advection and cd for diffusion
       update_chem_upw_be( fr, to );
+      break;
+    case 1: // Pade for advection and cd for diffusion
+      update_chem_pade_be( fr, to );
       break;
     default:
       std::cout << "Warning: The spatial scheme for chem not defined, "
@@ -185,15 +194,40 @@ void TDSolve::update_rad(const int fr, const int to) {
 
 void TDSolve::update_vel(const int nt) {
   switch ( tdSetup->vel ) {
-    case 0:
+    case 0: // Upwind for advection
+      update_vel_upw(nt);
+      break;
+    case 1: // Pade for advection
+      update_vel_pade(nt);
+      break;
+    case 2: // cd for advection (not stable!)
       update_vel_cd(nt);
       break;
     default:
       std::cout << "Warning: The velocity scheme not defined, "
-        << "using central-difference instead\n" << std::endl;
-      update_vel_cd(nt);
+        << "using upwinding instead\n" << std::endl;
+      update_vel_upw(nt);
       break;
   }
+  return;
+}
+
+void TDSolve::update_vel_upw(const int nt) {
+
+  DType lambda = tdCoef->lambda;
+  DType delta  = tdCoef->delta;
+  DType alpha  = tdCoef->alpha;
+
+  (*data_v[nt])[0] = 0.0; // b.c. for velocity at x=0
+
+  for ( int i = 0; i < Nx; i++ ) { // data_v[nt][i+1]
+    DType tvar = (x_f[i]/x_f[i+1])*(x_f[i]/x_f[i+1])*(*data_v[nt])[i];
+    tvar += dx * data_r[nt] * (
+        lambda * (*data_g[nt])[i+1] - delta * (*data_h[nt])[i+1] );
+    tvar -= dx * alpha * (*data_na[nt])[i+1] / x_f[i+1] / x_f[i+1] / data_r[nt];
+    (*data_v[nt])[i+1] = tvar;
+  }
+
   return;
 }
 
@@ -205,10 +239,9 @@ void TDSolve::update_vel_cd(const int nt) {
     DType tvar = x_f[i]*x_f[i]*(*data_v[nt])[i];
     tvar += dx*x_c[i]*x_c[i]*data_r[nt]*
       0.5*( tdCoef->lambda*((*data_g[nt])[i+1]+(*data_g[nt])[i])-
-            tdCoef->delta*((*data_h[nt])[i+1]+(*data_h[nt])[i]) )
-      /(tdCoef->theta);
-    tvar -= (tdCoef->alpha/tdCoef->theta/data_r[nt]) *
-      ( (*data_na[nt])[i+1] - (*data_na[nt])[i] );
+            tdCoef->delta*((*data_h[nt])[i+1]+(*data_h[nt])[i]) );
+    tvar -= dx*(tdCoef->alpha/data_r[nt]) * 0.5 *
+      ( (*data_na[nt])[i+1] + (*data_na[nt])[i] );
     (*data_v[nt])[i+1] = tvar / x_f[i+1] / x_f[i+1];
   }
 
@@ -220,15 +253,22 @@ void TDSolve::update_cells_upw(const int fr, const int to) {
   DType delta  = tdCoef->delta;
   DType mu     = tdCoef->mu;
   DType alpha  = tdCoef->alpha;
-  DType theta  = tdCoef->theta;
 
   HVEC rhs_srce(Nx+1);
   
   DType a0 = (*data_a[fr])[0];
   DType a1 = (*data_a[fr])[1];
   DType a2 = (*data_a[fr])[2];
-  DType na_over_x2 = 2.0*(*data_n[fr])[0]*(a1-a0)/dx/x_c[0] +
-    (*data_n[fr])[0] *(a2-2.0*a1+a0)/dx/dx;
+  DType n0 = (*data_n[fr])[0];
+  DType n1 = (*data_n[fr])[1];
+  DType na_over_x2 = n0 * (a2-2.0*a1+a0)/dx/dx;
+  if ( tdSetup->lbc == 0 ) // Assuming hom. Neumann b.c.
+    na_over_x2 += ((n0+n1)/x_c[0]) * ((a1-a0)/dx);
+  else { // No hom. Neumann b.c.
+    DType rat_x_l = x_f[0]/x_c[0];
+    DType rat_x_r = x_f[1]/x_c[0];
+    na_over_x2 += ((rat_x_r*rat_x_r*n1-rat_x_l*rat_x_l*n0)/dx) * ((a1-a0)/dx);
+  }
 
   for ( int i = 0; i < Nx+1; i++ )
     rhs_srce[i] = lambda * (*data_g[fr])[i] - delta * (*data_h[fr])[i];
@@ -240,12 +280,12 @@ void TDSolve::update_cells_upw(const int fr, const int to) {
   for ( int i = 0; i < Nx+1; i++ ) {
     (*data_g[to])[i] = (*data_g[fr])[i] + dtn * (
         lambda * (*data_g[fr])[i] - mu * (*data_g[fr])[i] - 
-        rhs_srce[i] * (*data_g[fr])[i] / theta );
+        rhs_srce[i] * (*data_g[fr])[i]);
     (*data_h[to])[i] = (*data_h[fr])[i] + dtn * (
         mu * (*data_g[fr])[i] - delta * (*data_h[fr])[i] - 
-        rhs_srce[i] * (*data_h[fr])[i] / theta );
+        rhs_srce[i] * (*data_h[fr])[i]);
     (*data_n[to])[i] = (*data_n[fr])[i] + dtn * (
-        -rhs_srce[i] * (*data_n[fr])[i] / theta - 
+        -rhs_srce[i] * (*data_n[fr])[i] - 
         ( (i==0) ? alpha*na_over_x2/(data_r[fr]*data_r[fr]) :
         alpha/(x_f[i]*x_f[i]*data_r[fr]*data_r[fr])*(*data_na[fr])[i] ) );
   }
@@ -275,48 +315,65 @@ void TDSolve::update_chem_upw_be(const int fr, const int to) {
   DType m     = tdCoef->m;
   DType D     = tdCoef->m;
   DType beta  = tdCoef->beta;
-  DType alpha = tdCoef->alpha;
   DType gamma = tdCoef->gamma;
+  DType theta = tdCoef->theta;
+  DType sigma = tdCoef->sigma;
 
   // RHS
   VComp comp(1,0.0);
-  for ( int i = 1; i < Nx; i++ ) {
+  int i_start = ( tdSetup->lbc == 0 ) ? 1 : 0;
+  for ( int i = i_start; i < Nx; i++ ) {
     comp = (*data_a[fr])[i] + 
-      dtn * m * (*data_g[to])[i] / (beta+(*data_g[to])[i]);
+      dtn * m * (*data_g[to])[i] / (beta/theta+(*data_g[to])[i]);
     rhs->set(i,comp);
   }
-  comp = -((*data_n[to])[Nx] - (*data_n[to])[Nx-1])/alpha;
+  comp = -((*data_n[to])[Nx] - (*data_n[to])[Nx-1])/sigma;
   rhs->set(Nx,comp);
 
   // Matrix
   Entry elem(1,0.0); 
 
   // Left boundary
-  elem = 1.0;
-  mat->set(0,0,elem);
-  elem = -1.0;
-  mat->set(0,1,elem);
+  if ( tdSetup->lbc == 0 ) {
+    elem = 1.0;
+    mat->set(0,0,elem);
+    elem = -1.0;
+    mat->set(0,1,elem);
+  }
+  else {
+    DType coef_1 = D*(dtn/dx/dx)/(data_r[fr]*data_r[fr]);
+    DType coef_2 = 2.0*D*(dtn/dx)/x_c[0]/(data_r[fr]*data_r[fr]);
+
+    elem = 1.0 + dtn*gamma - coef_1 + coef_2;
+    mat->set(0,0,elem);
+
+    elem = 2.0*coef_1 - coef_2;
+    mat->set(0,1,elem);
+
+    elem = -coef_1;
+    mat->set(0,2,elem);
+  }
 
   // Interior node
   for ( int i = 1; i < Nx; i++ ) {
-    DType l_vel = x_f[i] * (*data_v[fr])[Nx] / data_r[fr];
+    DType l_vel = - x_f[i] * (*data_v[fr])[Nx] / data_r[fr];
     DType coef_adv_l = ( l_vel >= 0.0 ) ? -1.0 :  0.0;
     DType coef_adv_c = ( l_vel >= 0.0 ) ?  1.0 : -1.0;
     DType coef_adv_r = ( l_vel >= 0.0 ) ?  0.0 :  1.0;
 
     DType coef_diff = 
-      D*dtn/(data_r[fr]*data_r[fr]*dx*dx);
+      D*(dtn/dx/dx)/(data_r[fr]*data_r[fr]);
     DType x_rat_l = (x_c[i-1]/x_f[i]) * (x_c[i-1]/x_f[i]);
     DType x_rat_r = (x_c[i]/x_f[i]) * (x_c[i]/x_f[i]);
 
-    elem = - coef_diff*x_rat_l - coef_adv_l*(dtn*l_vel/dx);
+    elem = - coef_diff*x_rat_l + coef_adv_l*(dtn*l_vel/dx);
     mat->set(i,i-1,elem);
 
-    elem = 1.0 + dtn*gamma + coef_diff*(x_rat_l+x_rat_r) -
+    elem = 1.0 + dtn*gamma + coef_diff*(x_rat_l+x_rat_r) +
       coef_adv_c*(dtn*l_vel/dx);
     mat->set(i,i,elem);
 
-    elem = - coef_diff*x_rat_r - coef_adv_r*(dtn*l_vel/dx);
+    elem = - coef_diff*x_rat_r + coef_adv_r*(dtn*l_vel/dx);
     mat->set(i,i+1,elem);
   }
 
@@ -405,6 +462,10 @@ void TDSolve::output(const int nt) {
     fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\t%10.20f\t%10.20f\t%10.20f\n",
         x_f[i] * data_r[nt], (*data_g[nt])[i], (*data_h[nt])[i],
         (*data_n[nt])[i], (*data_a[nt])[i], (*data_v[nt])[i] );
+  fclose(ot_file);
+
+  ot_file = fopen( tdInput->radiusFile, "a" );
+  fprintf( ot_file, "%10.20f\t%10.20f\n", tsol, data_r[nt] );
   fclose(ot_file);
 }
 
