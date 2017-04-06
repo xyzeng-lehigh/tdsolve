@@ -1,4 +1,5 @@
 #include <fstream>
+#include <climits>
 #include "TDInput.h"
 #include "HighDim_Alg.h"
 #include "Alloc_Utils.h"
@@ -10,25 +11,37 @@ TDInput::TDInput(void) {
   tdCoef.delta  = 1.0;
   tdCoef.alpha  = 1.0;
   tdCoef.theta  = 1.0;
+  tdCoef.sigma  = 1.0;
   tdCoef.D      = 1.0;
   tdCoef.m      = 1.0;
   tdCoef.beta   = 1.0;
   tdCoef.gamma  = 1.0;
+  tdCoef.n_bc   = 5.0e-3;
 
   tdMesh.x_l    = 0.0;
   tdMesh.x_r    = 1.0;
   tdMesh.Nx     = 100;
+  tdMesh.Na_m   = 2;
+  tdMesh.Na     = 200;
   tdMesh.dx     = 0.01;
   tdMesh.x_f    = NULL;
   tdMesh.x_c    = NULL;
+  tdMesh.x_a_f  = NULL;
+  tdMesh.x_a_c  = NULL;
 
+  tdSetup.bmark = false;
   tdSetup.cfl   = 0.9;
   tdSetup.ic    = 0;
   tdSetup.schem = 0;
   tdSetup.scell = 0;
   tdSetup.vel   = 0;
+  tdSetup.rbc   = 0;
   tdSetup.Tinit = 0.0;
   tdSetup.Tterm = 1.0;
+  tdSetup.freq  = 1;
+  tdSetup.maxit = INT_MAX;
+  tdSetup.dTinit = 1e-10;
+  tdSetup.dTgrow = 1.2;
 
   tdLin.Type      = LSYS_TYPE_DIR;
   tdLin.Print     = true;
@@ -42,6 +55,8 @@ TDInput::TDInput(void) {
 
   strcpy(delims," =:\t");
   strcpy(delims_nospace,"=:");
+  strcpy(outputFile,"sol.dat");
+  strcpy(radiusFile,"rad.dat");
 }
 
 TDInput::~TDInput(void) {
@@ -93,6 +108,8 @@ void TDInput::parse(void) {
       tdCoef.alpha = atof(value);
     else if (strcmp(name,"theta")==0)
       tdCoef.theta = atof(value);
+    else if (strcmp(name,"sigma")==0)
+      tdCoef.sigma= atof(value);
     else if (strcmp(name,"D")==0)
       tdCoef.D = atof(value);
     else if (strcmp(name,"m")==0)
@@ -101,12 +118,18 @@ void TDInput::parse(void) {
       tdCoef.beta = atof(value);
     else if (strcmp(name,"gamma")==0)
       tdCoef.gamma = atof(value);
+    else if (strcmp(name,"n_bc")==0)
+      tdCoef.n_bc= atof(value);
     else if (strcmp(name,"x_l")==0)
       tdMesh.x_l = atof(value);
     else if (strcmp(name,"x_r")==0)
       tdMesh.x_r = atof(value);
     else if (strcmp(name,"Nx")==0)
       tdMesh.Nx = atoi(value);
+    else if (strcmp(name,"A_Multiplier")==0)
+      tdMesh.Na_m = atoi(value);
+    else if (strcmp(name,"benchmark")==0)
+      tdSetup.bmark = (atoi(value) == 1);
     else if (strcmp(name,"cfl")==0)
       tdSetup.cfl = atof(value);
     else if (strcmp(name,"ic")==0)
@@ -117,10 +140,20 @@ void TDInput::parse(void) {
       tdSetup.schem = atoi(value);
     else if (strcmp(name,"vel")==0)
       tdSetup.vel = atoi(value);
+    else if (strcmp(name,"rbc")==0)
+      tdSetup.rbc = atoi(value); // 0 -- hom. Neumann; 1 -- ODE bc.
     else if (strcmp(name,"Tinit")==0)
       tdSetup.Tinit = atof(value);
     else if (strcmp(name,"Tterm")==0)
       tdSetup.Tterm = atof(value);
+    else if (strcmp(name,"frequency")==0)
+      tdSetup.freq = atoi(value);
+    else if (strcmp(name,"max_iter")==0)
+      tdSetup.maxit = atoi(value);
+    else if (strcmp(name,"dt_init")==0)
+      tdSetup.dTinit = atof(value);
+    else if (strcmp(name,"dt_growth")==0)
+      tdSetup.dTgrow = atof(value);
     else if (strcmp(name,"lsysType")==0)
       if (strcmp(value,"DIR")==0)
         tdLin.Type = LSYS_TYPE_DIR;
@@ -179,6 +212,8 @@ void TDInput::parse(void) {
       tdLin.KrylovCap = atoi(value);
     else if (strcmp(name,"outputDataFile")==0)
       strcpy(outputFile,(const char*)value);
+    else if (strcmp(name,"radiusDataFile")==0)
+      strcpy(radiusFile,(const char*)value);
     else {
       fprintf(stderr,"Warning: the following line in the input file %s is not recogonized:\n",inputFile);
       fprintf(stderr,"         %s\n",file_line_s.c_str());
@@ -190,10 +225,19 @@ void TDInput::parse(void) {
   alloc_array_full( tdMesh.x_f, tdMesh.Nx+1 );
   alloc_array_full( tdMesh.x_c, tdMesh.Nx   );
 
+  tdMesh.Na = tdMesh.Nx * tdMesh.Na_m;
+  alloc_array_full( tdMesh.x_a_f, tdMesh.Na + 1 );
+  alloc_array_full( tdMesh.x_a_c, tdMesh.Na );
+
   for ( int i = 0; i < tdMesh.Nx+1; i++ )
     tdMesh.x_f[i] = tdMesh.x_l + i * tdMesh.dx;
   for ( int i = 0; i < tdMesh.Nx; i++ )
     tdMesh.x_c[i] = tdMesh.x_l + (i+0.5) * tdMesh.dx;
+
+  for ( int i = 0; i < tdMesh.Na+1; i++ )
+    tdMesh.x_a_f[i] = tdMesh.x_l + i * tdMesh.dx;
+  for ( int i = 0; i < tdMesh.Na; i++ )
+    tdMesh.x_a_c[i] = tdMesh.x_l + (i+0.5) * tdMesh.dx;
 
   fin.close();
   return;

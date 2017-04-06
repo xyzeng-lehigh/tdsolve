@@ -15,6 +15,7 @@ char* program_name;
 void printlogo(void);
 void parse(int*, char**);
 void usage(void);
+void print_help(void);
 
 int main(int argc, char** argv) {
   printlogo();
@@ -32,14 +33,18 @@ int main(int argc, char** argv) {
   tdSolve.output(0);
   tdSolve.diagnostic(0);
 
-  while ( tdSolve.nextIter() ) {
-    tdSolve.update_sol(0,1);
-    tdSolve.update_sol(1,2);
-    tdSolve.average_sol(0.5,0,0.5,2,1);
-    tdSolve.copy_data(1,0);
-    tdSolve.calc_dt(0);
-    tdSolve.diagnostic(0);
-    tdSolve.output(0);
+  if ( tdInput.tdSetup.bmark ) {
+  }
+  else {
+    while ( tdSolve.nextIter() ) {
+      tdSolve.update_sol(0,1);
+      tdSolve.update_sol(1,2);
+      tdSolve.average_sol(0.5,0,0.5,2,1);
+      tdSolve.copy_data(1,0);
+      tdSolve.calc_dt(0);
+      tdSolve.diagnostic(0);
+      tdSolve.output(0);
+    }
   }
 
   return 1;
@@ -61,6 +66,9 @@ void parse(int* argc, char** argv) {
       case 'i':
         strcpy(inputFile,argv[2]);
         break;
+      case 'h':
+        print_help();
+        break;
       default:
         printf("Bad option %s\n",argv[1]);
         usage();
@@ -80,7 +88,38 @@ void usage(void) {
   printf("Usage is %s [-flag] [value]\n",program_name);
   printf("Options\n");
   printf("  -i    Specify the input file name\n");
+  printf("  -h    Print a brief documentation of options available\n");
   printf("\n");
   exit(1);
 }
 
+void print_help(void) {
+  printf("In the input file: [name] [{default value}] [description]\n");
+  printf(" benchmark    {0}      Use a benchmark scheme, turn off may options below\n");
+  printf("                       0 -- Do not use the benchmark method\n");
+  printf("                       1 -- Use benchmark method: Adams-Bashforth for radius\n"); 
+  printf("                                                  Leapfrog for cell numbers\n");
+  printf("                                                  Trapezoidal rule for velocity\n");
+  printf("                                                  2nd-order BDF for chemicals\n");
+  printf(" Nx           {100}    Number of cells (number of grid points is Nx+1)\n");
+  printf(" A_Multiplier {2}      Multiplier of cells for chemicals\n");
+  printf(" cfl          {0.9}    The Courant number\n");
+  printf(" ic           {0}      An integer denoting specific initial values (problems)\n");
+  printf("                       Examplar input files are in the folder \"probs\"\n");
+  printf("                       0 -- A simple test to check the code\n");
+  printf(" space_cell   {0}      Scheme to discretize the equations for cell numbers in space\n");
+  printf("                       0 -- Explicit 1st-order upwind\n");
+  printf("                       1 -- Implicit 1st-order upwind\n");
+  printf("                       2 -- Partially implicit 4th-order Pade for each cell number\n");
+  printf(" space_chem   {0}      Scheme to discretize the equation for chemicals in space\n");
+  printf("                       0 -- Implicit 1st-order upwind\n");
+  printf("                       1 -- Implicit 4th-order Pade\n"); 
+  printf(" vel          {0}      Scheme to update the velocity\n");
+  printf("                       0 -- 2nd-order integration form\n");
+  printf("                       1 -- 1st-order upwind\n");
+  printf("                       2 -- 2nd-order BDF\n");
+  printf("                       3 -- 4th-order Compact differencing\n");
+  //printf(" rbc          {0}      Boundary condition at the tumor front\n");
+  //printf("                       0 -- Homogeneous Neumann b.c. for G and H\n");
+  //printf("                       1 -- ODE based (no b.c. at the front)\n");
+}
