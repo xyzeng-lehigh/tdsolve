@@ -22,13 +22,13 @@ export GLIBCXX_FORCE_NEW
 _LDEPS = Data_Type.h LeastSquares_Solve.h LowDim_Alg.h HighDim_Alg.h\
 			   Mat_Entry.h Alg_Solve.h Comput_Choices.h Alloc_Utils.h\
 				 Quad_Coef.h 
-_DEPS = TDInput.h TDSolve.h
+_DEPS = TDInput.h TDSolve.h TDSolveFDM.h TDSolveFVM.h
 DEPS	= $(patsubst %,$(IDIR)/%,$(_DEPS))
 
 
 _OBJ   = LeastSquares_Solve.o LowDim_Alg.o HighDim_Alg.o\
 				 Mat_Entry.o Alg_Solve.o Comput_Choices.o Alloc_Utils.o\
-				 Quad_Coef.o TDInput.o TDSolve.o
+				 Quad_Coef.o TDInput.o TDSolve.o TDSolveFDM.o TDSolveFVM.o
 OBJ		= $(patsubst %,$(ODIR)/%,$(_OBJ)) $(ODIR)/$(PROG_O)
 
 $(PROG):$(OBJ)

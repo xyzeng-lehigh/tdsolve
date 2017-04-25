@@ -34,7 +34,8 @@ for t=1:Nt
     X(1,:) = data(t,1,:);
     plot(X,D,'r-x','LineWidth',1.2,'MarkerSize',8);
     xlim([xmin xmax]);
-    ylim([ymin ymax]);
+    %ylim([ymin ymax]);
+    ylim([-.1 1.1]);
     title(sprintf('Data, time-stamp %f',time(t)));
     pause(pause_sec);
 end

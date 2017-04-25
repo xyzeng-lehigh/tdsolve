@@ -17,7 +17,26 @@ class LinVec;
 class LinSolve;
 
 class TDSolve {
-  private:
+  public:
+    TDSolve(TDInput* tdInput_ptr);
+    ~TDSolve(void);
+
+    virtual void setup(void) = 0;
+    virtual void set_ic(void) = 0;
+    virtual void calc_dt(const int nt) = 0;
+    virtual void output(const int nt) = 0;
+    void diagnostic(const int nt);
+
+    virtual void update_sol(const int fr, const int to) = 0;
+    void average_sol(const DType, const int, 
+                     const DType, const int, const int);
+    virtual void copy_data(const int fr, const int to) = 0;
+
+    bool nextIter(void) {
+      iter++;
+      return !reach_term_now;
+    }
+  protected:
     HVEC** data_g;
     HVEC** data_h;
     HVEC** data_n;
@@ -46,22 +65,6 @@ class TDSolve {
     DType  dtn, tsol;
     bool   reach_term_next;
     bool   reach_term_now;
-    // Needs to update whenever a or n is modified
-    void update_vel(const int nt);
-
-    void update_rad(const int fr, const int to);
-
-    void update_cells_upw(const int fr, const int to);
-    void update_cells_upw_be(const int fr, const int to);
-    void update_cells_pade_be(const int fr, const int to);
-
-    void update_chem_upw_be(const int fr, const int to);
-    void update_chem_pade_be(const int fr, const int to);
-    
-    void update_vel_int(const int nt);
-    void update_vel_upw(const int nt);
-    void update_vel_bdf2(const int nt);
-    void update_vel_cfd(const int nt) {};
 
     // Linear solver for anything else other than A
     LinMat*   mat;
@@ -81,27 +84,9 @@ class TDSolve {
 
     int iter;
 
-  public:
-    TDSolve(TDInput*);
-    ~TDSolve(void);
-
-    void setup(void);
     void setupLinSolve( LinMat*&, LinMat*&, LinVec*&, LinVec*&, LinVec*&, LinSolve*&, int );
-    void set_ic(void);
-    void update_sol(const int fr, const int to);
-    void average_sol(const DType, const int, 
-                     const DType, const int, const int);
-    void copy_data(const int fr, const int to);
-    void calc_dt(const int nt);
-    void diagnostic(const int nt);
-    void output(const int nt);
-
-
-    bool nextIter(void) {
-      iter++;
-      return !reach_term_now;
-    }
+    virtual void update_vel(const int nt) = 0;
+    void update_rad(const int fr, const int to);
 };
 
 #endif
-

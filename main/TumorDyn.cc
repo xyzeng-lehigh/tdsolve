@@ -7,6 +7,8 @@
 #include "Comput_Choices.h"
 #include "TDInput.h"
 #include "TDSolve.h"
+#include "TDSolveFDM.h"
+#include "TDSolveFVM.h"
 using namespace std;
 
 char inputFile[40];
@@ -25,27 +27,38 @@ int main(int argc, char** argv) {
   tdInput.setInputFile((const char*)inputFile);
   tdInput.parse();
 
-  TDSolve tdSolve(&tdInput);
-
-  tdSolve.setup();
-  tdSolve.set_ic();
-  tdSolve.calc_dt(0);
-  tdSolve.output(0);
-  tdSolve.diagnostic(0);
-
-  if ( tdInput.tdSetup.bmark ) {
+  TDSolve* tdSolve;
+  switch ( tdInput.tdSetup.frame ) {
+    case 0:
+      tdSolve = new TDSolveFDM(&tdInput);
+      break;
+    case 1:
+      tdSolve = new TDSolveFVM(&tdInput);
+      break;
+    default:
+      tdSolve = new TDSolveFDM(&tdInput);
+      break;
   }
-  else {
-    while ( tdSolve.nextIter() ) {
-      tdSolve.update_sol(0,1);
-      tdSolve.update_sol(1,2);
-      tdSolve.average_sol(0.5,0,0.5,2,1);
-      tdSolve.copy_data(1,0);
-      tdSolve.calc_dt(0);
-      tdSolve.diagnostic(0);
-      tdSolve.output(0);
+
+  tdSolve->setup();
+  tdSolve->set_ic();
+  tdSolve->calc_dt(0);
+  tdSolve->output(0);
+  tdSolve->diagnostic(0);
+
+  while ( tdSolve->nextIter() ) {
+    tdSolve->update_sol(0,1);
+    if ( tdInput.tdSetup.tmeth == 1 ) {
+      tdSolve->update_sol(1,2);
+      tdSolve->average_sol(0.5,0,0.5,2,1);
     }
+    tdSolve->copy_data(1,0);
+    tdSolve->calc_dt(0);
+    tdSolve->diagnostic(0);
+    tdSolve->output(0);
   }
+
+  tdSolve->output(0);
 
   return 1;
 }
@@ -95,18 +108,15 @@ void usage(void) {
 
 void print_help(void) {
   printf("In the input file: [name] [{default value}] [description]\n");
-  printf(" benchmark    {0}      Use a benchmark scheme, turn off may options below\n");
-  printf("                       0 -- Do not use the benchmark method\n");
-  printf("                       1 -- Use benchmark method: Adams-Bashforth for radius\n"); 
-  printf("                                                  Leapfrog for cell numbers\n");
-  printf("                                                  Trapezoidal rule for velocity\n");
-  printf("                                                  2nd-order BDF for chemicals\n");
   printf(" Nx           {100}    Number of cells (number of grid points is Nx+1)\n");
   printf(" A_Multiplier {2}      Multiplier of cells for chemicals\n");
   printf(" cfl          {0.9}    The Courant number\n");
   printf(" ic           {0}      An integer denoting specific initial values (problems)\n");
   printf("                       Examplar input files are in the folder \"probs\"\n");
   printf("                       0 -- A simple test to check the code\n");
+  printf(" lbc          {0}      The boundary condition for cells at the left boundary\n");
+  printf("                       0 -- No-flux boundary\n");
+  printf("                       1 -- ODE-based boundary condition\n");
   printf(" space_cell   {0}      Scheme to discretize the equations for cell numbers in space\n");
   printf("                       0 -- Explicit 1st-order upwind\n");
   printf("                       1 -- Implicit 1st-order upwind\n");
@@ -119,6 +129,9 @@ void print_help(void) {
   printf("                       1 -- 1st-order upwind\n");
   printf("                       2 -- 2nd-order BDF\n");
   printf("                       3 -- 4th-order Compact differencing\n");
+  printf(" time_methd   {1}      Scheme for time-integration\n");
+  printf("                       0 -- FE/BE\n");
+  printf("                       1 -- RK2\n");
   //printf(" rbc          {0}      Boundary condition at the tumor front\n");
   //printf("                       0 -- Homogeneous Neumann b.c. for G and H\n");
   //printf("                       1 -- ODE based (no b.c. at the front)\n");

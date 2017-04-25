@@ -8,9 +8,10 @@
 #include "Comput_Choices.h"
 
 struct TDCoef {
-  DType lambda, mu, delta, alpha, theta, sigma;
+  DType lambda, mu, delta, alpha, theta, sigma, rho;
   DType D, m, beta, gamma;
   DType n_bc;
+  DType R_0;
 };
 
 struct TDMesh {
@@ -27,14 +28,17 @@ struct TDMesh {
 };
 
 struct TDSetup {
-  bool  bmark;
+  int   frame;
   DType cfl;
   int   ic;
-  int   scell, schem, vel, rbc;
+  int   scell, schem, vel, rbc, lbc;
+  int   tmeth;
   DType Tinit, Tterm;
   int   freq;
   int   maxit;
   DType dTinit, dTgrow;
+
+  bool  nonDim;
 };
 
 struct TDLin {
