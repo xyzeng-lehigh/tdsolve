@@ -90,7 +90,9 @@ void TDSolveFVM::set_ic(void) {
     N_dir[i] = i-1;
 
   FILE* ot_file = fopen( tdInput->radiusFile, "w" );
-  fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\n", tsol, data_r[0], (*data_v[0])[Nx]);
+  fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\t%10.20f\n", 
+      tsol, data_r[0], (*data_v[0])[Nx], 
+      -((*data_a[0])[Nx]-(*data_a[0])[Nx-1])/dx/data_r[0]);
   fclose(ot_file);
 
   return;
@@ -129,7 +131,9 @@ void TDSolveFVM::set_ic_dim(void) {
   update_vel_dim(0);
 
   FILE* ot_file = fopen( tdInput->radiusFile, "w" );
-  fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\n", tsol, data_r[0], (*data_v[0])[Nx]);
+  fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\t%10.20f\n", 
+      tsol, data_r[0], (*data_v[0])[Nx],
+      -((*data_a[0])[Nx]-(*data_a[0])[Nx-1])/dx/data_r[0]);
   fclose(ot_file);
 
   return;
@@ -189,7 +193,19 @@ void TDSolveFVM::calc_dt(const int nt) {
   if ( iter == 0 )
     dtn = min( dtn_trial, dtn );
   else
-    dtn = min( dtn * tdSetup->dTgrow, dtn_trial );
+    dtn = min( dtn_old * tdSetup->dTgrow, dtn_trial );
+  dtn_old = dtn;
+
+  if ( use_tfreq ) {
+    reach_output_now = reach_output_next;
+    if ( t_output - tsol <= dtn ) {
+      dtn = t_output - tsol;
+      reach_output_next = true;
+      t_output += tdSetup->Tfreq;
+    }
+    else
+      reach_output_next = false;
+  }
 
   if ( tdSetup->Tterm - tsol < dtn ) {
     dtn = tdSetup->Tterm - tsol;
@@ -198,15 +214,25 @@ void TDSolveFVM::calc_dt(const int nt) {
 
   if ( iter >= tdSetup->maxit )
     reach_term_now = true;
+
   return;
 }
 
 void TDSolveFVM::output(const int nt) {
   FILE* ot_file = fopen( tdInput->radiusFile, "a" );
-  fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\n", tsol, data_r[nt], (*data_v[nt])[Nx] );
+  fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\t%10.20f\n", tsol, data_r[nt], (*data_v[nt])[Nx],
+      -((*data_a[nt])[Nx]-(*data_a[nt])[Nx-1])/dx/data_r[nt]);
   fclose(ot_file);
 
-  if ( !reach_term_now && iter % tdSetup->freq != 0 ) return;
+  if ( !reach_term_now ) {
+    if ( use_tfreq ) {
+      if ( !reach_output_now ) return;
+    }
+    else {
+      if ( iter % tdSetup->freq != 0 ) return;
+    }
+  }
+  //if ( !reach_term_now && iter % tdSetup->freq != 0 ) return;
   ot_file = fopen( tdInput->outputFile, "a" );
   fprintf( ot_file, "%10.20f\t%10.20f\t%d\t%d\n", tsol, dtn, Nx, Nx+1 );
 
@@ -446,22 +472,28 @@ void TDSolveFVM::update_vel_dim(const int nt) {
 }
 
 void TDSolveFVM::update_cells_upw(const int fr, const int to) {
-  DType lambda = tdCoef->lambda;
-  DType delta  = tdCoef->delta;
-  DType mu     = tdCoef->mu;
-  DType alpha  = tdCoef->alpha;
-  DType rho    = tdCoef->rho;
+  DType lambda  = tdCoef->lambda;
+  DType delta   = tdCoef->delta;
+  DType mu      = tdCoef->mu;
+  DType mu_slp  = tdCoef->mu_slp;
+  DType alpha   = tdCoef->alpha;
+  DType rho_mns = tdCoef->rho_mns;
+  DType rho_pls = tdCoef->rho_pls;
+  DType n_star  = tdCoef->n_star;
 
   DType dror = (*data_v[fr])[Nx]/data_r[fr];
   DType aorr = alpha/data_r[fr]/data_r[fr];
 
   // Source terms
   for ( int i = 0; i < Nx; i++ ) {
+    DType loc_mu = mu - mu_slp * x_c[i];
+    DType rho = ( (*data_n[fr])[i] < n_star ) ? rho_mns : rho_pls;
+    //cout << "rho: " << rho << std::endl;
     (*data_g[to])[i] = (*data_g[fr])[i] + dtn * (
-        lambda * (*data_g[fr])[i] - mu * (*data_g[fr])[i]
+        lambda * (*data_g[fr])[i] - loc_mu * (*data_g[fr])[i]
         - dror * (*data_g[fr])[i] );
     (*data_h[to])[i] = (*data_h[fr])[i] + dtn * (
-        mu * (*data_g[fr])[i] - delta * (*data_h[fr])[i]
+        loc_mu * (*data_g[fr])[i] - delta * (*data_h[fr])[i]
         - dror * (*data_h[fr])[i] );
     (*data_n[to])[i] = (*data_n[fr])[i] + dtn * (
         - rho * (*data_n[fr])[i] - dror * (*data_n[fr])[i] );
@@ -505,6 +537,7 @@ void TDSolveFVM::update_cells_upw_test(const int fr, const int to) {
   DType lambda = tdCoef->lambda;
   DType delta  = tdCoef->delta;
   DType mu     = tdCoef->mu;
+  DType mu_slp = tdCoef->mu_slp;
   DType alpha  = tdCoef->alpha;
 
   DType dror = (*data_v[fr])[Nx]/data_r[fr];
@@ -512,11 +545,12 @@ void TDSolveFVM::update_cells_upw_test(const int fr, const int to) {
 
   // Source terms
   for ( int i = 0; i < Nx; i++ ) {
+    DType loc_mu = mu - mu_slp * x_c[i];
     (*data_g[to])[i] = (*data_g[fr])[i] + dtn * (
-        lambda * (*data_g[fr])[i] - mu * (*data_g[fr])[i]
+        lambda * (*data_g[fr])[i] - loc_mu * (*data_g[fr])[i]
         - dror * (*data_g[fr])[i] );
     (*data_h[to])[i] = (*data_h[fr])[i] + dtn * (
-        mu * (*data_g[fr])[i] - delta * (*data_h[fr])[i]
+        loc_mu * (*data_g[fr])[i] - delta * (*data_h[fr])[i]
         - dror * (*data_h[fr])[i] );
     (*data_n[to])[i] = (*data_n[fr])[i] + dtn * (
         - dror * (*data_n[fr])[i] );
@@ -569,8 +603,11 @@ void TDSolveFVM::update_cells_upw_be(const int fr, const int to) {
   DType lambda = tdCoef->lambda;
   DType delta  = tdCoef->delta;
   DType mu     = tdCoef->mu;
+  DType mu_slp = tdCoef->mu_slp;
   DType alpha  = tdCoef->alpha;
-  DType rho    = tdCoef->rho;
+  DType rho_mns = tdCoef->rho_mns;
+  DType rho_pls = tdCoef->rho_pls;
+  DType n_star  = tdCoef->n_star;
 
   DType dror = (*data_v[fr])[Nx]/data_r[fr];
   DType aorr = alpha/data_r[fr]/data_r[fr];
@@ -601,7 +638,8 @@ void TDSolveFVM::update_cells_upw_be(const int fr, const int to) {
     else 
       coef_adv_r += dtn*loc_v_r/dx;
 
-    elem = 1.0 + coef_adv_c - dtn*( lambda - mu - dror );
+    DType loc_mu = mu - mu_slp * x_c[0];
+    elem = 1.0 + coef_adv_c - dtn*( lambda - loc_mu - dror );
     mat->set(0,0,elem);
 
     elem = coef_adv_r;
@@ -628,7 +666,8 @@ void TDSolveFVM::update_cells_upw_be(const int fr, const int to) {
     elem = coef_adv_l;
     mat->set(i,i-1,elem);
 
-    elem = 1.0 + coef_adv_c - dtn*( lambda - mu - dror );
+    DType loc_mu = mu - mu_slp * x_c[i];
+    elem = 1.0 + coef_adv_c - dtn*( lambda - loc_mu - dror );
     mat->set(i,i,elem);
 
     elem = coef_adv_r;
@@ -649,7 +688,8 @@ void TDSolveFVM::update_cells_upw_be(const int fr, const int to) {
     elem = coef_adv_l;
     mat->set(Nx-1,Nx-2,elem);
 
-    elem = 1.0 + coef_adv_c - dtn*( lambda - mu - dror );
+    DType loc_mu = mu - mu_slp * x_c[Nx-1];
+    elem = 1.0 + coef_adv_c - dtn*( lambda - loc_mu - dror );
     mat->set(Nx-1,Nx-1,elem);
   }
 
@@ -677,7 +717,8 @@ void TDSolveFVM::update_cells_upw_be(const int fr, const int to) {
 
   // RHS
   for ( int i = 0; i < Nx; i++ ) {
-    comp = (*data_h[fr])[i] + dtn * mu * (*data_g[to])[i];
+    DType loc_mu = mu - mu_slp * x_c[i];
+    comp = (*data_h[fr])[i] + dtn * loc_mu * (*data_g[to])[i];
     rhs->set(i,comp);
   }
 
@@ -799,6 +840,7 @@ void TDSolveFVM::update_cells_upw_be(const int fr, const int to) {
     else 
       coef_adv_r += dtn*loc_v_r/dx;
 
+    DType rho = ( (*data_n[fr])[0] < n_star ) ? rho_mns : rho_pls;
     elem = 1.0 + coef_adv_c - dtn*( - rho - dror );
     mat->set(0,0,elem);
 
@@ -828,6 +870,7 @@ void TDSolveFVM::update_cells_upw_be(const int fr, const int to) {
     elem = coef_adv_l;
     mat->set(i,i-1,elem);
 
+    DType rho = ( (*data_n[fr])[i] < n_star ) ? rho_mns : rho_pls;
     elem = 1.0 + coef_adv_c - dtn*( - rho - dror );
     mat->set(i,i,elem);
 
@@ -857,6 +900,7 @@ void TDSolveFVM::update_cells_upw_be(const int fr, const int to) {
     elem = coef_adv_l;
     mat->set(Nx-1,Nx-2,elem);
 
+    DType rho = ( (*data_n[fr])[Nx-1] < n_star ) ? rho_mns : rho_pls;
     elem = 1.0 + coef_adv_c - dtn*( - rho - dror );
     mat->set(Nx-1,Nx-1,elem);
   }

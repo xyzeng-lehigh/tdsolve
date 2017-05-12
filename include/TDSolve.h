@@ -62,9 +62,12 @@ class TDSolve {
     DType* x_a_f;
     DType* x_a_c;
 
-    DType  dtn, tsol;
+    DType  dtn, tsol, t_output, dtn_old;
     bool   reach_term_next;
+    bool   reach_output_now;
+    bool   reach_output_next;
     bool   reach_term_now;
+    bool   use_tfreq;
 
     // Linear solver for anything else other than A
     LinMat*   mat;

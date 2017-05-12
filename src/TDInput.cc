@@ -6,44 +6,48 @@
 using namespace std;
 
 TDInput::TDInput(void) {
-  tdCoef.lambda = 1.0;
-  tdCoef.mu     = 1.0;
-  tdCoef.delta  = 1.0;
-  tdCoef.alpha  = 1.0;
-  tdCoef.theta  = 1.0;
-  tdCoef.sigma  = 1.0;
-  tdCoef.rho    = 0.0;
-  tdCoef.D      = 1.0;
-  tdCoef.m      = 1.0;
-  tdCoef.beta   = 1.0;
-  tdCoef.gamma  = 1.0;
-  tdCoef.n_bc   = 5.0e-3;
-  tdCoef.R_0    = 1.0;
+  tdCoef.lambda  = 1.0;
+  tdCoef.mu      = 1.0;
+  tdCoef.delta   = 1.0;
+  tdCoef.alpha   = 1.0;
+  tdCoef.theta   = 1.0;
+  tdCoef.sigma   = 1.0;
+  tdCoef.rho_mns = 0.0;
+  tdCoef.rho_pls = 0.0;
+  tdCoef.n_star  = -1.0;
+  tdCoef.D       = 1.0;
+  tdCoef.m       = 1.0;
+  tdCoef.beta    = 1.0;
+  tdCoef.gamma   = 1.0;
+  tdCoef.n_bc    = 5.0e-3;
+  tdCoef.R_0     = 1.0;
+  tdCoef.mu_slp  = 0.0;
 
-  tdMesh.x_l    = 0.0;
-  tdMesh.x_r    = 1.0;
-  tdMesh.Nx     = 100;
-  tdMesh.Na_m   = 2;
-  tdMesh.Na     = 200;
-  tdMesh.dx     = 0.01;
-  tdMesh.x_f    = NULL;
-  tdMesh.x_c    = NULL;
-  tdMesh.x_a_f  = NULL;
-  tdMesh.x_a_c  = NULL;
+  tdMesh.x_l     = 0.0;
+  tdMesh.x_r     = 1.0;
+  tdMesh.Nx      = 100;
+  tdMesh.Na_m    = 2;
+  tdMesh.Na      = 200;
+  tdMesh.dx      = 0.01;
+  tdMesh.x_f     = NULL;
+  tdMesh.x_c     = NULL;
+  tdMesh.x_a_f   = NULL;
+  tdMesh.x_a_c   = NULL;
 
-  tdSetup.frame = 0;
-  tdSetup.cfl   = 0.9;
-  tdSetup.ic    = 0;
-  tdSetup.schem = 0;
-  tdSetup.scell = 0;
-  tdSetup.vel   = 0;
-  tdSetup.lbc   = 0;
-  tdSetup.rbc   = 0;
-  tdSetup.tmeth = 1;
-  tdSetup.Tinit = 0.0;
-  tdSetup.Tterm = 1.0;
-  tdSetup.freq  = 1;
-  tdSetup.maxit = INT_MAX;
+  tdSetup.frame  = 0;
+  tdSetup.cfl    = 0.9;
+  tdSetup.ic     = 0;
+  tdSetup.schem  = 0;
+  tdSetup.scell  = 0;
+  tdSetup.vel    = 0;
+  tdSetup.lbc    = 0;
+  tdSetup.rbc    = 0;
+  tdSetup.tmeth  = 1;
+  tdSetup.Tinit  = 0.0;
+  tdSetup.Tterm  = 1.0;
+  tdSetup.Tfreq  = -1.0;
+  tdSetup.freq   = 1;
+  tdSetup.maxit  = INT_MAX;
   tdSetup.dTinit = 1e-10;
   tdSetup.dTgrow = 1.2;
   tdSetup.nonDim = true;
@@ -115,8 +119,16 @@ void TDInput::parse(void) {
       tdCoef.theta = atof(value);
     else if (strcmp(name,"sigma")==0)
       tdCoef.sigma = atof(value);
-    else if (strcmp(name,"rho")==0)
-      tdCoef.rho = atof(value);
+    else if (strcmp(name,"rho")==0) {
+      tdCoef.rho_mns = atof(value);
+      tdCoef.rho_pls = atof(value);
+    }
+    else if (strcmp(name,"rho_mnus")==0)
+      tdCoef.rho_mns = atof(value);
+    else if (strcmp(name,"rho_plus")==0)
+      tdCoef.rho_pls = atof(value);
+    else if (strcmp(name,"n_star")==0)
+      tdCoef.n_star = atof(value);
     else if (strcmp(name,"D")==0)
       tdCoef.D = atof(value);
     else if (strcmp(name,"m")==0)
@@ -129,6 +141,8 @@ void TDInput::parse(void) {
       tdCoef.n_bc= atof(value);
     else if (strcmp(name,"r_0")==0)
       tdCoef.R_0 = atof(value);
+    else if (strcmp(name,"mu_slope")==0)
+      tdCoef.mu_slp  = atof(value);
     else if (strcmp(name,"x_l")==0)
       tdMesh.x_l = atof(value);
     else if (strcmp(name,"x_r")==0)
@@ -159,6 +173,8 @@ void TDInput::parse(void) {
       tdSetup.Tinit = atof(value);
     else if (strcmp(name,"Tterm")==0)
       tdSetup.Tterm = atof(value);
+    else if (strcmp(name,"Tfreq")==0)
+      tdSetup.Tfreq = atof(value);
     else if (strcmp(name,"frequency")==0)
       tdSetup.freq = atoi(value);
     else if (strcmp(name,"max_iter")==0)

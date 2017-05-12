@@ -8,7 +8,9 @@
 #include "Comput_Choices.h"
 
 struct TDCoef {
-  DType lambda, mu, delta, alpha, theta, sigma, rho;
+  DType lambda, mu, delta, alpha, theta, sigma;
+  DType rho_mns, rho_pls, n_star;
+  DType mu_slp;
   DType D, m, beta, gamma;
   DType n_bc;
   DType R_0;
@@ -33,7 +35,7 @@ struct TDSetup {
   int   ic;
   int   scell, schem, vel, rbc, lbc;
   int   tmeth;
-  DType Tinit, Tterm;
+  DType Tinit, Tterm, Tfreq;
   int   freq;
   int   maxit;
   DType dTinit, dTgrow;

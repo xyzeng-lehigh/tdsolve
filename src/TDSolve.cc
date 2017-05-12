@@ -20,6 +20,7 @@ TDSolve::TDSolve(TDInput* tdInput_ptr) {
   x_a_c   = tdMesh->x_a_c;
 
   dtn     = tdSetup->dTinit;
+  dtn_old = tdSetup->dTinit;
   tsol    = tdSetup->Tinit;
 
   reach_term_now  = tdSetup->Tterm <= tsol;
@@ -40,6 +41,12 @@ TDSolve::TDSolve(TDInput* tdInput_ptr) {
   linSolve_a = NULL;
 
   iter = 0;
+
+  use_tfreq = tdSetup->Tfreq > 0.0;
+  reach_output_now  = false;
+  reach_output_next = false;
+  if ( use_tfreq ) 
+    t_output = tdSetup->Tfreq;
 }
 
 TDSolve::~TDSolve(void) {
