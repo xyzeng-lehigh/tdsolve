@@ -1,9 +1,11 @@
-/*.o$
+syntax: glob
+
+*.o
 TumorDynRun
-/*.swp$
-/*.out$
-/*.toc$
-/*.bbl$
-/*.blg$
-/*.log$
-/*.aux$
+*.swp
+*.out
+*.toc
+*.bbl
+*.blg
+*.log
+*.aux

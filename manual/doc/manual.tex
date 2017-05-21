@@ -1,0 +1,422 @@
+\documentclass{amsproc}
+\usepackage{mathptmx}      % use Times fonts if available on your TeX system
+\usepackage{latexsym}
+\usepackage{amssymb}
+\usepackage{bm}
+\usepackage[usenames,dvipsnames]{xcolor}
+\usepackage{graphicx,pifont}
+\usepackage{multicol,multirow}
+\usepackage{ulem,cancel}
+\usepackage{tikz}
+\usetikzlibrary[patterns]
+\usepackage{comment}
+\usepackage{hyperref}
+\usepackage{array}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{txfonts}
+\usepackage{enumerate}
+\usepackage{listings}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}{Proposition}[section]
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+\numberwithin{equation}{section}
+\numberwithin{figure}{section}
+\newtheorem{conjecture}[theorem]{Conjecture}
+
+\newcommand{\crossref}{{\color{red}ref here}}
+
+\newcommand{\bs}[1]{\boldsymbol{#1}}
+\newcommand{\bsb}[1]{{\mbox{\sffamily #1}}}
+\newcommand{\bb}[1]{{\mbox{\sffamily \bfseries #1}}}
+\newcommand{\oname}[1]{\textrm{#1}}
+\newcommand{\abs}[1]{\left|#1\right|}
+\newcommand{\nrm}[1]{\left|\left|#1\right|\right|}
+\newcommand{\eqdef}{\stackrel{\mathrm{def}}{=\joinrel=}}
+\newcommand{\ab}[1]{\langle#1\rangle}
+\newcommand{\po}[1]{\frac{\partial}{\partial{#1}}}
+\newcommand{\poh}[1]{\partial/\partial{#1}}
+\newcommand{\pp}[2]{\frac{\partial {#1}}{\partial {#2}}}
+\newcommand{\pph}[2]{\partial {#1}/\partial {#2}}
+\newcommand{\termc}[1]{{\mbox{\sffamily {#1}}}}
+\newcommand{\bt}[1]{{\boldsymbol{\mbox{\sffamily \bfseries {#1}}}}}
+\newcommand{\phf}[1]{{#1}+1/2}
+\newcommand{\mhf}[1]{{#1}-1/2}
+\newcommand{\powth}{{\textrm{\scriptsize th}}}
+\newcommand{\powrd}{{\textrm{\scriptsize rd}}}
+\newcommand{\powst}{{\textrm{\scriptsize st}}}
+\newcommand{\pownd}{{\textrm{\scriptsize nd}}}
+
+\setlength{\unitlength}{1cm}
+\setlength{\arraycolsep}{3pt} 
+\setlength{\tabcolsep}{1pt}
+
+\begin{document}
+
+\title[\texttt{TumorDyn} Manual]{\bf A Brief Manual for \texttt{TumorDyn}}
+\author[X.~Zeng]{Xianyi Zeng}
+\address{Department of Mathematical Sciences, University of Texas at El Paso, El Paso TX 79902, United States.\\
+         Tel.: +1-915-747-6759}
+\email[X.~Zeng]{xzeng@utep.edu}
+\date{\today}
+
+%\subjclass[2010]{65M12 \and 35L65}
+
+%\keywords{
+%}
+
+\begin{abstract}
+This is a short guide for obtaining and using \texttt{TumorDyn}, a finite-volume solver for simulating spherically symmetric tumor growth problems.
+It also contains a simple example to run several runs in parallel on a \texttt{macOS}/\texttt{Linux} machine with multiple processors, as well as some post-processing scripts using \texttt{Matlab}.
+\end{abstract}
+
+\maketitle
+
+\setcounter{tocdepth}{2}
+\tableofcontents
+
+\section{Obtaining, Updating, and Compiling \texttt{TumorDyn}}
+
+\texttt{TumorDyn} is written in \texttt{C++}; the project is housed at \texttt{Bitbucket} with the name \texttt{TDSolve}.
+Everything in this manual assumes operation in terminal with proper shell commands, unless otherwise specified.
+On latest versions of \texttt{macOS}, this needs to be enabled by installing ``Command Line Tools''; any \texttt{Linux} system should come with a shell command set already.
+In order to get the source code from \texttt{Bitbucket} and compile it successfully, the following tools are required:
+\begin{itemize}
+\item \texttt{hg}: Mercurial, a distributed source control management tool used to obtaining and updating the source code from \texttt{Bitbucket} repository.
+\item \texttt{make}: GNU Make, a tool to control the generation of executables and other non-source files from source codes.
+\item \texttt{g++}: the GNU \texttt{C++} compiler. This can be replaced by \texttt{clang++} on \texttt{macOS} -- need to change a line in the \texttt{makefile} shipped with the package.
+\end{itemize}
+On \texttt{Linux}, these tools should be available through any package management tools such as \texttt{apt-get} on \texttt{Ubuntu} systems or \texttt{yum} on \texttt{Red Hat} based systems such as \texttt{Red Hat Linux}, \texttt{Fedora Linux}, \texttt{CentOS}, and \texttt{Scientific Linux}; on \texttt{macOS}, however, \texttt{MacPorts} is a good source to get many useful tools. 
+
+\subsection{To Start: Getting \texttt{TumorDyn} from \texttt{Bitbucket} and Make!}
+If you have not received an invitation from me or co-developers of the program, stop here, you won't be able to obtain the code. 
+Now we assume you already have received an invitation, joined the project, and registered an \texttt{Atlassian} account.
+To begin with, let us create an empty folder, such as \texttt{\$HOME/td\_proj}; anyway let us call this folder \texttt{\$TDHOME}.
+While in this folder and with \texttt{hg} installed, use the following to create a local copy of the program:
+\begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.0cm]
+$ hg clone ssh://hg@bitbucket.org/xyzeng/tdsolve TDSolve
+\end{lstlisting}
+Here and throughout the manual, such a line beginning with \$ on a shaded background indicates a command to type in the terminal; without the \$ sign, it is just a line showing some output on the terminal, such as by listing the content of the current directory.
+This line in particular, will create a folder called \texttt{TDSolve} in our project home \texttt{\$TDHOME}; feel free to use any other name you like to replace \texttt{TDSolve}.
+Note that mercurial use \texttt{ssh} to connect to the \texttt{Bitbucket} repository; if this is your first time doing so you may get a few error messages.
+When this happens, please refer to the \texttt{Atlassian} documentation page for resolving the issues:
+\begin{center}
+{\color{blue} \url{https://confluence.atlassian.com/bitbucket/troubleshoot-ssh-issues-271943403.html}}
+\end{center}
+The \texttt{hg clone} command may take a while, as you may have expected, since it copies everything from the repository to the local machine.
+Once it is done, enter this directory, you will see a few files and sub-folders; among other things, there are:
+\begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.1cm]
+include/ main/ makefile readme.txt src/ tools/
+\end{lstlisting}
+The file \texttt{readme.txt} contains an extremely short guide to use the program, assuming that you're already familiar with the bash commands, etc.
+The three first three folders contain the source codes: \texttt{include/} contains all the header files, \texttt{src/} contains all the source files excepting the one containing the \texttt{main} function, which is in the folder \texttt{main/}.
+You may notice that there is also a folder called \texttt{obj/}, this is used to hold all the object files generated during compiling the program; no need to worry about it.
+The folder \texttt{tools/} contains some \texttt{Matlab} scripts that are used to read the simulation results and do some simple plots; we will discuss this later.
+
+The most important single file \texttt{makefile} is the one we'll use to compile the program.
+To do so, type:
+\begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.0cm]
+$ make 
+\end{lstlisting}
+while in the folder \texttt{\$TDHOME/TDSolve}; it will automatically call the \texttt{C++} compiler and build the program.
+By default, the GNU compiler \texttt{g++} is used; if you're using \texttt{macOS} and decide not to use \texttt{g++}, another option is to use \texttt{clang++} that is shipped with the system.
+To do so, uncomment the second line in \texttt{makefile} by deleting the first \# character, and comment the first line by adding a \# character at the beginning of the line.
+If there are more than one processors on the machine, the building process can be speed up a little bit by making use of these processors; to do so, for example with 4 processors, type instead:
+\begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.0cm]
+$ make -j 4
+\end{lstlisting}
+Parallel building may actually be an overkill; anyway this is not a very large program, at least for now...
+
+Upon a successful building, an executable file with the name:
+\begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.1cm]
+TumorDynRun
+\end{lstlisting}
+should be added to the current folder; this is the executable to run all the simulations.
+
+\subsection{Keeping the Project Updated}
+Occasionally the \texttt{Bitbucket} repository will be updated to include new features or to get rid of some obsolete features.
+To keep the local copy updated, type:
+\begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.0cm]
+$ hg pull
+\end{lstlisting}
+in \texttt{\$TDHOME/TDSolve} to fetch all the updates.
+If there are any conflicts reported by mercurial, these conflicts must be resolved and an \texttt{hg merge} is required before continuing; this should not happen if you do not modify any file in this folder except for those generated by \texttt{make}.
+You can see if anything is changed by typing:
+\begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.0cm]
+$ hg st
+\end{lstlisting}
+in the current directory.
+Once the \texttt{hg pull} is successful, use:
+\begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.0cm]
+$ hg up default
+\end{lstlisting}
+to update all the source files to the newest version (we're not worrying about any branch other than the default one for now).
+Next, use:
+\begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.0cm]
+$ make 
+\end{lstlisting}
+or
+\begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.0cm]
+$ make -j 4
+\end{lstlisting}
+to re-build the code.
+This process could be faster than the first build because GNU Make will automatically determine the minimum amount of work to re-compile the code -- that is, if a source file is not changed during the update the corresponding object (\texttt{.o}) file will not be re-produced.
+
+As a final remark, if the folder \texttt{\$TDHOME/TDSolve} is not in the \texttt{PATH} variable, you'll need to provide the full path to \texttt{TumorDynRun} in order to use it.
+
+\section{Input File Explained and A Simple Run}
+Along with the source \texttt{C++} files, there is also a folder:
+\begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.1cm]
+manual/
+\end{lstlisting}
+in the cloned \texttt{\$TDHOME/TDSolve}.
+This directory contains this manual as well as its \LaTeX files in the sub-folder \texttt{doc/}.
+The other sub-folder, \texttt{demo/}, holds a \texttt{hcl} file called the input file.
+Why the extension \texttt{.hcl}? Because many of the \texttt{C++} source files here are borrowed from a much larger project called \texttt{HCLSolve} (Hyperbolic Conservation Law Solvers)... So we just inhere the naming convention.
+
+Preparing ourselves for a first run of \texttt{TumorDynRun}, let us go to \texttt{\$TDHOME} and create a new folder called \texttt{TDRun}:
+\begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.0cm]
+$ cd $TDHOME
+$ mkdir TDRun
+\end{lstlisting}
+Of course, you can use any other name or even just run in \texttt{\$TDHOME/TDSolve/manual/demo}, where the input files exist;
+however, I suggest not to put the simulation files in \texttt{\$TDHOME/TDSolve}, since this will create a lot of new files when you check the status of the program using \texttt{hg st}, unless we also modify the hidden file \texttt{\$TDHOME/TDSolve/.hgignore}...
+
+\subsection{A Simple Run} 
+Go to \texttt{\$TDHOME/TDRun} and create a new folder \texttt{TestRun}, enter it, and copy the file \texttt{input\_sample.hcl} here:
+\begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.0cm]
+$ cd $TDHOME/TDRun
+$ mkdir TestRun 
+$ cd TestRun
+$ cp $TDHOME/TDSolve/manual/demo/input_sample.hcl ./
+$ mv input_sample.hcl input.hcl
+\end{lstlisting}
+We have renamed it for simplicity.
+Use the following line to run the program with \texttt{input.hcl} as the input file:
+\begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.0cm]
+$ $TDHOME/TDSolve/TumorDynRun -i input.hcl
+\end{lstlisting}
+Running this command will produce a program logo and some diagonostic information:
+{\tiny
+\begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.1cm]
+Iter   0: Time 0.00000000; Time step 0.00000100; Radius 0.20000000; Front-velocity 0.05105135.
+Iter   1: Time 0.00000100; Time step 0.00000120; Radius 0.20000005; Front-velocity 0.05194606.
+Iter   2: Time 0.00000220; Time step 0.00000144; Radius 0.20000011; Front-velocity 0.05273993.
+\end{lstlisting}
+}
+Each line contains from the left to the right:
+\begin{itemize}
+\item The iteration number $k$ starting with 0, the initial condition.
+\item Current simulation time $t^k$.
+\item The next time step size $\Delta t^k = t^{k+1}-t^k$.
+\item Current radius of the tumor $R^k$.
+\item Current growth velocity at the tumor boundary $V^k(R^k,t^k)$.
+\end{itemize}
+Once the run is completed (it will take a while), two solution files are generated:
+\begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.1cm]
+sol.dat rad.dat
+\end{lstlisting}
+They will be explained later.
+
+\subsection{The Input File}
+There are four sections of the input file we just used, they are separated by an empty line.
+Each section is composed of a few lines that look like:
+\begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.1cm]
+// Some comments
+\end{lstlisting}
+or
+\begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.1cm]
+variableName = variableValue
+\end{lstlisting}
+The first scenario is the comments and it has nothing to do with the simulation. 
+It is the second scenario that set various values/options in the simulation; it doesn't matter how many spaces there are between the equality sign and either side of the equation.
+
+The first section assign values to the model parameters and they're fairly self-explanatory.
+For example:
+\begin{itemize}
+\item \texttt{n\_bc} is the boundary value $N_{\textrm{bc}}$ for the immune cell number $N$.
+\item \texttt{n\_star} is the threshold value $N^*$ that determines the dissipation rate of $N$; these rates are given by \texttt{rho\_mnus} if during the computation $N$ is smaller than $N^*$, and by \texttt{rho\_plus} if $N$ is larger than $N^*$.
+\end{itemize}
+For the second point, if a uniform dissipation rate for $N$ is to be used, you can delete the lines for \texttt{n\_star}, \texttt{rho\_mnus}, and \texttt{rho\_plus}, and use the following line instead:
+\begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.1cm]
+rho = 0.8
+\end{lstlisting}
+Here 0.8 is to be replaced by any value assigned to $\rho$.
+If a variable is not assigned in the input file, the default value will be used; to get an idea what the default value is for these variables, take a look at the first function in \texttt{\$TDHOME/TDSolve/src/TDInput.cc}.
+
+The second section features simulation parameters, and they're explained below:
+\begin{itemize}
+\item \texttt{ic}: The initial condition tag. 
+It refers to a tag that is hard-coded in the program. 
+For example, the option 0 corresponds to the following initial data:
+\begin{align*}
+&N(r,0) = N_{\textrm{bc}}\;,\ G(r,0) = 0.84\;,\ H(r,0) = 0.16-N_{\textrm{bc}}\;; \\
+&A(r,0) = 10^3\exp(-r^2)\;.
+\end{align*}
+For more details, refer to the function:
+\begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.1cm]
+void TDSolve::set_ic(void)
+\end{lstlisting}
+in \texttt{\$TDHOME/TDSolve/src/TDSolveFVM.cc}.
+This is also where you should modify to introduce more initial conditions (and re-compile the program).
+\item \texttt{r\_0}: The initial radius of the tumor.
+\item \texttt{Nx}: The number of uniform cells to discretize the domain $r\in[0, R(t)]$.
+\item \texttt{A\_Multiplier}: The variable $A$ is solved on a larger domain $r\in[0, M_AR(t)]$, and the multiplier is given by $M_A$.
+\item \texttt{cfl}: The Courant number $\alpha_{\textrm{cfl}}$ to compute the time step size. For explicit method its value should be no more than $1.0$ and the suggested value is $0.4$; for implicit method its value can be increased to $\sim 20.0$.
+\item \texttt{Tinit}: The initial time -- the default is zero.
+\item \texttt{Tterm}: The terminal time -- the difference between the terminal and the initial times is the time span of the numerical simulations.
+\item \texttt{Tfreq}: The frequency at which the solution is sampled and written to the solution files.
+\item \texttt{time\_method}: Time-integrator; 0 for a first-order method and 1 for a second-order method.
+\item \texttt{max\_iter}: Maximum allowed number of iterations. The program will end whenever this number is reached or the terminal time is achieved, whichever is earlier.
+\item \texttt{dt\_init}: The beginning time step size $dt_{\textrm{init}}$ (see below).
+\item \texttt{dt\_growth}: The growth rate $\alpha_{\textrm{growth}}$ of time step size.
+\end{itemize}
+Among the list above, three factors are used to determine the time step size.
+Let the time-step size determined from the Courant number be $dt^k_{\textrm{cfl}}$, i.e., 
+\begin{displaymath}
+dt^k_{\textrm{cfl}} = \min_i\frac{\alpha_{\textrm{cfl}}V^k_i}{h}\;,
+\end{displaymath}
+$h$ being the cell size in non-dimensional coordinate.
+Then at the firs step, the actual time-step size $dt^0$ is:
+\begin{displaymath}
+dt^0 = \min(dt_{\textrm{init}}\;,\ dt^0_{\textrm{cfl}})\;;
+\end{displaymath}
+in later time steps, we have:
+\begin{displaymath}
+dt^k = \min(\alpha_{\textrm{growth}}dt^{k-1}\;,\ dt^k_{\textrm{cfl}})\;.
+\end{displaymath}
+This technique is known as {\it ramp-up}.
+
+The third section includes the options for numerical methods:
+\begin{itemize}
+\item \texttt{framework}: Set it to 0 to use a finite-difference method and set it to 1 for finite-volume method. 
+For now, only the second option is valid.
+\item \texttt{space\_cell}: The numerical method to update the cell numbers. 
+Set it to 0 for an explicit first-order upwind method; and set it to 1 for an implicit first-order upwind method.
+More options including the high-resolution ones are to be added soon.
+\item \texttt{space\_chem}: The numerical method to update the chemotaxis concentration. 
+Now only one option 0 is available, which corresponds to implicit first-order upwind method for advection part and implicit second-order central difference for diffusion part.
+\item \texttt{vel}: The numerical method to compute the velocity.
+Only one option 0 is available right now -- a second-order integral form is used to compute the tumor velocity.
+\item \texttt{lsysType}: The linear solver option.
+Many methods are supported, including direct solver (LU factorization) and Krylov sub-space methods.
+For this problem, set it to \texttt{DIR} is good enough.
+\item \texttt{lsysPrint}: The option 0 turn off the diagnostic information of linear solve; the option 1 turn it on.
+\end{itemize}
+
+The last section specifies the output files:
+\begin{itemize}
+\item \texttt{outputDataFile}: The file for all the solutions at all in-tumor cells; the solutions are sampled according to \texttt{Tfreq}.
+\item \texttt{radiusDataFile}: The file for time histories of radius, tumor boundary velocity, and the chemotaxis concentration gradient at the tumor boundary.
+These information is output every time step.
+\end{itemize}
+More about the output files are given in the next section.
+
+\subsection{The Output Files}
+Running the program will generate two files, one is solution file and the other one is time history file.
+The solution file (\texttt{sol.dat} in the previous example) starts with a line describing the variables in each subsequent section. 
+The rest of the file is sub-divided into $N_t$ parts, every single part corresponds to the solutions at a specific output time.
+Each part start with a line containing two double variables and two integers, such as:
+\begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.1cm]
+0.02000000000000000042	0.00438871438561059483	50	51
+\end{lstlisting}
+These numbers are: the solution time, the time step size, the number of cells, and the number of cell boundaries; the difference between the latter two is always one.
+This line is followed by, in this examples, 50 lines describing the cell numbers and the chemotaxis concentration at each cell; we present an example with less precision to save space:
+\begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.1cm]
+0.00202 0.55136 0.10392 1.08261 212.88046
+\end{lstlisting}
+From the left to the right, these numbers are: the dimensional cell center coordinate, $G$, $H$, $N$, and $A$.
+This part ends with 51 addition lines describing the velocity at each cell faces; each line contains two numbers, the dimensional cell-face coordinate and the velocity at this point.
+
+The time history file (\texttt{rad.dat} in the previous example) is much simpler, it contains $T$ lines with $T$ being the total number of time steps in the simulation.
+Each line contains four numbers:
+{\tiny
+\begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.1cm]
+0.00000100000000000000	0.20000005157812633660	0.05194605632028042458	396.22296116163556689571
+\end{lstlisting}
+}\noindent
+From the left to the right, they are: solution time $t$, radius $R(t)$, velocity at tumor boundary $V(R(t),t)$, and the negative chemotaxis gradient at the boundary $-\pp{A}{r}(R(t),t)$.
+
+\subsection{Reading the Solution Files using \texttt{Matlab}}
+Clearly, \texttt{Matlab} (or \texttt{Octave}) is required for this part.
+A few scripts are in the folder \texttt{\$TDHOME/tools}; since now we only use the finite volume method to solve the problem, ignore all scripts without \texttt{\_fvm\_} in the file name.
+
+Copy the scripts to the directory where \texttt{Matlab} is started; alternatively, you can add the folder \texttt{\$TDHOME/tools} to the path of \texttt{Matlab}.
+Among all, the most important script is \texttt{read\_data\_fvm\_1d\_tumordyn.m}; it reads the solution file (\texttt{sol.dat}) and return the solutions in \texttt{Matlab} format.
+In \texttt{Matlab}:
+\begin{lstlisting}[backgroundcolor = \color{lightgray}, language = Matlab, xleftmargin = 0.1cm, framexleftmargin = 0.1cm]
+> [d_c, d_f, time] = read_data_fvm_1d_tumordyn('sol.dat');
+\end{lstlisting}
+will create three arrays:
+\begin{itemize}
+\item \texttt{d\_c}: An $N_t\times5\times N_x$ array, where $N_t$ is the number of output times, $5$ corresponds to the five numbers described before, and $N_x$ is the number of cells (50 in the previous example).
+\item \texttt{d\_f}: An $N_t\times2\times(N_x+1)$ array, where $N_t$ is the number of output times, $2$ corresponds to the cell-face coordinate and velocity, and $N_x$ is the number of cells (50 in the previous example).
+\item \texttt{time}: An $1\times N_t$ array storing the actual solution times.
+\end{itemize}
+The scripts \texttt{plot\_data\_fvm\_1d\_tumordyn.m} and \texttt{make\_mov\_data\_fvm\_1d\_tumordyn.m} plot and make a movie of the solution file, respectively; they are not quite used now.
+The script \texttt{proc\_voldata\_fvm\_1d\_tumordyn.m}, however, post-process the solution file and create global data such as total number of $G$, $H$, and $N$ in the tumor, their sum, and their proportions at each data output time.
+Particularly, calling the following function in \texttt{Matlab}:
+\begin{lstlisting}[backgroundcolor = \color{lightgray}, language = Matlab, xleftmargin = 0.1cm, framexleftmargin = 0.1cm]
+> data = proc_voldata_fvm_1d_tumordyn('sol.dat');
+\end{lstlisting}
+will create an $Nt\times8$ array \texttt{data}, with the 8 columns being: (1) solution time, (2) total $G$, (3) total $H$, (4) total $N$, (5) total $G+H+N$, (6) portion of $G$, (7) portion of $H$, and (8) portion of $N$.
+
+\section{Case Study: A Parametric Study of the Model}
+Lastly, the folder \texttt{\$TDHOME/manual/demo} contains a package \texttt{par\_m.tar.gz}.
+This is an example of a small project of parametric study of the tumor growth model with different values of $m$ (say $1e+5$, $2e+5$, $4e+5$, and $8e+5$), keeping all the other parameters fixed.
+
+To begin with, let us copy this package to \texttt{\$TDHOME/TDRun} and expand it:
+\begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.0cm]
+$ cd $TDHOME/TDRun
+$ cp $TDHOME/TDSolve/manual/demo/par_m.tar.gz ./
+$ tar xvf par_m.tar.gz
+\end{lstlisting}
+This will create a folder \texttt{TestProj} that contains a input file, a number of shell scripts, and a folder \texttt{data/}; this latter folder contain a few \texttt{Matlab} scripts to make plots.
+
+\subsection{Run the Simulations One-By-One}
+The first method to run the set of simulations with different $m$ values is to use the script \texttt{runall.sh} as follows: While in \texttt{\$TDHOME/TDRun/}:
+\begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.0cm]
+$ cd TestProj
+$ sh runall.sh
+\end{lstlisting}
+This script will loop over all the four $m$ values, replace the string \texttt{VALM} in the template input file \texttt{input\_raw.hcl} by these values, run the simulation, and rename and copy the results to the sub-directory \texttt{data/}.
+All the four simulations are done one after another, so only one processor is utilized.
+Note that the shell script \texttt{runall.sh} uses the GNU stream editor \texttt{sed}, which is mostly likely already available on the system.
+
+\subsection{Run the Simulations in Parallel}
+The solver itself is not parallelized; however, if more the one simulations need to be done, there is no reason why not to make use of the multiple processors that are available on the machine.
+A simple tool to achieve this is to use GNU Parallel ({\color{blue} \url{https://www.gnu.org/software/parallel/}}), it is available in the package management tool for your system.
+With this tool installed, follow the next commands to run the simulations: While in \texttt{\$TDHOME/TDRun/}:
+\begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.0cm]
+$ cd TestProj
+$ parallel sh run_par.sh ::: 1e+5 2e+5 4e+5 8e+5
+\end{lstlisting}
+Then all the free processors will be utilized to run these simulations.
+
+\subsection{Post-process the Data}
+Using either method, four sets of solutions are created, properly named, and copied to the folder \texttt{data/}.
+Go into this directory and start \texttt{Matlab}, which will load the \texttt{startup.m} and add to the path the \texttt{tools/} discussed before.
+If you're using \texttt{Octave} instead, comment out the line \texttt{beep off} in \texttt{startup.m}.
+Then in \texttt{Matlab} or \texttt{Octave} interface:
+\begin{lstlisting}[backgroundcolor = \color{lightgray}, language = Matlab, xleftmargin = 0.1cm, framexleftmargin = 0.1cm]
+> plot_rads;
+\end{lstlisting}
+will plot the radius growth histories for the set of simulations; and
+\begin{lstlisting}[backgroundcolor = \color{lightgray}, language = Matlab, xleftmargin = 0.1cm, framexleftmargin = 0.1cm]
+> plot_n_port;
+\end{lstlisting}
+will plot the portion of the immune cells ($N$) as a function of time.
+Both scripts also save the plotted figures into \texttt{eps} format.
+
+\subsection{Final Remark}
+In this project, the scripts \texttt{run\_1.sh}, \texttt{run\_2.sh}, and \texttt{startup.m} in the sub-directory \texttt{data/} assume that you're following exactly this manual, particularly the directory hierarchy.
+If this is not the case, please modify these three scripts accordingly.
+
+\end{document}
+
