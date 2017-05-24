@@ -22,6 +22,11 @@ class TDSolveFVM : public TDSolve {
     HVEC** flux_g;
     HVEC** flux_h;
     HVEC** flux_n;
+    HVEC** slope_g;
+    HVEC** slope_h;
+    HVEC** slope_n;
+    HVEC** flux_a;
+    HVEC** slope_a;
 
     // Needs to update whenever a or n is modified
     void update_vel(const int nt);
@@ -34,8 +39,11 @@ class TDSolveFVM : public TDSolve {
     void update_cells_upw(const int fr, const int to);
     void update_cells_upw_test(const int fr, const int to);
     void update_cells_upw_be(const int fr, const int to);
+    void update_cells_muscl(const int fr, const int to);
+    void update_cells_muscl_be(const int fr, const int to);
 
     void update_chem_upw_be(const int fr, const int to);
+    void update_chem_muscl_imex(const int fr, const int to);
 
     void upscale_var(HVEC&, HVEC&, DType*&, int, DType);
     void downscale_var(HVEC&, HVEC&, DType*&, int, DType);

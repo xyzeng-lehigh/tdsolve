@@ -51,6 +51,7 @@ TDInput::TDInput(void) {
   tdSetup.dTinit = 1e-10;
   tdSetup.dTgrow = 1.2;
   tdSetup.nonDim = true;
+  tdSetup.bc_lim = false;
 
   tdLin.Type      = LSYS_TYPE_DIR;
   tdLin.Print     = true;
@@ -185,6 +186,8 @@ void TDInput::parse(void) {
       tdSetup.dTgrow = atof(value);
     else if (strcmp(name,"nonDimen")==0)
       tdSetup.nonDim = (atoi(value)!=0);
+    else if (strcmp(name,"bc_lim")==0)
+      tdSetup.bc_lim = (atoi(value)!=0);
     else if (strcmp(name,"lsysType")==0)
       if (strcmp(value,"DIR")==0)
         tdLin.Type = LSYS_TYPE_DIR;

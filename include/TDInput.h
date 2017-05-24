@@ -40,6 +40,7 @@ struct TDSetup {
   int   maxit;
   DType dTinit, dTgrow;
 
+  bool  bc_lim;
   bool  nonDim;
 };
 
