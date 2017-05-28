@@ -51,7 +51,7 @@ TDInput::TDInput(void) {
   tdSetup.dTinit = 1e-10;
   tdSetup.dTgrow = 1.2;
   tdSetup.nonDim = true;
-  tdSetup.bc_lim = false;
+  tdSetup.bc_lim = true;
 
   tdLin.Type      = LSYS_TYPE_DIR;
   tdLin.Print     = true;

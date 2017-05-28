@@ -295,13 +295,22 @@ This technique is known as {\it ramp-up}.
 
 The third section includes the options for numerical methods:
 \begin{itemize}
-\item \texttt{framework}: Set it to 0 to use a finite-difference method and set it to 1 for finite-volume method. 
-For now, only the second option is valid.
+\item \texttt{framework}: The general framework of the numerical method.
+  \begin{itemize}
+    \item Set it to 0 to use a finite-difference method (cannot capture shocks, not updated for recent models anymore).
+    \item Set it to 1 for finite-volume method (always use this one).
+  \end{itemize}
 \item \texttt{space\_cell}: The numerical method to update the cell numbers. 
-Set it to 0 for an explicit first-order upwind method; and set it to 1 for an implicit first-order upwind method.
-More options including the high-resolution ones are to be added soon.
+  \begin{itemize}
+    \item Set it to 0 for an explicit first-order upwind method.
+    \item Set it to 1 for an implicit first-order upwind method.
+    \item Set it to 2 for an explicit second-order MUSCL method.
+  \end{itemize}
 \item \texttt{space\_chem}: The numerical method to update the chemotaxis concentration. 
-Now only one option 0 is available, which corresponds to implicit first-order upwind method for advection part and implicit second-order central difference for diffusion part.
+  \begin{itemize}
+    \item Set it to 0 for an implicit method: first-order upwind for advection and second-order central difference for diffusion.
+    \item Set it to 1 for an IMEX method: explicit second-order MUSCL for advection and implicit second-order central difference for diffusion.
+  \end{itemize}
 \item \texttt{vel}: The numerical method to compute the velocity.
 Only one option 0 is available right now -- a second-order integral form is used to compute the tumor velocity.
 \item \texttt{lsysType}: The linear solver option.
