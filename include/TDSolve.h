@@ -37,11 +37,13 @@ class TDSolve {
       return !reach_term_now;
     }
   protected:
-    HVEC** data_g;
-    HVEC** data_h;
-    HVEC** data_n;
-    HVEC** data_a;
-    HVEC** data_v;
+    HVEC** data_g;// G = number density of glimoa cells
+    HVEC** data_h;// H = number density of necrotic cells
+    HVEC** data_n;// N --> M = number density of immune cells infiltrated into the tumor 
+    HVEC** data_a;// A = concentration of chemotatic attractants by glimoa cells
+    HVEC** data_v;// V = veocity field within the tumor boundary
+    HVEC** data_p1;//concentration of osteopontin secreted by immunue cells
+    HVEC** data_p2;// concentration of osteopontin secretedd by glimoa cells
     DType  data_r[3];
 
     HVEC** data_dv; // (dv/dx)/R+(2v)/(xR)
@@ -56,6 +58,10 @@ class TDSolve {
     int    Nx;
     int    Na_m;
     int    Na;
+    //for OPN model
+    int    Np1;
+    int    Np2;
+
     DType  dx;
     DType* x_f;
     DType* x_c;
@@ -69,7 +75,7 @@ class TDSolve {
     bool   reach_term_now;
     bool   use_tfreq;
 
-    // Linear solver for anything else other than A
+    // Linear solver for anything else other than A, P1, P2
     LinMat*   mat;
     LinMat*   prc;
     LinVec*   sol;
@@ -84,6 +90,24 @@ class TDSolve {
     LinVec*   rhs_a;
     LinVec*   res_a;
     LinSolve* linSolve_a;
+
+    // Linear solver for P1 OPN model                                                                                                                        
+    LinMat*   mat_p1;
+    LinMat*   prc_p1;
+    LinVec*   sol_p1;
+    LinVec*   rhs_p1;
+    LinVec*   res_p1;
+    LinSolve* linSolve_p1;
+
+   // Linear solver for P2 OPN model
+
+    LinMat*   mat_p2;
+    LinMat*   prc_p2;
+    LinVec*   sol_p2;
+    LinVec*   rhs_p2;
+    LinVec*   res_p2;
+    LinSolve* linSolve_p2;
+
 
     int iter;
 

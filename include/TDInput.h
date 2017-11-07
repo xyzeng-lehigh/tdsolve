@@ -8,10 +8,14 @@
 #include "Comput_Choices.h"
 
 struct TDCoef {
-  DType lambda, mu, delta, alpha, theta, sigma;
+  //DType lambda, mu, delta, alpha, theta, sigma;
+  //OPN model
+  DType lambda, mu, theta, a, b, delta_1, delta_2, D1, D2, D3; 
+  DType alpha, alpha1, alpah2, alpha3, beta1, beta2, beta3, gamma1, gamma2, gamma3;	
   DType rho_mns, rho_pls, n_star;
   DType mu_slp;
-  DType D, m, beta, gamma;
+  DType m, rho;
+ //DType D, m, beta, gamma;
   DType n_bc;
   DType R_0;
 };
@@ -25,6 +29,14 @@ struct TDMesh {
 
   int    Na_m;
   int    Na;
+  //OPN model
+  int    Np1_m;
+  int    Np1;
+ 
+  int    Np2_m;
+  int    Np2;
+
+
   DType* x_a_f;
   DType* x_a_c;
 };

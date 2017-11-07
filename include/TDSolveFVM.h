@@ -21,12 +21,19 @@ class TDSolveFVM : public TDSolve {
   protected:
     HVEC** flux_g;
     HVEC** flux_h;
-    HVEC** flux_n;
+    HVEC** flux_n;// or M
     HVEC** slope_g;
     HVEC** slope_h;
-    HVEC** slope_n;
+    HVEC** slope_n;// or M
     HVEC** flux_a;
     HVEC** slope_a;
+
+    //OPN model
+    HVEC** flux_p1;
+    HVEC** slope_p1;
+    HVEC** flux_p2;
+    HVEC** slope_p2;
+
 
     // Needs to update whenever a or n is modified
     void update_vel(const int nt);
@@ -34,6 +41,8 @@ class TDSolveFVM : public TDSolve {
     void update_vel_int(const int nt);
     void update_vel_int_mod(const int nt);
     void update_vel_int_test(const int nt);
+    //OPN model
+    void update_vel_prbid1(const int nt);
 
     int* N_dir;
     void update_cells_upw(const int fr, const int to);

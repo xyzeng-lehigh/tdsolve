@@ -16,6 +16,13 @@ TDSolve::TDSolve(TDInput* tdInput_ptr) {
   x_c     = tdMesh->x_c;
   Na_m    = tdMesh->Na_m;
   Na      = tdMesh->Na;
+  //OPN model
+  Np1     = tdMesh->Np1;
+  Np1_m   = tdmesh->Np1_m;
+
+  Np2     = tdMesh->Np2;
+  Np2_m   = tdmesh->Np2_m;
+
   x_a_f   = tdMesh->x_a_f;
   x_a_c   = tdMesh->x_a_c;
 
@@ -33,13 +40,28 @@ TDSolve::TDSolve(TDInput* tdInput_ptr) {
   res = NULL;
   linSolve = NULL;
 
-  mat_a = NULL;
-  prc_a = NULL;
-  sol_a = NULL;
-  rhs_a = NULL;
-  res_a = NULL;
-  linSolve_a = NULL;
+//OPN Model
+  mat_p1 = NULL;
+  prc_p1 = NULL;
+  sol_p1 = NULL;
+  rhs_p1 = NULL;
+  res_p1 = NULL;
+  linSolve_p1 = NULL;
 
+
+      mat_p2 = NULL;
+      prc_p2 = NULL;
+      sol_p2 = NULL;
+      rhs_p2 = NULL;
+      res_p2 = NULL;
+      linSolve_p2 = NULL;
+//
+            mat_a = NULL;
+            prc_a = NULL;
+            sol_a = NULL;
+            rhs_a = NULL;
+	    res_a = NULL;
+	    linSolve_a = NULL;
   iter = 0;
 
   use_tfreq = tdSetup->Tfreq > 0.0;
@@ -54,6 +76,10 @@ TDSolve::~TDSolve(void) {
   erase_array( data_h, 3 );
   erase_array( data_n, 3 );
   erase_array( data_a, 3 );
+  //OPN Model
+  erase_array(data_p1, 3);
+  erase_array(data_p2, 3);
+  //
   erase_array( data_v, 3 );
 
   if (mat!=NULL) delete mat;
@@ -69,7 +95,25 @@ TDSolve::~TDSolve(void) {
   if (res_a!=NULL) delete res_a;
   if (sol_a!=NULL) delete sol_a;
   if (linSolve_a!=NULL) delete linSolve_a;
+
+//OPN Model
+if (mat_p1!=NULL) delete mat_p1;
+if (prc_p1!=NULL) delete prc_p1;
+if (rhs_p1!=NULL) delete rhs_p1;
+if (res_p1!=NULL) delete res_p1;
+if (sol_p1!=NULL) delete sol_p1;
+if (linSolve_p1!=NULL) delete linSolve_p1;
+
+
+
+  if (mat_p2!=NULL) delete mat_p2;
+  if (prc_p2!=NULL) delete prc_p2;
+  if (rhs_p2!=NULL) delete rhs_p2;
+  if (res_p2!=NULL) delete res_p2;
+  if (sol_p2!=NULL) delete sol_p2;
+  if (linSolve_p2!=NULL) delete linSolve_p2;
 }
+
 
 void TDSolve::setupLinSolve( 
     LinMat*& mat_in, LinMat*& prc_in, LinVec*& sol_in, LinVec*& rhs_in, 
@@ -131,6 +175,10 @@ void TDSolve::average_sol(const DType coef_1, const int fr_1,
   *data_h[to] = coef_1 * (*data_h[fr_1]) + coef_2 * (*data_h[fr_2]);
   *data_n[to] = coef_1 * (*data_n[fr_1]) + coef_2 * (*data_n[fr_2]);
   *data_a[to] = coef_1 * (*data_a[fr_1]) + coef_2 * (*data_a[fr_2]);
+//OPN model
+  *data_p1[to] = coef_1 * (*data_p1[fr_1]) + coef_2 * (*data_p1[fr_2]);
+  *data_p2[to] = coef_1 * (*data_p2[fr_1]) + coef_2 * (*data_p2[fr_2]);
+
   data_r[to]  = coef_1 * data_r[fr_1]    + coef_2 * data_r[fr_2];
 
   this->update_vel(to);
