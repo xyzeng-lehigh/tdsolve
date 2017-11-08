@@ -45,11 +45,7 @@ TDInput::TDInput(void) {
   tdMesh.Nx      = 100;
   tdMesh.Na_m    = 2;
   tdMesh.Na      = 200;
-  //OPN model
-  tdMesh.Np1     = 200;
-  tdMesh.Np1_m   = 2;
-  tdMesh.NP2     = 200;
-  tdMesh/Np2_m   = 2;
+ 
 
 
   tdMesh.dx      = 0.01;

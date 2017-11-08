@@ -16,12 +16,7 @@ TDSolve::TDSolve(TDInput* tdInput_ptr) {
   x_c     = tdMesh->x_c;
   Na_m    = tdMesh->Na_m;
   Na      = tdMesh->Na;
-  //OPN model
-  Np1     = tdMesh->Np1;
-  Np1_m   = tdmesh->Np1_m;
-
-  Np2     = tdMesh->Np2;
-  Np2_m   = tdmesh->Np2_m;
+ 
 
   x_a_f   = tdMesh->x_a_f;
   x_a_c   = tdMesh->x_a_c;

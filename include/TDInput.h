@@ -10,7 +10,7 @@
 struct TDCoef {
   //DType lambda, mu, delta, alpha, theta, sigma;
   //OPN model
-  DType lambda, mu, theta, a, b, delta_1, delta_2, D1, D2, D3; 
+  DType lambda, mu, theta, a, b, delta1, delta2, D1, D2, D3;//old rho = new delta2 
   DType alpha, alpha1, alpah2, alpha3, beta1, beta2, beta3, gamma1, gamma2, gamma3;	
   DType rho_mns, rho_pls, n_star;
   DType mu_slp;
@@ -23,18 +23,13 @@ struct TDCoef {
 struct TDMesh {
   DType  x_l, x_r;
   DType  dx;
-  int    Nx;
+  int    Nx;// Np1 & Np2 is same as Nx
   DType* x_f;
   DType* x_c;
 
   int    Na_m;
   int    Na;
-  //OPN model
-  int    Np1_m;
-  int    Np1;
- 
-  int    Np2_m;
-  int    Np2;
+  
 
 
   DType* x_a_f;

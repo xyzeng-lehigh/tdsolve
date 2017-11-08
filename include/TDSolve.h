@@ -55,12 +55,10 @@ class TDSolve {
     TDSetup* tdSetup;
     TDLin*   tdLin;
 
-    int    Nx;
+    int    Nx;// will be used for Np1 and Np2
     int    Na_m;
     int    Na;
-    //for OPN model
-    int    Np1;
-    int    Np2;
+    
 
     DType  dx;
     DType* x_f;
