@@ -1,4 +1,4 @@
-﻿#include "TDSolveFVM.h"
+#include "TDSolveFVM.h"
 #include "Alloc_Utils.h"
 #include "TDInput.h"
 #include "Alg_Solve.h"
@@ -8,15 +8,16 @@ using namespace std;
 TDSolveFVM::TDSolveFVM(TDInput* tdInput_ptr) : 
   TDSolve(tdInput_ptr) {
 
-    alloc_array_full( data_g, Nx, 3 );
+  alloc_array_full( data_g, Nx, 3 );
   alloc_array_full( data_h, Nx, 3 );
-  alloc_array_full( data_n, Nx, 3 );// or M
+  alloc_array_full( data_n, Nx, 3 );//M
   alloc_array_full( data_v, Nx+1, 3 );
   
   alloc_array_full( data_a, Na, 3 );
-  // for new OPN model
-  alloc_array_full( data_p1, Nx,3 );
-  alloc_array_full( data_p2, Nx,3 );
+//for new OPN model
+
+  alloc_array_full (data_p1, Nx, 3);
+  alloc_array_full (data_p2, Nx, 3);
 
   alloc_array_full( flux_g, Nx+1, 1 );
   alloc_array_full( flux_h, Nx+1, 1 );
@@ -25,19 +26,17 @@ TDSolveFVM::TDSolveFVM(TDInput* tdInput_ptr) :
 
 //for new OPN model
 
- alloc_array_full( flux_p1, Nx+1, 1 );
- alloc_array_full( flux_p2, Nx+1, 1 );
-
+  alloc_array_full (flux_p1, Nx+1, 1);
+  alloc_array_full (flux_p2, Nx+1, 1);
 
   alloc_array_full( slope_g, Nx, 1 );
   alloc_array_full( slope_h, Nx, 1 );
   alloc_array_full( slope_n, Nx, 1 );
   alloc_array_full( slope_a, Na, 1 );
+//for new OPN model
 
-  //for new OPN model
-  alloc_array_full( slope_p2, Nx, 1 );
-  alloc_array_full( slope_p2, Nx, 1 );
-
+  alloc_array_full(slope_p1, Nx, 1);
+  alloc_array_full(slope_p2, Nx, 1);
 
   alloc_array_full( N_dir, Nx+1 );
 
@@ -51,20 +50,20 @@ TDSolveFVM::~TDSolveFVM(void) {
   erase_array( flux_h, 1 );
   erase_array( flux_n, 1 );
   erase_array( flux_a, 1 );
-//for new OPN model
 
-  erase_array( flux_p1, 1 );
-  erase_array( flux_p2, 1 );
+  //for new OPN model
+
+  erase_array (flux_p1, 1);
+  erase_array (flux_p2, 1);
 
   erase_array( slope_g, 1 );
   erase_array( slope_h, 1 );
   erase_array( slope_n, 1 );
   erase_array( slope_a, 1 );
+  // for new OPN model
+  erase_array(slope_p1, 1);
+  erase_array(slope_p2, 1);
 
-
- //for new OPN model
-  erase_array( slope_p1, 1 );
-  erase_array( slope_p2, 1 );
   erase_array( N_dir );
 }
 
@@ -72,15 +71,11 @@ void TDSolveFVM::setup(void) {
 
   setupLinSolve( mat, prc, sol, rhs, res, linSolve, Nx );
   setupLinSolve( mat_a, prc_a, sol_a, rhs_a, res_a, linSolve_a, Na );
+  //OPN model
+  setupLinSolve(mat_p2, prc_p2,sol_p2, rhs_p2, res_p2, linSolve_p2, Nx);
+  setupLinSolve(mat_p1, prc_p1,sol_p1,rhs_p1,res_p1, linSOlve_p1,Nx);
 
-
-
- //OPN model
-
-   setupLinSolve( mat_p1, prc_p2, sol_p1, rhs_p1, res_p1, linSolve_p1, Nx ); 
-   setupLinSolve( mat_p2, prc_p2, sol_p2, rhs_p2, res_p2, linSolve_p2, Nx ); 
-
-  return;
+      	return;
 }
 
 void TDSolveFVM::set_ic(void) {
@@ -188,9 +183,9 @@ void TDSolveFVM::copy_data(const int nt_fr, const int nt_to) {
   *data_n[nt_to]  = *data_n[nt_fr];
   *data_a[nt_to]  = *data_a[nt_fr];
   *data_v[nt_to]  = *data_v[nt_fr];
-   //OPN model 
-  *data_p1[nt_to]  = *data_p1[nt_fr]; 
-  *data_p2[nt_to]  = *data_p2[nt_fr];
+   //OPN model
+  *data_p1[nt_to] = *data_p1[nt_fr];
+  *data_p2[nt_to] = *data_p2[nt_fr];
 
   data_r[nt_to]  =  data_r[nt_fr];
   return;
@@ -301,18 +296,17 @@ void TDSolveFVM::output(const int nt) {
 
   return;
 }
-
+//OPN model Mod
 void TDSolveFVM::update_vel(const int nt) {
 
   if ( !tdSetup->nonDim ) {
     update_vel_dim( nt );
     return;
   }
-
-  switch (tdSetup->prob_id)
+switch (tdSetup->prob_id)
 {
 	case 0:
- switch ( tdSetup->vel ) {
+  switch ( tdSetup->vel ) {
     case 0: // 2nd-order integral form
       update_vel_int(nt);
       //update_vel_int_test(nt);
@@ -325,42 +319,42 @@ void TDSolveFVM::update_vel(const int nt) {
         << "using integral form instead\n" << std::endl;
       update_vel_int(nt);
       break;
+ 
   }
-break;
-case 1:
-update_vel_prbid1(nt);
-break;
-
+	case 1:
+  update_vel_prbid(nt);
 }
 }
-//update Vel for OPN model
-void TDSolveFVM::update_vel_prbid(const int nt) {                                                                                          
-  DType lambda = tdCoef->lambda;
-  DType delta1 = tdCoef->delta1;
-  DType delta2 = tdCoef->delta2;
-  DType alpha  = tdCoef->alpha;
-  DType b      = tdCoef->b;
-
-  (*data_v[nt])[0] = 0.0; // b.c. for velocity at x=0
-// First do the integration of x^2R(lambda*P2* G/b+P2 - delta1 H - delta2 M )
-  for ( int i = 0; i < Nx; i++ ) {
- (*data_v[nt])[i+1] = (*data_v[nt])[i] + dx * ( lambda *(*data_g[nt])[i]* (*data_p2[nt])[i]/(b+(*data_p2[nt])) - delta1 * (*data_h[nt])[i]  - delta2*(*data_n[nt])[i]) / data_r[nt];// G,H and M have not been upscaled
- } 
-downscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt] ); 
+//new OPN func
+ void TDSolveFVM::update_vel_prbid(const int nt) {
+		    DType lambda = tdCoef->lambda;
+	            DType delta1 = tdCoef->delta1;
+                    DType delta2 = tdCoef->delta2;
+                    DType b      = tdCoef->b;
+	            DType alpha  = tdCoef->alpha;
+	    
+   (*data_v[nt])[0] = 0.0; // b.c. for velocity at x=0
+   // First do the integration of x^2R(lambda*P2*G/b+P2 - delta1*H - delta2*M)
+		      for ( int i = 0; i < Nx; i++ ) {
+ (*data_v[nt])[i+1] = (*data_v[nt])[i] + dx * ( lambda * (*data_g[nt])[i]*(*data_p2[nt])[i]/(b+(*data_p2[nt])) - delta * (*data_h[nt])[i]-delta2*(*data_n[nt])[i] ) / data_r[nt];//G,H and M have not been upscaled
+	  } 
+ downscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt] );
 // Next divide by x^2 and remove the contribution from N and dA
 for ( int i = 1; i < Nx; i++ ) {
-(*data_v[nt])[i] = (*data_v[nt])[i]/x_f[i]/x_f[i] - (alpha/data_r[nt]) * 
-  0.5 * ( (*data_n[nt])[i-1] + (*data_n[nt])[i] ) * 
-  ( ( (*data_a[nt])[i]-(*data_a[nt])[i-1]) / dx );
- } // Right boundary
-{
-	(*data_v[nt])[Nx] = (*data_v[nt])[Nx]/x_f[Nx]/x_f[Nx] - (alpha/data_r[nt]) * 
-	0.5 * ( (*data_n[nt])[Nx-1] + tdCoef->n_bc ) *
-	 ( ( (*data_a[nt])[Nx]-(*data_a[nt])[Nx-1]) / dx );
-}
-upscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt] );
+ (*data_v[nt])[i] = (*data_v[nt])[i]/x_f[i]/x_f[i] - (alpha/data_r[nt]) *
+ 0.5 * ( (*data_n[nt])[i-1] + (*data_n[nt])[i] ) *
+( ( (*data_a[nt])[i]-(*data_a[nt])[i-1]) / dx );
+   }
+// Right boundary
+ {
+(*data_v[nt])[Nx] = (*data_v[nt])[Nx]/x_f[Nx]/x_f[Nx] - (alpha/data_r[nt]) *
+ 0.5 * ( (*data_n[nt])[Nx-1] + tdCoef->n_bc ) *
+( ( (*data_a[nt])[Nx]-(*data_a[nt])[Nx-1]) / dx );
+ } 
+ upscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt] ); 
 return;
-}
+ }
+
 
 void TDSolveFVM::update_vel_int(const int nt) {
 
@@ -1486,5 +1480,4 @@ void TDSolveFVM::update_chem_upw_be_dim(const int fr, const int to) {
 
   return;
 }
-
 
