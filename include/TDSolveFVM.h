@@ -52,6 +52,15 @@ class TDSolveFVM : public TDSolve {
 
     void update_chem_upw_be(const int fr, const int to);
     void update_chem_muscl_imex(const int fr, const int to);
+    // OPN model -- to be reused between P1 and P2
+    void update_chem_opn_upw_be(const int fr, const int to, 
+                                const DType coef_D, const DType coef_alpha, 
+                                const DType coef_beta, const DType coef_gamma, 
+                                HVEC**& data_P);
+    void update_chem_opn_muscl_imex(const int fr, const int to, 
+                                const DType coef_D, const DType coef_alpha, 
+                                const DType coef_beta, const DType coef_gamma, 
+                                HVEC**& data_P, HVEC**& flux_P, HVEC**& slope_P);
 
     void upscale_var(HVEC&, HVEC&, DType*&, int, DType);
     void downscale_var(HVEC&, HVEC&, DType*&, int, DType);

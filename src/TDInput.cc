@@ -171,6 +171,48 @@ void TDInput::parse(void) {
       tdCoef.R_0 = atof(value);
     else if (strcmp(name,"mu_slope")==0)
       tdCoef.mu_slp  = atof(value);
+    else if (strcmp(name,"opn_lambda")==0)
+      tdCoef.opn_lambda = atof(value);
+    else if (strcmp(name,"opn_mu")==0)
+      tdCoef.opn_mu = atof(value);
+    else if (strcmp(name,"opn_theta")==0)
+      tdCoef.opn_theta = atof(value);
+    else if (strcmp(name,"a")==0)
+      tdCoef.a = atof(value);
+    else if (strcmp(name,"b")==0)
+      tdCoef.b = atof(value);
+    else if (strcmp(name,"delta1")==0)
+      tdCoef.delta1 = atof(value);
+    else if (strcmp(name,"delta2")==0)
+      tdCoef.delta2 = atof(value);
+    else if (strcmp(name,"D1")==0)
+      tdCoef.D1 = atof(value);
+    else if (strcmp(name,"D2")==0)
+      tdCoef.D2 = atof(value);
+    else if (strcmp(name,"D3")==0)
+      tdCoef.D3 = atof(value);
+    else if (strcmp(name,"opn_m")==0)
+      tdCoef.opn_m = atof(value);
+    else if (strcmp(name,"rho")==0)
+      tdCoef.rho = atof(value);
+    else if (strcmp(name,"alpha1")==0)
+      tdCoef.alpha1 = atof(value);
+    else if (strcmp(name,"alpha2")==0)
+      tdCoef.alpha2 = atof(value);
+    else if (strcmp(name,"alpha3")==0)
+      tdCoef.alpha3 = atof(value);
+    else if (strcmp(name,"beta1")==0)
+      tdCoef.beta1 = atof(value);
+    else if (strcmp(name,"beta2")==0)
+      tdCoef.beta2 = atof(value);
+    else if (strcmp(name,"beta3")==0)
+      tdCoef.beta3 = atof(value);
+    else if (strcmp(name,"gamma1")==0)
+      tdCoef.gamma1 = atof(value);
+    else if (strcmp(name,"gamma2")==0)
+      tdCoef.gamma2 = atof(value);
+    else if (strcmp(name,"gamma3")==0)
+      tdCoef.gamma3 = atof(value);
     else if (strcmp(name,"x_l")==0)
       tdMesh.x_l = atof(value);
     else if (strcmp(name,"x_r")==0)
@@ -215,6 +257,8 @@ void TDInput::parse(void) {
       tdSetup.nonDim = (atoi(value)!=0);
     else if (strcmp(name,"bc_lim")==0)
       tdSetup.bc_lim = (atoi(value)!=0);
+    else if (strcmp(name,"prob_id")==0)
+      tdSetup.prob_id = atoi(value);
     else if (strcmp(name,"lsysType")==0)
       if (strcmp(value,"DIR")==0)
         tdLin.Type = LSYS_TYPE_DIR;

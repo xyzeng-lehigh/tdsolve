@@ -90,20 +90,12 @@ class TDSolve {
     LinSolve* linSolve_a;
 
     // Linear solver for P1 OPN model 
-    LinMat*   mat_p1;
-    LinMat*   prc_p1;
-    LinVec*   sol_p1;
-    LinVec*   rhs_p1;
-    LinVec*   res_p1;
-    LinSolve* linSolve_p1;
-
-    // Linear solver for P2 OPN model
-    LinMat*   mat_p2;
-    LinMat*   prc_p2;
-    LinVec*   sol_p2;
-    LinVec*   rhs_p2;
-    LinVec*   res_p2;
-    LinSolve* linSolve_p2;
+    LinMat*   mat_p;
+    LinMat*   prc_p;
+    LinVec*   sol_p;
+    LinVec*   rhs_p;
+    LinVec*   res_p;
+    LinSolve* linSolve_p;
 
     int iter;
 

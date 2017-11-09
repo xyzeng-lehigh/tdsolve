@@ -42,19 +42,12 @@ TDSolve::TDSolve(TDInput* tdInput_ptr) {
   iter = 0;
 
   // OPN Model
-  mat_p1 = NULL;
-  prc_p1 = NULL;
-  sol_p1 = NULL;
-  rhs_p1 = NULL;
-  res_p1 = NULL;
-  linSolve_p1 = NULL;
-
-  mat_p2 = NULL;
-  prc_p2 = NULL;
-  sol_p2 = NULL;
-  rhs_p2 = NULL;
-  res_p2 = NULL;
-  linSolve_p2 = NULL;
+  mat_p = NULL;
+  prc_p = NULL;
+  sol_p = NULL;
+  rhs_p = NULL;
+  res_p = NULL;
+  linSolve_p = NULL;
 
   use_tfreq = tdSetup->Tfreq > 0.0;
   reach_output_now  = false;
@@ -88,19 +81,12 @@ TDSolve::~TDSolve(void) {
   if (linSolve_a!=NULL) delete linSolve_a;
 
   // OPN Model
-  if (mat_p1!=NULL) delete mat_p1;
-  if (prc_p1!=NULL) delete prc_p1;
-  if (rhs_p1!=NULL) delete rhs_p1;
-  if (res_p1!=NULL) delete res_p1;
-  if (sol_p1!=NULL) delete sol_p1;
-  if (linSolve_p1!=NULL) delete linSolve_p1;
-
-  if (mat_p2!=NULL) delete mat_p2;
-  if (prc_p2!=NULL) delete prc_p2;
-  if (rhs_p2!=NULL) delete rhs_p2;
-  if (res_p2!=NULL) delete res_p2;
-  if (sol_p2!=NULL) delete sol_p2;
-  if (linSolve_p2!=NULL) delete linSolve_p2;
+  if (mat_p!=NULL) delete mat_p;
+  if (prc_p!=NULL) delete prc_p;
+  if (rhs_p!=NULL) delete rhs_p;
+  if (res_p!=NULL) delete res_p;
+  if (sol_p!=NULL) delete sol_p;
+  if (linSolve_p!=NULL) delete linSolve_p;
 }
 
 
