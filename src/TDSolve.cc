@@ -16,8 +16,6 @@ TDSolve::TDSolve(TDInput* tdInput_ptr) {
   x_c     = tdMesh->x_c;
   Na_m    = tdMesh->Na_m;
   Na      = tdMesh->Na;
- 
-
   x_a_f   = tdMesh->x_a_f;
   x_a_c   = tdMesh->x_a_c;
 
@@ -35,7 +33,15 @@ TDSolve::TDSolve(TDInput* tdInput_ptr) {
   res = NULL;
   linSolve = NULL;
 
-//OPN Model
+  mat_a = NULL;
+  prc_a = NULL;
+  sol_a = NULL;
+  rhs_a = NULL;
+  res_a = NULL;
+  linSolve_a = NULL;
+  iter = 0;
+
+  // OPN Model
   mat_p1 = NULL;
   prc_p1 = NULL;
   sol_p1 = NULL;
@@ -43,21 +49,12 @@ TDSolve::TDSolve(TDInput* tdInput_ptr) {
   res_p1 = NULL;
   linSolve_p1 = NULL;
 
-
-      mat_p2 = NULL;
-      prc_p2 = NULL;
-      sol_p2 = NULL;
-      rhs_p2 = NULL;
-      res_p2 = NULL;
-      linSolve_p2 = NULL;
-//
-            mat_a = NULL;
-            prc_a = NULL;
-            sol_a = NULL;
-            rhs_a = NULL;
-	    res_a = NULL;
-	    linSolve_a = NULL;
-  iter = 0;
+  mat_p2 = NULL;
+  prc_p2 = NULL;
+  sol_p2 = NULL;
+  rhs_p2 = NULL;
+  res_p2 = NULL;
+  linSolve_p2 = NULL;
 
   use_tfreq = tdSetup->Tfreq > 0.0;
   reach_output_now  = false;
@@ -71,11 +68,10 @@ TDSolve::~TDSolve(void) {
   erase_array( data_h, 3 );
   erase_array( data_n, 3 );
   erase_array( data_a, 3 );
-  //OPN Model
+  erase_array( data_v, 3 );
+  // OPN Model
   erase_array(data_p1, 3);
   erase_array(data_p2, 3);
-  //
-  erase_array( data_v, 3 );
 
   if (mat!=NULL) delete mat;
   if (prc!=NULL) delete prc;
@@ -91,15 +87,13 @@ TDSolve::~TDSolve(void) {
   if (sol_a!=NULL) delete sol_a;
   if (linSolve_a!=NULL) delete linSolve_a;
 
-//OPN Model
-if (mat_p1!=NULL) delete mat_p1;
-if (prc_p1!=NULL) delete prc_p1;
-if (rhs_p1!=NULL) delete rhs_p1;
-if (res_p1!=NULL) delete res_p1;
-if (sol_p1!=NULL) delete sol_p1;
-if (linSolve_p1!=NULL) delete linSolve_p1;
-
-
+  // OPN Model
+  if (mat_p1!=NULL) delete mat_p1;
+  if (prc_p1!=NULL) delete prc_p1;
+  if (rhs_p1!=NULL) delete rhs_p1;
+  if (res_p1!=NULL) delete res_p1;
+  if (sol_p1!=NULL) delete sol_p1;
+  if (linSolve_p1!=NULL) delete linSolve_p1;
 
   if (mat_p2!=NULL) delete mat_p2;
   if (prc_p2!=NULL) delete prc_p2;
@@ -170,9 +164,12 @@ void TDSolve::average_sol(const DType coef_1, const int fr_1,
   *data_h[to] = coef_1 * (*data_h[fr_1]) + coef_2 * (*data_h[fr_2]);
   *data_n[to] = coef_1 * (*data_n[fr_1]) + coef_2 * (*data_n[fr_2]);
   *data_a[to] = coef_1 * (*data_a[fr_1]) + coef_2 * (*data_a[fr_2]);
-//OPN model
-  *data_p1[to] = coef_1 * (*data_p1[fr_1]) + coef_2 * (*data_p1[fr_2]);
-  *data_p2[to] = coef_1 * (*data_p2[fr_1]) + coef_2 * (*data_p2[fr_2]);
+  
+  // OPN model
+  if ( tdSetup->prob_id == 1 ) {
+    *data_p1[to] = coef_1 * (*data_p1[fr_1]) + coef_2 * (*data_p1[fr_2]);
+    *data_p2[to] = coef_1 * (*data_p2[fr_1]) + coef_2 * (*data_p2[fr_2]);
+  }
 
   data_r[to]  = coef_1 * data_r[fr_1]    + coef_2 * data_r[fr_2];
 

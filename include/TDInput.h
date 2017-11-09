@@ -8,30 +8,28 @@
 #include "Comput_Choices.h"
 
 struct TDCoef {
-  //DType lambda, mu, delta, alpha, theta, sigma;
-  //OPN model
-  DType lambda, mu, theta, a, b, delta1, delta2, D1, D2, D3;//old rho = new delta2 
-  DType alpha, alpha1, alpah2, alpha3, beta1, beta2, beta3, gamma1, gamma2, gamma3;	
+  DType lambda, mu, delta, alpha, theta, sigma;
   DType rho_mns, rho_pls, n_star;
   DType mu_slp;
-  DType m, rho;
- //DType D, m, beta, gamma;
+  DType D, m, beta, gamma;
   DType n_bc;
   DType R_0;
+
+  //Additional parameters of the OPN model
+  DType opn_lambda, opn_mu, opn_theta, a, b, delta1, delta2, D1, D2, D3; //old rho = new delta2 
+  DType opn_m, rho;
+  DType alpha1, alpha2, alpha3, beta1, beta2, beta3, gamma1, gamma2, gamma3;
 };
 
 struct TDMesh {
   DType  x_l, x_r;
   DType  dx;
-  int    Nx;// Np1 & Np2 is same as Nx
+  int    Nx; // Np1 & Np2 is same as Nx in the OPN model
   DType* x_f;
   DType* x_c;
 
   int    Na_m;
   int    Na;
-  
-
-
   DType* x_a_f;
   DType* x_a_c;
 };
@@ -49,6 +47,8 @@ struct TDSetup {
 
   bool  bc_lim;
   bool  nonDim;
+
+  int   prob_id;
 };
 
 struct TDLin {

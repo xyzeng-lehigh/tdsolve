@@ -37,14 +37,16 @@ class TDSolve {
       return !reach_term_now;
     }
   protected:
-    HVEC** data_g;// G = number density of glimoa cells
-    HVEC** data_h;// H = number density of necrotic cells
-    HVEC** data_n;// N --> M = number density of immune cells infiltrated into the tumor 
-    HVEC** data_a;// A = concentration of chemotatic attractants by glimoa cells
-    HVEC** data_v;// V = veocity field within the tumor boundary
-    HVEC** data_p1;//concentration of osteopontin secreted by immunue cells
-    HVEC** data_p2;// concentration of osteopontin secretedd by glimoa cells
+    HVEC** data_g;  // G = number density of glimoa cells
+    HVEC** data_h;  // H = number density of necrotic cells
+    HVEC** data_n;  // N --> M = number density of immune cells infiltrated into the tumor 
+    HVEC** data_a;  // A = concentration of chemotatic attractants by glimoa cells
+    HVEC** data_v;  // V = veocity field within the tumor boundary
     DType  data_r[3];
+
+    // OPN model
+    HVEC** data_p1; // concentration of osteopontin secreted by immunue cells
+    HVEC** data_p2; // concentration of osteopontin secreted by glimoa cells
 
     HVEC** data_dv; // (dv/dx)/R+(2v)/(xR)
     HVEC** data_na; // (1/x^2/R^2) d(x^2 N dA/dx )/dx
@@ -55,11 +57,9 @@ class TDSolve {
     TDSetup* tdSetup;
     TDLin*   tdLin;
 
-    int    Nx;// will be used for Np1 and Np2
+    int    Nx; // will be used for Np1 and Np2
     int    Na_m;
     int    Na;
-    
-
     DType  dx;
     DType* x_f;
     DType* x_c;
@@ -89,7 +89,7 @@ class TDSolve {
     LinVec*   res_a;
     LinSolve* linSolve_a;
 
-    // Linear solver for P1 OPN model                                                                                                                        
+    // Linear solver for P1 OPN model 
     LinMat*   mat_p1;
     LinMat*   prc_p1;
     LinVec*   sol_p1;
@@ -97,15 +97,13 @@ class TDSolve {
     LinVec*   res_p1;
     LinSolve* linSolve_p1;
 
-   // Linear solver for P2 OPN model
-
+    // Linear solver for P2 OPN model
     LinMat*   mat_p2;
     LinMat*   prc_p2;
     LinVec*   sol_p2;
     LinVec*   rhs_p2;
     LinVec*   res_p2;
     LinSolve* linSolve_p2;
-
 
     int iter;
 

@@ -34,7 +34,6 @@ class TDSolveFVM : public TDSolve {
     HVEC** flux_p2;
     HVEC** slope_p2;
 
-
     // Needs to update whenever a or n is modified
     void update_vel(const int nt);
   private:

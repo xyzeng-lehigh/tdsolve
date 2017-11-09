@@ -6,37 +6,44 @@
 using namespace std;
 
 TDInput::TDInput(void) {
-  tdCoef.lambda  = 0.48;   //1.0;
-  tdCoef.mu      = 0.38;   //1.0;
-  tdCoef.delta1  = 0.45;   //1.0;
-  tdCoef.delta2  = 0.9;
-  tdCoef.alpha1  = 10;
-  tdCoef.alpha2  = 10;
-  tdCoef.beta1   = 1000;
-  tdCoef.beta2   = 1000;
-  tdCoef.gamma1  = 1;
-  tdCoef.gamma2  = 1;
-  tdCoef.alpha   = 1;
-  tdCoef.alpha3  = 17e+5;  //1.0;
-  tdCoef.theta   = 1e+6;
+  tdCoef.lambda  = 1.0;
+  tdCoef.mu      = 1.0;
+  tdCoef.delta   = 1.0;
+  tdCoef.alpha   = 1.0;
+  tdCoef.theta   = 1.0;
   tdCoef.sigma   = 1.0;
-  tdCoef.a       = 100;
-  tdCoef.b       = 100;
-  tdCoef.D1      = 0.0216;
-  tdCoef.D2      = 0.0216;
-
   tdCoef.rho_mns = 0.0;
   tdCoef.rho_pls = 0.0;
   tdCoef.n_star  = -1.0;
-  tdCoef.D3      = 6.048; //1.0;
+  tdCoef.D       = 1.0;
   tdCoef.m       = 1.0;
-  tdCoef.beta3   = 1e+5;  // 1.0;
-  tdCoef.gamma3  = 420;   //1.0;
+  tdCoef.beta    = 1.0;
+  tdCoef.gamma   = 1.0;
   tdCoef.n_bc    = 5.0e-3;
   tdCoef.R_0     = 1.0;
   tdCoef.mu_slp  = 0.0;
+  
   //OPN model
-  tdCoef.rho     = 0.6;
+  tdCoef.rho         = 0.6;
+  tdCoef.opn_lambda  = 0.48;
+  tdCoef.opn_mu      = 0.38;
+  tdCoef.opn_theta   = 1.0e+6;
+  tdCoef.opn_m       = 1.0;
+  tdCoef.delta1      = 0.45;
+  tdCoef.alpha1      = 10.0;
+  tdCoef.alpha2      = 10.0;
+  tdCoef.alpha3      = 1.7e+6;
+  tdCoef.beta1       = 1000.0;
+  tdCoef.beta2       = 1000.0;
+  tdCoef.beta3       = 1.0e+5;
+  tdCoef.gamma1      = 1.0;
+  tdCoef.gamma2      = 1.0;
+  tdCoef.gamma3      = 420.0;
+  tdCoef.a           = 100.0;
+  tdCoef.b           = 100.0;
+  tdCoef.D1          = 0.0216;
+  tdCoef.D2          = 0.0216;
+  tdCoef.D3          = 6.048; //1.0;
 
 
 
@@ -45,9 +52,6 @@ TDInput::TDInput(void) {
   tdMesh.Nx      = 100;
   tdMesh.Na_m    = 2;
   tdMesh.Na      = 200;
- 
-
-
   tdMesh.dx      = 0.01;
   tdMesh.x_f     = NULL;
   tdMesh.x_c     = NULL;
@@ -72,8 +76,8 @@ TDInput::TDInput(void) {
   tdSetup.dTgrow = 1.2;
   tdSetup.nonDim = true;
   tdSetup.bc_lim = true;
-//OPN model
-  tdSetup.prob_id = 1;//for previous problem, 0
+  tdSetup.prob_id = 0;  // 0, default, single chemotaxis
+                        // 1, OPN
 
 
   tdLin.Type      = LSYS_TYPE_DIR;
