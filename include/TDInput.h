@@ -7,18 +7,44 @@
 #include "Data_Type.h"
 #include "Comput_Choices.h"
 
+// Coefficients table
+// TDCoef       PDGF (default)      OPN
+// lambda       lambda              lambda 
+// mu           mu                  mu
+// delta_h      delta               delta_1
+// alpha        alpha               rho
+// theta        theta               theta
+// sigma        sigma
+// delta_n      rho                 delta_2
+// D            D                   D_3
+// alpha_a      m                   alpha_3
+// beta_a       beta                beta_3
+// gamma_a      gamma               gamma_3
+// D_1                              D_1
+// alpha_1                          alpha_1
+// beta_1                           beta_1
+// gamma_1                          gamma_1
+// D_2                              D_2
+// alpha_2                          alpha_2
+// beta_2                           beta_2
+// gamma_2                          gamma_2
+// a                                a
+// a_prime                          a_prime
+// b                                b
+// b_prime                          b_prime
+
 struct TDCoef {
-  DType lambda, mu, delta, alpha, theta, sigma;
-  DType rho_mns, rho_pls, n_star;
+  DType lambda, mu, delta_h, alpha, theta, sigma;
+  DType delta_n;
   DType mu_slp;
-  DType D, m, beta, gamma;
+  DType D, alpha_a, beta_a, gamma_a;
   DType n_bc;
   DType R_0;
 
-  //Additional parameters of the OPN model
-  DType opn_lambda, opn_mu, opn_theta, a, b, delta1, delta2, D1, D2, D3; //old rho = new delta2 
-  DType opn_m, rho;
-  DType alpha1, alpha2, alpha3, beta1, beta2, beta3, gamma1, gamma2, gamma3;
+  // Additional parameters of the OPN model
+  DType a, b, D_1, D_2; 
+  DType a_prime, b_prime;
+  DType alpha_1, alpha_2, beta_1, beta_2, gamma_1, gamma_2;
 };
 
 struct TDMesh {

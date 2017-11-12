@@ -6,46 +6,34 @@
 using namespace std;
 
 TDInput::TDInput(void) {
-  tdCoef.lambda  = 1.0;
-  tdCoef.mu      = 1.0;
-  tdCoef.delta   = 1.0;
-  tdCoef.alpha   = 1.0;
-  tdCoef.theta   = 1.0;
-  tdCoef.sigma   = 1.0;
-  tdCoef.rho_mns = 0.0;
-  tdCoef.rho_pls = 0.0;
-  tdCoef.n_star  = -1.0;
-  tdCoef.D       = 1.0;
-  tdCoef.m       = 1.0;
-  tdCoef.beta    = 1.0;
-  tdCoef.gamma   = 1.0;
-  tdCoef.n_bc    = 5.0e-3;
-  tdCoef.R_0     = 1.0;
-  tdCoef.mu_slp  = 0.0;
+  tdCoef.lambda      = 1.0;
+  tdCoef.mu          = 1.0;
+  tdCoef.delta_h     = 1.0;
+  tdCoef.alpha       = 1.0;
+  tdCoef.theta       = 1.0;
+  tdCoef.sigma       = 1.0;
+  tdCoef.delta_n     = 0.0;
+  tdCoef.D           = 1.0;
+  tdCoef.alpha_a     = 1.0;
+  tdCoef.beta_a      = 1.0;
+  tdCoef.gamma_a     = 1.0;
+  tdCoef.n_bc        = 5.0e-3;
+  tdCoef.R_0         = 1.0;
+  tdCoef.mu_slp      = 0.0;
   
   //OPN model
-  tdCoef.rho         = 0.6;
-  tdCoef.opn_lambda  = 0.48;
-  tdCoef.opn_mu      = 0.38;
-  tdCoef.opn_theta   = 1.0e+6;
-  tdCoef.opn_m       = 1.0;
-  tdCoef.delta1      = 0.45;
-  tdCoef.alpha1      = 10.0;
-  tdCoef.alpha2      = 10.0;
-  tdCoef.alpha3      = 1.7e+6;
-  tdCoef.beta1       = 1000.0;
-  tdCoef.beta2       = 1000.0;
-  tdCoef.beta3       = 1.0e+5;
-  tdCoef.gamma1      = 1.0;
-  tdCoef.gamma2      = 1.0;
-  tdCoef.gamma3      = 420.0;
   tdCoef.a           = 100.0;
   tdCoef.b           = 100.0;
-  tdCoef.D1          = 0.0216;
-  tdCoef.D2          = 0.0216;
-  tdCoef.D3          = 6.048; //1.0;
-
-
+  tdCoef.D_1         = 0.0216;
+  tdCoef.D_2         = 0.0216;
+  tdCoef.a_prime     = 1.0;
+  tdCoef.b_prime     = 1.0;
+  tdCoef.alpha_1     = 10.0;
+  tdCoef.alpha_2     = 10.0;
+  tdCoef.beta_1      = 1000.0;
+  tdCoef.beta_2      = 1000.0;
+  tdCoef.gamma_1     = 1.0;
+  tdCoef.gamma_2     = 1.0;
 
   tdMesh.x_l     = 0.0;
   tdMesh.x_r     = 1.0;
@@ -57,6 +45,7 @@ TDInput::TDInput(void) {
   tdMesh.x_c     = NULL;
   tdMesh.x_a_f   = NULL;
   tdMesh.x_a_c   = NULL;
+
 
   tdSetup.frame  = 0;
   tdSetup.cfl    = 0.9;
@@ -139,80 +128,64 @@ void TDInput::parse(void) {
       tdCoef.lambda = atof(value);
     else if (strcmp(name,"mu")==0)
       tdCoef.mu = atof(value);
-    else if (strcmp(name,"delta")==0)
-      tdCoef.delta = atof(value);
+    else if ( (strcmp(name,"delta")==0) || 
+              (strcmp(name,"delta_h")==0) ||
+              (strcmp(name,"delta_1")==0) )
+      tdCoef.delta_h = atof(value);
     else if (strcmp(name,"alpha")==0)
       tdCoef.alpha = atof(value);
     else if (strcmp(name,"theta")==0)
       tdCoef.theta = atof(value);
     else if (strcmp(name,"sigma")==0)
       tdCoef.sigma = atof(value);
-    else if (strcmp(name,"rho")==0) {
-      tdCoef.rho_mns = atof(value);
-      tdCoef.rho_pls = atof(value);
-    }
-    else if (strcmp(name,"rho_mnus")==0)
-      tdCoef.rho_mns = atof(value);
-    else if (strcmp(name,"rho_plus")==0)
-      tdCoef.rho_pls = atof(value);
-    else if (strcmp(name,"n_star")==0)
-      tdCoef.n_star = atof(value);
-    else if (strcmp(name,"D")==0)
+    else if ( (strcmp(name,"delta_n")==0) ||
+              (strcmp(name,"delta_2")==0) )
+      tdCoef.delta_n = atof(value);
+    else if ( (strcmp(name,"D")==0) ||
+              (strcmp(name,"D_3")==0) )
       tdCoef.D = atof(value);
-    else if (strcmp(name,"m")==0)
-      tdCoef.m = atof(value);
-    else if (strcmp(name,"beta")==0)
-      tdCoef.beta = atof(value);
-    else if (strcmp(name,"gamma")==0)
-      tdCoef.gamma = atof(value);
+    else if ( (strcmp(name,"m")==0) ||
+              (strcmp(name,"alpha_a")==0) ||
+              (strcmp(name,"alpha_3")==0) )
+      tdCoef.alpha_a = atof(value);
+    else if ( (strcmp(name,"beta")==0) ||
+              (strcmp(name,"beta_a")==0) ||
+              (strcmp(name,"beta_3")==0) )
+      tdCoef.beta_a = atof(value);
+    else if ( (strcmp(name,"gamma")==0) ||
+              (strcmp(name,"gamma_a")==0) ||
+              (strcmp(name,"gamma_3")==0) )
+      tdCoef.gamma_a = atof(value);
     else if (strcmp(name,"n_bc")==0)
       tdCoef.n_bc= atof(value);
     else if (strcmp(name,"r_0")==0)
       tdCoef.R_0 = atof(value);
     else if (strcmp(name,"mu_slope")==0)
       tdCoef.mu_slp  = atof(value);
-    else if (strcmp(name,"opn_lambda")==0)
-      tdCoef.opn_lambda = atof(value);
-    else if (strcmp(name,"opn_mu")==0)
-      tdCoef.opn_mu = atof(value);
-    else if (strcmp(name,"opn_theta")==0)
-      tdCoef.opn_theta = atof(value);
     else if (strcmp(name,"a")==0)
       tdCoef.a = atof(value);
     else if (strcmp(name,"b")==0)
       tdCoef.b = atof(value);
-    else if (strcmp(name,"delta1")==0)
-      tdCoef.delta1 = atof(value);
-    else if (strcmp(name,"delta2")==0)
-      tdCoef.delta2 = atof(value);
-    else if (strcmp(name,"D1")==0)
-      tdCoef.D1 = atof(value);
-    else if (strcmp(name,"D2")==0)
-      tdCoef.D2 = atof(value);
-    else if (strcmp(name,"D3")==0)
-      tdCoef.D3 = atof(value);
-    else if (strcmp(name,"opn_m")==0)
-      tdCoef.opn_m = atof(value);
-    else if (strcmp(name,"rho")==0)
-      tdCoef.rho = atof(value);
-    else if (strcmp(name,"alpha1")==0)
-      tdCoef.alpha1 = atof(value);
-    else if (strcmp(name,"alpha2")==0)
-      tdCoef.alpha2 = atof(value);
-    else if (strcmp(name,"alpha3")==0)
-      tdCoef.alpha3 = atof(value);
-    else if (strcmp(name,"beta1")==0)
-      tdCoef.beta1 = atof(value);
-    else if (strcmp(name,"beta2")==0)
-      tdCoef.beta2 = atof(value);
-    else if (strcmp(name,"beta3")==0)
-      tdCoef.beta3 = atof(value);
-    else if (strcmp(name,"gamma1")==0)
-      tdCoef.gamma1 = atof(value);
-    else if (strcmp(name,"gamma2")==0)
-      tdCoef.gamma2 = atof(value);
-    else if (strcmp(name,"gamma3")==0)
-      tdCoef.gamma3 = atof(value);
+    else if (strcmp(name,"a_prime")==0)
+      tdCoef.a_prime = atof(value);
+    else if (strcmp(name,"b_prime")==0)
+      tdCoef.b_prime = atof(value);
+    else if (strcmp(name,"D_1")==0)
+      tdCoef.D_1 = atof(value);
+    else if (strcmp(name,"D_2")==0)
+      tdCoef.D_2 = atof(value);
+    else if (strcmp(name,"alpha_1")==0)
+      tdCoef.alpha_1 = atof(value);
+    else if (strcmp(name,"alpha_2")==0)
+      tdCoef.alpha_2 = atof(value);
+    else if (strcmp(name,"beta_1")==0)
+      tdCoef.beta_1 = atof(value);
+    else if (strcmp(name,"beta_2")==0)
+      tdCoef.beta_2 = atof(value);
+    else if (strcmp(name,"gamma_1")==0)
+      tdCoef.gamma_1 = atof(value);
+    else if (strcmp(name,"gamma_2")==0)
+      tdCoef.gamma_2 = atof(value);
     else if (strcmp(name,"x_l")==0)
       tdMesh.x_l = atof(value);
     else if (strcmp(name,"x_r")==0)

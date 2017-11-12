@@ -21,10 +21,10 @@ class TDSolveFVM : public TDSolve {
   protected:
     HVEC** flux_g;
     HVEC** flux_h;
-    HVEC** flux_n;// or M
+    HVEC** flux_n; // or M
     HVEC** slope_g;
     HVEC** slope_h;
-    HVEC** slope_n;// or M
+    HVEC** slope_n; // or M
     HVEC** flux_a;
     HVEC** slope_a;
 
@@ -49,6 +49,9 @@ class TDSolveFVM : public TDSolve {
     void update_cells_upw_be(const int fr, const int to);
     void update_cells_muscl(const int fr, const int to);
     void update_cells_muscl_be(const int fr, const int to);
+    // OPN model
+    void update_cells_opn_upw(const int fr, const int to);
+    void update_cells_opn_muscl(const int fr, const int to);
 
     void update_chem_upw_be(const int fr, const int to);
     void update_chem_muscl_imex(const int fr, const int to);

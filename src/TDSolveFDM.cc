@@ -142,14 +142,14 @@ void TDSolveFDM::update_vel(const int nt) {
 
 void TDSolveFDM::update_vel_upw(const int nt) {
 
-  DType lambda = tdCoef->lambda;
-  DType delta  = tdCoef->delta;
-  DType alpha  = tdCoef->alpha;
+  DType lambda  = tdCoef->lambda;
+  DType delta_h = tdCoef->delta_h;
+  DType alpha   = tdCoef->alpha;
 
   (*data_v[nt])[0] = 0.0; // b.c. for velocity at x=0
 
   for ( int i = 0; i < Nx+1; i++ )
-    (*data_dv[nt])[i] = lambda * (*data_g[nt])[i] - delta * (*data_h[nt])[i] - 
+    (*data_dv[nt])[i] = lambda * (*data_g[nt])[i] - delta_h * (*data_h[nt])[i] - 
       alpha * (*data_na[nt])[i];
 
   for ( int i = 0; i < Nx; i++ ) { // data_v[nt][i+1]
@@ -163,14 +163,14 @@ void TDSolveFDM::update_vel_upw(const int nt) {
 
 void TDSolveFDM::update_vel_bdf2(const int nt) {
 
-  DType lambda = tdCoef->lambda;
-  DType delta  = tdCoef->delta;
-  DType alpha  = tdCoef->alpha;
+  DType lambda  = tdCoef->lambda;
+  DType delta_h = tdCoef->delta_h;
+  DType alpha   = tdCoef->alpha;
 
   (*data_v[nt])[0] = 0.0; // b.c. for velocity at x=0
 
   for ( int i = 0; i < Nx+1; i++ )
-    (*data_dv[nt])[i] = lambda * (*data_g[nt])[i] - delta * (*data_h[nt])[i] - 
+    (*data_dv[nt])[i] = lambda * (*data_g[nt])[i] - delta_h * (*data_h[nt])[i] - 
       alpha * (*data_na[nt])[i];
 
   // data_v[nt][1]
@@ -189,18 +189,18 @@ void TDSolveFDM::update_vel_bdf2(const int nt) {
 
 void TDSolveFDM::update_vel_int(const int nt) {
 
-  DType lambda = tdCoef->lambda;
-  DType delta  = tdCoef->delta;
-  DType alpha  = tdCoef->alpha;
+  DType lambda  = tdCoef->lambda;
+  DType delta_h = tdCoef->delta_h;
+  DType alpha   = tdCoef->alpha;
 
   (*data_v[nt])[0] = 0.0; // b.c. for velocity at x=0
 
-  // First do the integration of x^2R(lambda G - delta H)
+  // First do the integration of x^2R(lambda G - delta_h H)
   for ( int i = 0; i < Nx; i++ ) {
     int j = i+1;
     (*data_v[nt])[j] = (*data_v[nt])[i] + data_r[nt] * 0.5 * dx *
-      ( x_f[i] * x_f[i] * ( lambda * (*data_g[nt])[i] - delta * (*data_h[nt])[i] ) +
-        x_f[j] * x_f[j] * ( lambda * (*data_g[nt])[j] - delta * (*data_h[nt])[j] ) );
+      ( x_f[i] * x_f[i] * ( lambda * (*data_g[nt])[i] - delta_h * (*data_h[nt])[i] ) +
+        x_f[j] * x_f[j] * ( lambda * (*data_g[nt])[j] - delta_h * (*data_h[nt])[j] ) );
   }
 
   // Next divide by x^2 and remove the contribution from N and dA
@@ -225,10 +225,10 @@ void TDSolveFDM::update_vel_int(const int nt) {
 }
 
 void TDSolveFDM::update_cells_upw(const int fr, const int to) {
-  DType lambda = tdCoef->lambda;
-  DType delta  = tdCoef->delta;
-  DType mu     = tdCoef->mu;
-  DType alpha  = tdCoef->alpha;
+  DType lambda  = tdCoef->lambda;
+  DType delta_h = tdCoef->delta_h;
+  DType mu      = tdCoef->mu;
+  DType alpha   = tdCoef->alpha;
 
   // Source terms -- start from i=1, and enforce hom. Neumann b.c. later 
   for ( int i = 1; i < Nx+1; i++ ) {
@@ -237,7 +237,7 @@ void TDSolveFDM::update_cells_upw(const int fr, const int to) {
         lambda * (*data_g[fr])[i] - mu * (*data_g[fr])[i] - 
         react_coef * (*data_g[fr])[i]);
     (*data_h[to])[i] = (*data_h[fr])[i] + dtn * (
-        mu * (*data_g[fr])[i] - delta * (*data_h[fr])[i] - 
+        mu * (*data_g[fr])[i] - delta_h * (*data_h[fr])[i] - 
         react_coef * (*data_h[fr])[i]);
     DType react_coef_n = 
       ( x_a_c[i]*x_a_c[i]*((*data_a[fr])[i+1]-(*data_a[fr])[i]) - 
@@ -284,7 +284,7 @@ void TDSolveFDM::update_cells_upw(const int fr, const int to) {
         lambda * (*data_g[fr])[0] - mu * (*data_g[fr])[0] - 
         react_coef * (*data_g[fr])[0]);
     (*data_h[to])[0] = (*data_h[fr])[0] + dtn * (
-        mu * (*data_g[fr])[0] - delta * (*data_h[fr])[0] - 
+        mu * (*data_g[fr])[0] - delta_h * (*data_h[fr])[0] - 
         react_coef * (*data_h[fr])[0]);
     DType react_coef_n = 3.0 * ((*data_a[fr])[1] - (*data_a[fr])[0]) /dx/dx;
     react_coef_n *= alpha/(data_r[fr]*data_r[fr]);
@@ -296,10 +296,10 @@ void TDSolveFDM::update_cells_upw(const int fr, const int to) {
 }
 
 void TDSolveFDM::update_cells_upw_be(const int fr, const int to) {
-  DType lambda = tdCoef->lambda;
-  DType delta  = tdCoef->delta;
-  DType mu     = tdCoef->mu;
-  DType alpha  = tdCoef->alpha;
+  DType lambda  = tdCoef->lambda;
+  DType delta_h = tdCoef->delta_h;
+  DType mu      = tdCoef->mu;
+  DType alpha   = tdCoef->alpha;
 
   VComp comp(1,0.0);
   Entry elem(1,0.0);
@@ -406,20 +406,20 @@ void TDSolveFDM::update_cells_upw_be(const int fr, const int to) {
     DType adv_coef = loc_vel * dtn / dx;
 
     if ( loc_vel >= 0.0 ) {
-      elem = 1.0 + adv_coef - dtn * ( - delta - (*data_dv[fr])[i] );
+      elem = 1.0 + adv_coef - dtn * ( - delta_h - (*data_dv[fr])[i] );
       mat->set(i,i,elem);
       elem = - adv_coef;
       mat->set(i,i-1,elem);
     }
     else {
-      elem = 1.0 - adv_coef - dtn * ( - delta - (*data_dv[fr])[i] );
+      elem = 1.0 - adv_coef - dtn * ( - delta_h - (*data_dv[fr])[i] );
       mat->set(i,i,elem);
       elem = adv_coef;
       mat->set(i,i+1,elem);
     }
   }
   // Right boundary
-  elem = 1.0 - dtn * ( - delta - (*data_dv[fr])[Nx] );
+  elem = 1.0 - dtn * ( - delta_h - (*data_dv[fr])[Nx] );
   mat->set(Nx,Nx,elem);
 
   // Initialize solution
@@ -553,10 +553,10 @@ void TDSolveFDM::update_cells_upw_be(const int fr, const int to) {
 }
 
 void TDSolveFDM::update_cells_pade_be(const int fr, const int to) {
-  DType lambda = tdCoef->lambda;
-  DType delta  = tdCoef->delta;
-  DType mu     = tdCoef->mu;
-  DType alpha  = tdCoef->alpha;
+  DType lambda  = tdCoef->lambda;
+  DType delta_h = tdCoef->delta_h;
+  DType mu      = tdCoef->mu;
+  DType alpha   = tdCoef->alpha;
 
   VComp comp(1,0.0);
   Entry elem(1,0.0);
@@ -687,7 +687,7 @@ void TDSolveFDM::update_cells_pade_be(const int fr, const int to) {
     elem = one_sixth - adv_coef;
     mat->set(i,i-1,elem);
 
-    elem = for_sixth - dtn * ( - delta - (*data_dv[fr])[i] );
+    elem = for_sixth - dtn * ( - delta_h - (*data_dv[fr])[i] );
     mat->set(i,i,elem);
 
     elem = one_sixth + adv_coef;
@@ -704,8 +704,8 @@ void TDSolveFDM::update_cells_pade_be(const int fr, const int to) {
     //elem = one_third;
     //mat->set(Nx,Nx-1,elem);
 
-    //elem = two_third - dtn * ( - delta - (*data_dv[fr])[Nx] );
-    elem = 1.0 - dtn * ( - delta - (*data_dv[fr])[Nx] );
+    //elem = two_third - dtn * ( - delta_h - (*data_dv[fr])[Nx] );
+    elem = 1.0 - dtn * ( - delta_h - (*data_dv[fr])[Nx] );
     mat->set(Nx,Nx,elem);
   }
 
@@ -801,18 +801,18 @@ void TDSolveFDM::update_chem_upw_be(const int fr, const int to) {
   mat_a->reset( 0.0 );
   sol_a->reset( 0.0 );
 
-  DType m     = tdCoef->m;
-  DType D     = tdCoef->D;
-  DType beta  = tdCoef->beta;
-  DType gamma = tdCoef->gamma;
-  DType theta = tdCoef->theta;
+  DType alpha_a = tdCoef->alpha_a;
+  DType D       = tdCoef->D;
+  DType beta_a  = tdCoef->beta_a;
+  DType gamma_a = tdCoef->gamma_a;
+  DType theta   = tdCoef->theta;
   
   // RHS
   VComp comp(1,0.0);
   for ( int i = 1; i < Na; i++ ) {
     comp = (*data_a[fr])[i];
     if ( i < Nx+1 ) // G is active
-      comp += dtn * m * (*data_g[to])[i] / (beta/theta+(*data_g[to])[i]);
+      comp += dtn * alpha_a * (*data_g[to])[i] / (beta_a/theta+(*data_g[to])[i]);
     rhs_a->set(i,comp);
   }
 
@@ -840,7 +840,7 @@ void TDSolveFDM::update_chem_upw_be(const int fr, const int to) {
     elem = - coef_diff*x_rat_l + coef_adv_l*(dtn*l_vel/dx);
     mat_a->set(i,i-1,elem);
 
-    elem = 1.0 + dtn*gamma + coef_diff*(x_rat_l+x_rat_r) +
+    elem = 1.0 + dtn*gamma_a + coef_diff*(x_rat_l+x_rat_r) +
       coef_adv_c*(dtn*l_vel/dx);
     mat_a->set(i,i,elem);
 
@@ -876,18 +876,18 @@ void TDSolveFDM::update_chem_pade_be(const int fr, const int to) {
   mat->reset( 0.0 );
   sol->reset( 0.0 );
 
-  DType m     = tdCoef->m;
-  DType D     = tdCoef->D;
-  DType beta  = tdCoef->beta;
-  DType gamma = tdCoef->gamma;
-  DType theta = tdCoef->theta;
-  DType sigma = tdCoef->sigma;
+  DType alpha_a = tdCoef->alpha_a;
+  DType D       = tdCoef->D;
+  DType beta_a  = tdCoef->beta_a;
+  DType gamma_a = tdCoef->gamma_a;
+  DType theta   = tdCoef->theta;
+  DType sigma   = tdCoef->sigma;
 
   // RHS
   VComp comp(1,0.0);
   for ( int i = 1; i < Nx; i++ ) {
     comp = (*data_a[fr])[i] + 
-      dtn * m * (*data_g[to])[i] / (beta/theta+(*data_g[to])[i]);
+      dtn * alpha_a * (*data_g[to])[i] / (beta_a/theta+(*data_g[to])[i]);
     rhs->set(i,comp);
   }
   comp = ((*data_n[to])[Nx] - (*data_n[to])[Nx-1])/sigma;
@@ -914,7 +914,7 @@ void TDSolveFDM::update_chem_pade_be(const int fr, const int to) {
     elem = 1.0/6.0 - 0.5 * dtn * l_vel / dx - coef_diff * x_rat_l;
     mat->set(i,i-1,elem);
 
-    elem = 4.0/6.0 + dtn * gamma + coef_diff*(x_rat_l+x_rat_r);
+    elem = 4.0/6.0 + dtn * gamma_a + coef_diff*(x_rat_l+x_rat_r);
     mat->set(i,i,elem);
 
     elem = 1.0/6.0 + 0.5 * dtn * l_vel / dx - coef_diff * x_rat_r;
