@@ -24,8 +24,8 @@ TDInput::TDInput(void) {
   //OPN model
   tdCoef.a           = 100.0;
   tdCoef.b           = 100.0;
-  tdCoef.D_1         = 0.0216;
-  tdCoef.D_2         = 0.0216;
+  tdCoef.D_1         = 0.01;
+  tdCoef.D_2         = 0.01;
   tdCoef.a_prime     = 1.0;
   tdCoef.b_prime     = 1.0;
   tdCoef.alpha_1     = 10.0;

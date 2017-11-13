@@ -122,6 +122,11 @@ void TDSolveFVM::set_ic(void) {
   upscale_var( *data_h[0], *data_h[0], x_c, Nx, data_r[0]);
   upscale_var( *data_n[0], *data_n[0], x_c, Nx, data_r[0]);
 
+  if ( tdSetup->prob_id == 1 ) {
+    (*data_p1[0]) = 0.0;
+    (*data_p2[0]) = 0.0;
+  }
+
   update_vel(0);
 
   N_dir[0] = 0;
@@ -395,13 +400,16 @@ void TDSolveFVM::update_vel_prbid1(const int nt) {
   DType delta_h = tdCoef->delta_h;
   DType delta_n = tdCoef->delta_n;
   DType b       = tdCoef->b;
+  DType b_prime = tdCoef->b_prime;
   DType alpha   = tdCoef->alpha;
       
   (*data_v[nt])[0] = 0.0; // b.c. for velocity at x=0
-  // First do the integration of x^2R(lambda*P2*G/b+P2 - delta_h*H - delta_n*M + lambda*G)
-  for ( int i = 0; i < Nx; i++ ) {
-    (*data_v[nt])[i+1] = (*data_v[nt])[i] + dx * ( lambda * (*data_g[nt])[i]*(*data_p2[nt])[i]/(b+(*data_p2[nt])[i]) - delta_h * (*data_h[nt])[i]-delta_n*(*data_n[nt])[i] + lambda * (*data_g[nt])[i]) / data_r[nt];//G,H and M have not been upscaled
-  } 
+  // First do the integration of
+  // x^2R[lambda(1+b'P2/(b+P2))*G-delta_h*H-delta_n*N]
+  for ( int i = 0; i < Nx; i++ ) 
+    (*data_v[nt])[i+1] = (*data_v[nt])[i] + dx * (
+        lambda * ( 1.0 + (b_prime * (*data_p2[nt])[i])/(b + (*data_p2[nt])[i]) ) * (*data_g[nt])[i] - 
+        delta_h * (*data_h[nt])[i] - delta_n * (*data_n[nt])[i] ); // G, H, and M have not been upscaled
   downscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt] );
   // Next divide by x^2 and remove the contribution from N and dA
   for ( int i = 1; i < Nx; i++ ) {
@@ -418,7 +426,6 @@ void TDSolveFVM::update_vel_prbid1(const int nt) {
   upscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt] ); 
   return;
 }
-
 
 void TDSolveFVM::update_vel_int(const int nt) {
 
@@ -588,14 +595,14 @@ void TDSolveFVM::update_sol(const int fr, const int to) {
       switch ( tdSetup->schem ) {
         case 0: // Implicit first-order upwind for advection and cd for diffusion
           // Update A
-          //update_chem_upw_be( fr, to ); 
+          update_chem_upw_be( fr, to ); 
           // Update P1 and P2
           update_chem_opn_upw_be( fr, to, tdCoef->D_1, tdCoef->alpha_1, tdCoef->beta_1, tdCoef->gamma_1, data_p1 );
           update_chem_opn_upw_be( fr, to, tdCoef->D_2, tdCoef->alpha_2, tdCoef->beta_2, tdCoef->gamma_2, data_p2 );
           break;
         case 1: // Explicit second-order muscl for advection and implicit cd for diffusion
           // Update A
-          //update_chem_muscl_imex( fr, to ); 
+          update_chem_muscl_imex( fr, to ); 
           // Update P1 and P2
           update_chem_opn_muscl_imex( fr, to, tdCoef->D_1, tdCoef->alpha_1, tdCoef->beta_1, tdCoef->gamma_1, data_p1, flux_p1, slope_p1 );
           update_chem_opn_muscl_imex( fr, to, tdCoef->D_2, tdCoef->alpha_2, tdCoef->beta_2, tdCoef->gamma_2, data_p2, flux_p2, slope_p2 );
@@ -604,7 +611,7 @@ void TDSolveFVM::update_sol(const int fr, const int to) {
           std::cout << "Warning: The spatial scheme for chem not defined, "
             << "using upw/backward on the primitive equation instead\n" << std::endl;
           // Update A
-          //update_chem_upw_be( fr, to );
+          update_chem_upw_be( fr, to );
           // Update P1 and P2
           update_chem_opn_upw_be( fr, to, tdCoef->D_1, tdCoef->alpha_1, tdCoef->beta_1, tdCoef->gamma_1, data_p1 );
           update_chem_opn_upw_be( fr, to, tdCoef->D_2, tdCoef->alpha_2, tdCoef->beta_2, tdCoef->gamma_2, data_p2 );
@@ -1228,23 +1235,27 @@ void TDSolveFVM::update_cells_opn_upw(const int fr, const int to) {
 
 void TDSolveFVM::update_cells_opn_muscl(const int fr, const int to) {
   // For an explicit method, reuse the previous part
-  update_cells_opn_muscl( fr, to );
+  update_cells_muscl( fr, to );
 
-  // for adding new terms according to new equations
-  //  switch( tdSetup->prob_id ){
-  //    case 0:
-  //      DType G_add = 0;
-  //      DType H_add = 0;
-  //      break;
-  //    case 1:
-  //      DType G_add = ((*data_g[fr])[Nx]*(lamda - mu));                                      
-  //      DType H_add = ((*data_g[fr])[Nx]*mu);  
-  //      break;
-  //    default:
-  //      DType G_add = 0;
-  //      DType H_add = 0;
-  //      break;
-  //  }
+  DType a       = tdCoef->a;
+  DType b       = tdCoef->b;
+  DType a_prime = tdCoef->a_prime;
+  DType b_prime = tdCoef->b_prime;
+  DType lambda  = tdCoef->lambda;
+  DType mu      = tdCoef->mu;
+  DType mu_slp  = tdCoef->mu_slp;
+
+  // Additional source terms
+  for ( int i = 0; i < Nx; i++ ) {
+    DType loc_mu = mu - mu_slp * x_c[i];
+    (*data_g[to])[i] += dtn * ( 
+        lambda * b_prime * (*data_p2[fr])[i] / ( b + (*data_p2[fr])[i] ) * (*data_g[fr])[i] - 
+        loc_mu * a_prime * (*data_p1[fr])[i] / ( a + (*data_p1[fr])[i] ) * (*data_g[fr])[i] );
+    (*data_h[to])[i] += dtn * (
+        loc_mu * a_prime * (*data_p1[fr])[i] / ( a + (*data_p1[fr])[i] ) * (*data_g[fr])[i] );
+  }
+
+  return;
 }
  
 void TDSolveFVM::update_chem_upw_be(const int fr, const int to) {

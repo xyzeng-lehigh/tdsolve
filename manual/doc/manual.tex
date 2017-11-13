@@ -415,14 +415,14 @@ The models are determined by the variable \texttt{prob\_id}; and each model cont
     &\pp{(r^2A)}{t} = {\color{blue}D_3}\po{r}\left(r^2\pp{A}{r}\right) + \frac{\chi_{0\le r\le R}{\color{blue}\alpha_3}r^2G}{{\color{blue}\beta_3}/{\color{blue}\theta}+G} - {\color{blue}\gamma_3} r^2A\;,\\
     &\pp{(r^2P_1)}{t} = {\color{blue}D_1}\po{r}\left(r^2\pp{P_1}{r}\right) + \frac{{\color{blue}\alpha_1}r^2M}{{\color{blue}\beta_1}/{\color{blue}\theta}+M} - {\color{blue}\gamma_1} r^2P_1\;,\\
     &\pp{(r^2P_2)}{t} = {\color{blue}D_2}\po{r}\left(r^2\pp{P_2}{r}\right) + \frac{{\color{blue}\alpha_2}r^2G}{{\color{blue}\beta_2}/{\color{blue}\theta}+G} - {\color{blue}\gamma_2} r^2P_2\;,\\
-    &\frac{1}{r^2}\po{r}\left[r^2\left(V+{\color{blue}\alpha} M\pp{A}{r}\right)\right] = {\color{blue}\lambda}\left[1+\frac{{\color{blue}a'}P_1}{{\color{blue}a}+P_1}\right] G - {\color{blue}\delta_1} H - {\color{blue}\delta_2} M\;.
+    &\frac{1}{r^2}\po{r}\left[r^2\left(V+{\color{blue}\alpha} M\pp{A}{r}\right)\right] = {\color{blue}\lambda}\left[1+\frac{{\color{blue}b'}P_2}{{\color{blue}b}+P_2}\right] G - {\color{blue}\delta_1} H - {\color{blue}\delta_2} M\;.
   \end{align*}
 \end{itemize}
 
 \subsection{Model Parameters and Input Files}
 The parameters differ among models given before. 
 In the next table (Table~\ref{tb:par}) we summarize the correspondence between the parameter described in the equations, their input file variables, the \texttt{C} variables, and their default values.
-\begin{table}[h]\centering
+\begin{table}[ht]\centering
 \setlength{\tabcolsep}{3pt}
 \caption{Parameter summary.}
 \label{tb:par}
@@ -450,11 +450,11 @@ Input file        & PDGF      & OPN        & \texttt{C} variable & Default value
 \texttt{gamma\_a} & $\gamma$  & $\gamma_3$ & \texttt{gamma\_a}   & $1.0$         \\
 \texttt{gamma}    &           &            &                     &               \\
 \texttt{gamma\_3} &           &            &                     &               \\ \hline
-\texttt{D\_1}     & N/A       & $D_1$      & \texttt{D\_1}       & $0.0216$      \\ \hline
+\texttt{D\_1}     & N/A       & $D_1$      & \texttt{D\_1}       & $0.01$        \\ \hline
 \texttt{alpha\_1} & N/A       & $\alpha_1$ & \texttt{alpha\_1}   & $10.0$        \\ \hline
 \texttt{beta\_1}  & N/A       & $\beta_1$  & \texttt{beta\_1}    & $1000.0$      \\ \hline
 \texttt{gamma\_1} & N/A       & $\gamma_1$ & \texttt{gamma\_1}   & $1.0$         \\ \hline
-\texttt{D\_2}     & N/A       & $D_2$      & \texttt{D\_2}       & $0.0216$      \\ \hline
+\texttt{D\_2}     & N/A       & $D_2$      & \texttt{D\_2}       & $0.01$        \\ \hline
 \texttt{alpha\_2} & N/A       & $\alpha_2$ & \texttt{alpha\_2}   & $10.0$        \\ \hline
 \texttt{beta\_2}  & N/A       & $\beta_2$  & \texttt{beta\_2}    & $1000.0$      \\ \hline
 \texttt{gamma\_2} & N/A       & $\gamma_2$ & \texttt{gamma\_2}   & $1.0$         \\ \hline
@@ -466,9 +466,10 @@ Input file        & PDGF      & OPN        & \texttt{C} variable & Default value
 \setlength{\tabcolsep}{1pt}
 \end{table}
 
-\section{Case Study: A Parametric Study of the Model}
-Lastly, the folder \texttt{\$TDHOME/manual/demo} contains a package \texttt{par\_m.tar.gz}.
+\section{Case Study: A Parametric Study of the PDGF Model}
+Lastly, the folder \texttt{\$TDHOME/manual/demo} contains a package \texttt{par\_m\_pdgf.tar.gz}.
 This is an example of a small project of parametric study of the tumor growth model with different values of $m$ (say $1e+5$, $2e+5$, $4e+5$, and $8e+5$), keeping all the other parameters fixed.
+A similar package for the OPN model is given by \texttt{par\_alpha\_opn.tar.gz}; using this package follows the same steps.
 
 To begin with, let us copy this package to \texttt{\$TDHOME/TDRun} and expand it:
 \begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.0cm]
@@ -476,12 +477,12 @@ $ cd $TDHOME/TDRun
 $ cp $TDHOME/TDSolve/manual/demo/par_m.tar.gz ./
 $ tar xvf par_m.tar.gz
 \end{lstlisting}
-This will create a folder \texttt{TestProj} that contains a input file, a number of shell scripts, and a folder \texttt{data/}; this latter folder contain a few \texttt{Matlab} scripts to make plots.
+This will create a folder \texttt{TestProjPDGF} that contains a input file, a number of shell scripts, and a folder \texttt{data/}; this latter folder contain a few \texttt{Matlab} scripts to make plots.
 
 \subsection{Run the Simulations One-By-One}
 The first method to run the set of simulations with different $m$ values is to use the script \texttt{runall.sh} as follows: While in \texttt{\$TDHOME/TDRun/}:
 \begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.0cm]
-$ cd TestProj
+$ cd TestProjPDGF
 $ sh runall.sh
 \end{lstlisting}
 This script will loop over all the four $m$ values, replace the string \texttt{VALM} in the template input file \texttt{input\_raw.hcl} by these values, run the simulation, and rename and copy the results to the sub-directory \texttt{data/}.
@@ -493,7 +494,7 @@ The solver itself is not parallelized; however, if more the one simulations need
 A simple tool to achieve this is to use GNU Parallel ({\color{blue} \url{https://www.gnu.org/software/parallel/}}), it is available in the package management tool for your system.
 With this tool installed, follow the next commands to run the simulations: While in \texttt{\$TDHOME/TDRun/}:
 \begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.0cm]
-$ cd TestProj
+$ cd TestProjPDGF
 $ parallel sh run_par.sh ::: 1e+5 2e+5 4e+5 8e+5
 \end{lstlisting}
 Then all the free processors will be utilized to run these simulations.

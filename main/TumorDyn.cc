@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
       tdSolve = new TDSolveFVM(&tdInput);
       break;
     default:
-      tdSolve = new TDSolveFDM(&tdInput);
+      tdSolve = new TDSolveFVM(&tdInput);
       break;
   }
 

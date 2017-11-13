@@ -152,7 +152,7 @@ void TDSolve::average_sol(const DType coef_1, const int fr_1,
   *data_a[to] = coef_1 * (*data_a[fr_1]) + coef_2 * (*data_a[fr_2]);
   
   // OPN model
-  if ( tdSetup->prob_id == 1 ) {
+  if ( tdSetup->prob_id == 1 && tdSetup->frame == 1 ) {
     *data_p1[to] = coef_1 * (*data_p1[fr_1]) + coef_2 * (*data_p1[fr_2]);
     *data_p2[to] = coef_1 * (*data_p2[fr_1]) + coef_2 * (*data_p2[fr_2]);
   }
