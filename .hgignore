@@ -9,3 +9,4 @@ TumorDynRun
 *.blg
 *.log
 *.aux
+build/**

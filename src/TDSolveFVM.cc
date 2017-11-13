@@ -409,7 +409,7 @@ void TDSolveFVM::update_vel_prbid1(const int nt) {
   for ( int i = 0; i < Nx; i++ ) 
     (*data_v[nt])[i+1] = (*data_v[nt])[i] + dx * (
         lambda * ( 1.0 + (b_prime * (*data_p2[nt])[i])/(b + (*data_p2[nt])[i]) ) * (*data_g[nt])[i] - 
-        delta_h * (*data_h[nt])[i] - delta_n * (*data_n[nt])[i] ); // G, H, and M have not been upscaled
+        delta_h * (*data_h[nt])[i] - delta_n * (*data_n[nt])[i] ) / data_r[nt]; // G, H, and M have not been upscaled
   downscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt] );
   // Next divide by x^2 and remove the contribution from N and dA
   for ( int i = 1; i < Nx; i++ ) {
@@ -431,13 +431,14 @@ void TDSolveFVM::update_vel_int(const int nt) {
 
   DType lambda  = tdCoef->lambda;
   DType delta_h = tdCoef->delta_h;
+  DType delta_n = tdCoef->delta_n;
   DType alpha   = tdCoef->alpha;
 
   (*data_v[nt])[0] = 0.0; // b.c. for velocity at x=0
 
   // First do the integration of x^2R(lambda G - delta_h H)
   for ( int i = 0; i < Nx; i++ ) {
-    (*data_v[nt])[i+1] = (*data_v[nt])[i] + dx * ( lambda * (*data_g[nt])[i] - delta_h * (*data_h[nt])[i] ) / data_r[nt];
+    (*data_v[nt])[i+1] = (*data_v[nt])[i] + dx * ( lambda * (*data_g[nt])[i] - delta_h * (*data_h[nt])[i] - delta_n * (*data_n[nt])[i] ) / data_r[nt];
   }
 
   downscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt] );

@@ -91,6 +91,7 @@ In order to get the source code from \texttt{Bitbucket} and compile it successfu
 \item \texttt{hg}: Mercurial, a distributed source control management tool used to obtaining and updating the source code from \texttt{Bitbucket} repository.
 \item \texttt{make}: GNU Make, a tool to control the generation of executables and other non-source files from source codes.
 \item \texttt{g++}: the GNU \texttt{C++} compiler. This can be replaced by \texttt{clang++} on \texttt{macOS} -- need to change a line in the \texttt{makefile} shipped with the package.
+\item \texttt{cmake} (optional): New BSD CMake.
 \end{itemize}
 On \texttt{Linux}, these tools should be available through any package management tools such as \texttt{apt-get} on \texttt{Ubuntu} systems or \texttt{yum} on \texttt{Red Hat} based systems such as \texttt{Red Hat Linux}, \texttt{Fedora Linux}, \texttt{CentOS}, and \texttt{Scientific Linux}; on \texttt{macOS}, however, \texttt{MacPorts} is a good source to get many useful tools. 
 
@@ -113,24 +114,35 @@ The \texttt{hg clone} command may take a while, as you may have expected, since 
 Once it is done, enter this directory, you will see a few files and sub-folders; among other things, there are:
 \begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.1cm]
 include/ main/ makefile readme.txt src/ tools/
+CMakeLists.txt build_cmake.sh
 \end{lstlisting}
 The file \texttt{readme.txt} contains an extremely short guide to use the program, assuming that you're already familiar with the bash commands, etc.
 The three first three folders contain the source codes: \texttt{include/} contains all the header files, \texttt{src/} contains all the source files excepting the one containing the \texttt{main} function, which is in the folder \texttt{main/}.
 You may notice that there is also a folder called \texttt{obj/}, this is used to hold all the object files generated during compiling the program; no need to worry about it.
 The folder \texttt{tools/} contains some \texttt{Matlab} scripts that are used to read the simulation results and do some simple plots; we will discuss this later.
 
-The most important single file \texttt{makefile} is the one we'll use to compile the program.
-To do so, type:
+There are two options to build the program.
+\begin{enumerate}[Option 1]
+  \item If you have \texttt{cmake}, type:
 \begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.0cm]
-$ make 
+$ sh build_cmake.sh
 \end{lstlisting}
-while in the folder \texttt{\$TDHOME/TDSolve}; it will automatically call the \texttt{C++} compiler and build the program.
-By default, the GNU compiler \texttt{g++} is used; if you're using \texttt{macOS} and decide not to use \texttt{g++}, another option is to use \texttt{clang++} that is shipped with the system.
-To do so, uncomment the second line in \texttt{makefile} by deleting the first \# character, and comment the first line by adding a \# character at the beginning of the line.
+  while in the folder \texttt{\$TDHOME/TDSolve}; it will automatically search for the default \texttt{C++} compiler in the system and build the program.
+  \item If you do not have \texttt{cmake} or want to specify the compiler, the \texttt{makefile} should be used.
+  To do so, type:
+  \begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.0cm]
+  $ make 
+  \end{lstlisting}
+  while in the folder \texttt{\$TDHOME/TDSolve}; it will automatically call the \texttt{C++} compiler and build the program.
+  By default, the GNU compiler \texttt{g++} is used; if you're using \texttt{macOS} and decide not to use \texttt{g++}, another option is to use \texttt{clang++} that is shipped with the system.
+  To do so, uncomment the second line in \texttt{makefile} by deleting the first \# character, and comment the first line by adding a \# character at the beginning of the line.
+\end{enumerate}
+
 If there are more than one processors on the machine, the building process can be speed up a little bit by making use of these processors; to do so, for example with 4 processors, type instead:
 \begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.0cm]
 $ make -j 4
 \end{lstlisting}
+for the second option; and modify the script \texttt{build\_cmake.sh} accordingly for the first option.
 Parallel building may actually be an overkill; anyway this is not a very large program, at least for now...
 
 Upon a successful building, an executable file with the name:
@@ -158,6 +170,10 @@ $ hg up default
 \end{lstlisting}
 to update all the source files to the newest version (we're not worrying about any branch other than the default one for now).
 Next, use:
+\begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.0cm]
+$ sh build_cmake.sh
+\end{lstlisting}
+or
 \begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.0cm]
 $ make 
 \end{lstlisting}
@@ -405,7 +421,7 @@ The models are determined by the variable \texttt{prob\_id}; and each model cont
     &\pp{(r^2H)}{t} + \po{r}\left[r^2H V\right] = {\color{blue}\mu} r^2G - {\color{blue}\delta} r^2H\;, \\
     &\pp{(r^2N)}{t} + \po{r}\left[r^2N\left(V+{\color{blue}\alpha}\pp{A}{r}\right)\right] = - {\color{blue}\rho} r^2N\;,\\
     &\pp{(r^2A)}{t} = {\color{blue}D}\po{r}\left(r^2\pp{A}{r}\right) + \frac{\chi_{0\le r\le R}{\color{blue}m}r^2G}{{\color{blue}\beta}/{\color{blue}\theta}+G} - {\color{blue}\gamma} r^2A\;,\\
-    &\frac{1}{r^2}\po{r}\left[r^2\left(V+{\color{blue}\alpha} N\pp{A}{r}\right)\right] = {\color{blue}\lambda} G - {\color{blue}\delta} H\;.
+    &\frac{1}{r^2}\po{r}\left[r^2\left(V+{\color{blue}\alpha} N\pp{A}{r}\right)\right] = {\color{blue}\lambda} G - {\color{blue}\delta} H - {\color{blue}\rho} N\;.
   \end{align*}
 \item \texttt{prob\_id}=1: OPN model:
   \begin{align*}
