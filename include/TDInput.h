@@ -12,7 +12,7 @@
 // lambda       lambda              lambda 
 // mu           mu                  mu
 // delta_h      delta               delta_1
-// alpha        alpha               rho
+// alpha        alpha               alpha
 // theta        theta               theta
 // sigma        sigma
 // delta_n      rho                 delta_2

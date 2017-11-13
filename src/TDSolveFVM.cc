@@ -40,7 +40,10 @@ TDSolveFVM::TDSolveFVM(TDInput* tdInput_ptr) :
   alloc_array_full( N_dir, Nx+1 );
 
   FILE* ot_file = fopen( tdInput->outputFile, "w" );
-  fprintf( ot_file, "Time, time step size, num. point / x_c, G, H, N, A /newline x_f, V\n");
+  if ( tdSetup->prob_id == 0 )
+    fprintf( ot_file, "Time, time step size, num. point / x_c, G, H, N, A /newline x_f, V\n");
+  if ( tdSetup->prob_id == 1 )
+    fprintf( ot_file, "Time, time step size, num. point / x_c, G, H, M, A, P1, P2 /newline x_f, V\n");
   fclose(ot_file);
 }
 
@@ -57,10 +60,10 @@ TDSolveFVM::~TDSolveFVM(void) {
 
   // OPN model
   if ( tdSetup->prob_id == 1 ) {
-    erase_array( flux_p1, 1);
-    erase_array( flux_p2, 1);
-    erase_array(slope_p1, 1);
-    erase_array(slope_p2, 1);
+    erase_array( flux_p1, 1 );
+    erase_array( flux_p2, 1 );
+    erase_array( slope_p1, 1 );
+    erase_array( slope_p2, 1 );
   }
 }
 
@@ -71,7 +74,7 @@ void TDSolveFVM::setup(void) {
 
   // OPN model
   if ( tdSetup->prob_id == 1 ) 
-    setupLinSolve(mat_p, prc_p, sol_p, rhs_p, res_p, linSolve_p, Nx);
+    setupLinSolve( mat_p, prc_p, sol_p, rhs_p, res_p, linSolve_p, Nx );
 
   return;
 }
@@ -261,6 +264,24 @@ void TDSolveFVM::calc_dt(const int nt) {
 }
 
 void TDSolveFVM::output(const int nt) {
+
+  switch ( tdSetup->prob_id ) {
+    case 0:
+      output_pdgf( nt );
+      break;
+    case 1:
+      output_opn( nt );
+      break;
+    default:
+      std::cout << "Error: Problem id not defined.\n" << std::endl;
+      exit(1);
+      break;
+  }
+
+  return;
+}
+
+void TDSolveFVM::output_pdgf(const int nt) {
   FILE* ot_file = fopen( tdInput->radiusFile, "a" );
   fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\t%10.20f\n", tsol, data_r[nt], (*data_v[nt])[Nx],
       -((*data_a[nt])[Nx]-(*data_a[nt])[Nx-1])/dx/data_r[nt]);
@@ -286,6 +307,44 @@ void TDSolveFVM::output(const int nt) {
     fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\t%10.20f\t%10.20f\n",
         x_c[i] * data_r[nt], (*data_g[nt])[i], (*data_h[nt])[i],
         (*data_n[nt])[i], (*data_a[nt])[i] );
+
+  upscale_var( *data_g[nt], *data_g[nt], x_c, Nx, data_r[nt] );
+  upscale_var( *data_h[nt], *data_h[nt], x_c, Nx, data_r[nt] );
+  upscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt] );
+
+  for ( int i = 0; i < Nx+1; i++ )
+    fprintf( ot_file, "%10.20f\t%10.20f\n", x_f[i] * data_r[nt], (*data_v[nt])[i] );
+  fclose(ot_file);
+
+  return;
+}
+
+void TDSolveFVM::output_opn(const int nt) {
+  FILE* ot_file = fopen( tdInput->radiusFile, "a" );
+  fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\t%10.20f\n", tsol, data_r[nt], (*data_v[nt])[Nx],
+      -((*data_a[nt])[Nx]-(*data_a[nt])[Nx-1])/dx/data_r[nt]);
+  fclose(ot_file);
+
+  if ( !reach_term_now ) {
+    if ( use_tfreq ) {
+      if ( !reach_output_now ) return;
+    }
+    else {
+      if ( iter % tdSetup->freq != 0 ) return;
+    }
+  }
+  //if ( !reach_term_now && iter % tdSetup->freq != 0 ) return;
+  ot_file = fopen( tdInput->outputFile, "a" );
+  fprintf( ot_file, "%10.20f\t%10.20f\t%d\t%d\n", tsol, dtn, Nx, Nx+1 );
+
+  downscale_var( *data_g[nt], *data_g[nt], x_c, Nx, data_r[nt] );
+  downscale_var( *data_h[nt], *data_h[nt], x_c, Nx, data_r[nt] );
+  downscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt] );
+
+  for ( int i = 0; i < Nx; i++ )
+    fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\t%10.20f\t%10.20f\t%10.20f\t%10.20f\n",
+        x_c[i] * data_r[nt], (*data_g[nt])[i], (*data_h[nt])[i],
+        (*data_n[nt])[i], (*data_a[nt])[i], (*data_p1[nt])[i], (*data_p2[nt])[i] );
 
   upscale_var( *data_g[nt], *data_g[nt], x_c, Nx, data_r[nt] );
   upscale_var( *data_h[nt], *data_h[nt], x_c, Nx, data_r[nt] );
@@ -324,10 +383,6 @@ void TDSolveFVM::update_vel(const int nt) {
       break;
     case 1: // OPN model
       update_vel_prbid1(nt);
-      break;
-    default:
-      std::cout << "Error: Problem id not defined.\n" << std::endl;
-      exit(1);
       break;
   }
 

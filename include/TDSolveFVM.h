@@ -18,6 +18,7 @@ class TDSolveFVM : public TDSolve {
 
     TDSolveFVM(TDInput* tdInput_ptr);
     ~TDSolveFVM(void);
+
   protected:
     HVEC** flux_g;
     HVEC** flux_h;
@@ -36,6 +37,7 @@ class TDSolveFVM : public TDSolve {
 
     // Needs to update whenever a or n is modified
     void update_vel(const int nt);
+
   private:
     void update_vel_int(const int nt);
     void update_vel_int_mod(const int nt);
@@ -67,6 +69,10 @@ class TDSolveFVM : public TDSolve {
 
     void upscale_var(HVEC&, HVEC&, DType*&, int, DType);
     void downscale_var(HVEC&, HVEC&, DType*&, int, DType);
+
+    // Various output function
+    void output_pdgf(const int nt);
+    void output_opn(const int nt);
 
     // Try the non-dimensionalized version
     void set_ic_dim(void);

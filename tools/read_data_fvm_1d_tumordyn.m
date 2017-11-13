@@ -1,4 +1,4 @@
-function [data_c, data_f, time] = read_data_fvm_1d_tumordyn(data_file)
+function [data_c, data_f, time] = read_data_fvm_1d_tumordyn(prob_id, data_file)
 % get Nx
 fid   = fopen(data_file,'r');
 tline = fgetl(fid);
@@ -7,6 +7,15 @@ Nx = sscanf(tline,'%*f\t%*f\t%d\t%d');
 Nx_c = Nx(1);
 Nx_f = Nx(2);
 fclose(fid);
+
+% Number of data pieces
+Nd = 0;
+if prob_id==0
+  Nd = 5; % x_c G H N A
+end
+if prob_id==1
+  Nd = 7; % x_c G H M A P1 P2
+end
 
 % get the number of time-stamps
 extra_data_count = 1;
@@ -24,14 +33,14 @@ fclose(fid);
 
 % read the data
 time   = zeros(1,Nt);
-data_c = zeros(Nt,5,Nx_c);
+data_c = zeros(Nt,Nd,Nx_c);
 data_f = zeros(Nt,2,Nx_f);
 fid   = fopen(data_file,'r');
 tline = fgetl(fid);
 for t = 1:Nt
     tline   = fgetl(fid);
     time(t) = sscanf(tline,'%f\t%*f\t%*d\t%*d');
-    tmp_dat = fscanf(fid,'%f',[5 Nx_c]);
+    tmp_dat = fscanf(fid,'%f',[Nd Nx_c]);
     data_c(t,:,:) = tmp_dat(:,:);
     tmp_dat = fscanf(fid,'%f',[2 Nx_f]);
     tline   = fgetl(fid);

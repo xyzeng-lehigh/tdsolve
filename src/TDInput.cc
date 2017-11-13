@@ -139,7 +139,8 @@ void TDInput::parse(void) {
     else if (strcmp(name,"sigma")==0)
       tdCoef.sigma = atof(value);
     else if ( (strcmp(name,"delta_n")==0) ||
-              (strcmp(name,"delta_2")==0) )
+              (strcmp(name,"delta_2")==0) ||
+              (strcmp(name,"rho")==0) )
       tdCoef.delta_n = atof(value);
     else if ( (strcmp(name,"D")==0) ||
               (strcmp(name,"D_3")==0) )

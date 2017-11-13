@@ -1,12 +1,10 @@
+prob_id  = 0
 lambda   = 0.48
 mu       = 0.33
 delta    = 0.45
 alpha    = 0.015
 theta    = 1.0e+6
 n_bc     = 5.0e-3
-n_star   = 0.02
-rho_mnus = 0.0
-rho_plus = 3.0
 D       = 6.048
 // m in [7 170] x 10^4
 m       = 1.0e+5
