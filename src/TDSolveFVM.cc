@@ -406,11 +406,16 @@ void TDSolveFVM::update_vel_prbid1(const int nt) {
   (*data_v[nt])[0] = 0.0; // b.c. for velocity at x=0
   // First do the integration of
   // x^2R[lambda(1+b'P2/(b+P2))*G-delta_h*H-delta_n*N]
-  for ( int i = 0; i < Nx; i++ ) 
+  for ( int i = 0; i < Nx; i++ ) {
+    DType logistic_term = ( tdSetup->logistic ) ? 1.0 : 0.0;
     (*data_v[nt])[i+1] = (*data_v[nt])[i] + dx * (
-        lambda * ( 1.0 + (b_prime * (*data_p2[nt])[i])/(b + (*data_p2[nt])[i]) ) * (*data_g[nt])[i] - 
+        lambda * ( 1.0 + (b_prime * (*data_p2[nt])[i])/(b + (*data_p2[nt])[i]) ) * (*data_g[nt])[i] * 
+        ( 1.0 - logistic_term * (*data_g[nt])[i] ) - 
         delta_h * (*data_h[nt])[i] - delta_n * (*data_n[nt])[i] ) / data_r[nt]; // G, H, and M have not been upscaled
+  }
+
   downscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt] );
+
   // Next divide by x^2 and remove the contribution from N and dA
   for ( int i = 1; i < Nx; i++ ) {
     (*data_v[nt])[i] = (*data_v[nt])[i]/x_f[i]/x_f[i] - (alpha/data_r[nt]) * 
@@ -1229,6 +1234,12 @@ void TDSolveFVM::update_cells_opn_upw(const int fr, const int to) {
         loc_mu * a_prime * (*data_p1[fr])[i] / ( a + (*data_p1[fr])[i] ) * (*data_g[fr])[i] );
     (*data_h[to])[i] += dtn * (
         loc_mu * a_prime * (*data_p1[fr])[i] / ( a + (*data_p1[fr])[i] ) * (*data_g[fr])[i] );
+  }
+
+  if ( tdSetup->logistic ) {
+    for ( int i = 0; i < Nx; i++ ) 
+      (*data_g[to])[i] += dtn * lambda * ( 1.0 + b_prime * (*data_p2[fr])[i] / ( b + (*data_p2[fr])[i] ) ) * 
+        (*data_g[fr])[i] * ( - (*data_h[fr])[i] - (*data_n[fr])[i] - (*data_g[fr])[i] );
   }
 
   return;

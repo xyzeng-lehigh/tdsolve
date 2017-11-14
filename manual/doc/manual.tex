@@ -265,6 +265,19 @@ For example:
   More details are offered in Section~\ref{sec:model}.
 \item \texttt{n\_bc} is the boundary value $N_{\textrm{bc}}$ for the immune cell number $N$ (or $M$ of the OPN model).
 %\item \texttt{n\_star} is the threshold value $N^*$ that determines the dissipation rate of $N$; these rates are given by \texttt{rho\_mnus} if during the computation $N$ is smaller than $N^*$, and by \texttt{rho\_plus} if $N$ is larger than $N^*$.
+\item \texttt{logistic} is a switch for the logistic terms in the OPN model.
+  \begin{itemize}
+    \item 0: Turn the logistic terms off.
+    \item 1: Turn the logistic terms on. 
+      This will change the $G$-equation of the OPN model to (see the next section):
+      \begin{displaymath}
+        \pp{(r^2G)}{t} + \po{r}\left[r^2 G V\right] = {\color{blue}\lambda}\left[1+\frac{{\color{blue}b'}P_2}{{\color{blue}b}+P_2}\right]r^2G(1-H-M-G) - {\color{blue}\mu}\left[1+\frac{{\color{blue}a'}P_1}{{\color{blue}a}+P_1}\right]r^2G\;;
+      \end{displaymath}
+      and the $V$-equation to:
+      \begin{displaymath}
+        \frac{1}{r^2}\po{r}\left[r^2\left(V+{\color{blue}\alpha} M\pp{A}{r}\right)\right] = {\color{blue}\lambda}\left[1+\frac{{\color{blue}b'}P_2}{{\color{blue}b}+P_2}\right] G(1-G) - {\color{blue}\delta_1} H - {\color{blue}\delta_2} M\;.
+      \end{displaymath}
+  \end{itemize}
 \end{itemize}
 %For the second point, if a uniform dissipation rate for $N$ is to be used, you can delete the lines for \texttt{n\_star}, \texttt{rho\_mnus}, and \texttt{rho\_plus}, and use the following line instead:
 %\begin{lstlisting}[backgroundcolor = \color{lightgray}, language = bash, xleftmargin = 0.1cm, framexleftmargin = 0.1cm]

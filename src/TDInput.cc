@@ -63,10 +63,11 @@ TDInput::TDInput(void) {
   tdSetup.maxit  = INT_MAX;
   tdSetup.dTinit = 1e-10;
   tdSetup.dTgrow = 1.2;
-  tdSetup.nonDim = true;
-  tdSetup.bc_lim = true;
-  tdSetup.prob_id = 0;  // 0, default, single chemotaxis
-                        // 1, OPN
+  tdSetup.logistic = false;
+  tdSetup.nonDim   = true;
+  tdSetup.bc_lim   = true;
+  tdSetup.prob_id  = 0;  // 0, default, single chemotaxis
+                         // 1, OPN
 
 
   tdLin.Type      = LSYS_TYPE_DIR;
@@ -229,6 +230,8 @@ void TDInput::parse(void) {
       tdSetup.dTgrow = atof(value);
     else if (strcmp(name,"nonDimen")==0)
       tdSetup.nonDim = (atoi(value)!=0);
+    else if (strcmp(name,"logistic")==0)
+      tdSetup.logistic = (atoi(value)!=0);
     else if (strcmp(name,"bc_lim")==0)
       tdSetup.bc_lim = (atoi(value)!=0);
     else if (strcmp(name,"prob_id")==0)
