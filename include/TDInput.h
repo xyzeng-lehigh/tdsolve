@@ -32,6 +32,7 @@
 // a_prime                          a_prime
 // b                                b
 // b_prime                          b_prime
+// q                                q
 
 struct TDCoef {
   DType lambda, mu, delta_h, alpha, theta, sigma;
@@ -45,6 +46,7 @@ struct TDCoef {
   DType a, b, D_1, D_2; 
   DType a_prime, b_prime;
   DType alpha_1, alpha_2, beta_1, beta_2, gamma_1, gamma_2;
+  DType q;
 };
 
 struct TDMesh {

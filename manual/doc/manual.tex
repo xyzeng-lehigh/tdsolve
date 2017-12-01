@@ -269,13 +269,14 @@ For example:
   \begin{itemize}
     \item 0: Turn the logistic terms off.
     \item 1: Turn the logistic terms on. 
-      This will change the $G$-equation of the OPN model to (see the next section):
+      This will change %the $G$-equation of the OPN model to (see the next section):
+      %\begin{displaymath}
+      %  \pp{(r^2G)}{t} + \po{r}\left[r^2 G V\right] = {\color{blue}\lambda}\left(\frac{r}{R(t)}\right)^{\color{blue}q}\left[1+\frac{{\color{blue}b'}P_2}{{\color{blue}b}+P_2}\right]r^2G - {\color{blue}\mu}\left[1+\frac{{\color{blue}a'}P_1}{{\color{blue}a}+P_1}\right]r^2G\;;
+      %\end{displaymath}
+      %and 
+      the $V$-equation to:
       \begin{displaymath}
-        \pp{(r^2G)}{t} + \po{r}\left[r^2 G V\right] = {\color{blue}\lambda}\left[1+\frac{{\color{blue}b'}P_2}{{\color{blue}b}+P_2}\right]r^2G(1-H-M-G) - {\color{blue}\mu}\left[1+\frac{{\color{blue}a'}P_1}{{\color{blue}a}+P_1}\right]r^2G\;;
-      \end{displaymath}
-      and the $V$-equation to:
-      \begin{displaymath}
-        \frac{1}{r^2}\po{r}\left[r^2\left(V+{\color{blue}\alpha} M\pp{A}{r}\right)\right] = {\color{blue}\lambda}\left[1+\frac{{\color{blue}b'}P_2}{{\color{blue}b}+P_2}\right] G(1-G) - {\color{blue}\delta_1} H - {\color{blue}\delta_2} M\;.
+        \frac{1}{r^2}\po{r}\left[r^2\left(V+{\color{blue}\alpha} M\pp{A}{r}\right)\right] = {\color{blue}\lambda}\left(\frac{r}{R(t)}\right)^{\color{blue}q}\left[1+\frac{{\color{blue}b'}P_2}{{\color{blue}b}+P_2}\right] G(1-G) - {\color{blue}\delta_1} H - {\color{blue}\delta_2} M\;.
       \end{displaymath}
   \end{itemize}
 \end{itemize}
@@ -430,21 +431,21 @@ The models are determined by the variable \texttt{prob\_id}; and each model cont
 \begin{itemize}
 \item \texttt{prob\_id}=0: PDGF model (default):
   \begin{align*}
-    &\pp{(r^2G)}{t} + \po{r}\left[r^2 G V\right] = {\color{blue}\lambda} r^2G - {\color{blue}\mu} r^2G\;, \\
+    &\pp{(r^2G)}{t} + \po{r}\left[r^2 G V\right] = {\color{blue}\lambda}\left(\frac{r}{R(t)}\right)^{\color{blue}q} r^2G - {\color{blue}\mu} r^2G\;, \\
     &\pp{(r^2H)}{t} + \po{r}\left[r^2H V\right] = {\color{blue}\mu} r^2G - {\color{blue}\delta} r^2H\;, \\
     &\pp{(r^2N)}{t} + \po{r}\left[r^2N\left(V+{\color{blue}\alpha}\pp{A}{r}\right)\right] = - {\color{blue}\rho} r^2N\;,\\
     &\pp{(r^2A)}{t} = {\color{blue}D}\po{r}\left(r^2\pp{A}{r}\right) + \frac{\chi_{0\le r\le R}{\color{blue}m}r^2G}{{\color{blue}\beta}/{\color{blue}\theta}+G} - {\color{blue}\gamma} r^2A\;,\\
-    &\frac{1}{r^2}\po{r}\left[r^2\left(V+{\color{blue}\alpha} N\pp{A}{r}\right)\right] = {\color{blue}\lambda} G - {\color{blue}\delta} H - {\color{blue}\rho} N\;.
+    &\frac{1}{r^2}\po{r}\left[r^2\left(V+{\color{blue}\alpha} N\pp{A}{r}\right)\right] = {\color{blue}\lambda}\left(\frac{r}{R(t)}\right)^{\color{blue}q} G - {\color{blue}\delta} H - {\color{blue}\rho} N\;.
   \end{align*}
 \item \texttt{prob\_id}=1: OPN model:
   \begin{align*}
-    &\pp{(r^2G)}{t} + \po{r}\left[r^2 G V\right] = {\color{blue}\lambda}\left[1+\frac{{\color{blue}b'}P_2}{{\color{blue}b}+P_2}\right]r^2G - {\color{blue}\mu}\left[1+\frac{{\color{blue}a'}P_1}{{\color{blue}a}+P_1}\right]r^2G\;, \\
+    &\pp{(r^2G)}{t} + \po{r}\left[r^2 G V\right] = {\color{blue}\lambda}\left(\frac{r}{R(t)}\right)^{\color{blue}q}\left[1+\frac{{\color{blue}b'}P_2}{{\color{blue}b}+P_2}\right]r^2G - {\color{blue}\mu}\left[1+\frac{{\color{blue}a'}P_1}{{\color{blue}a}+P_1}\right]r^2G\;, \\
     &\pp{(r^2H)}{t} + \po{r}\left[r^2H V\right] = {\color{blue}\mu}\left[1+\frac{{\color{blue}a'}P_1}{{\color{blue}a}+P_1}\right]r^2G - {\color{blue}\delta_1} r^2H\;, \\
     &\pp{(r^2M)}{t} + \po{r}\left[r^2M\left(V+{\color{blue}\alpha}\pp{A}{r}\right)\right] = - {\color{blue}\delta_2} r^2M\;,\\
     &\pp{(r^2A)}{t} = {\color{blue}D_3}\po{r}\left(r^2\pp{A}{r}\right) + \frac{\chi_{0\le r\le R}{\color{blue}\alpha_3}r^2G}{{\color{blue}\beta_3}/{\color{blue}\theta}+G} - {\color{blue}\gamma_3} r^2A\;,\\
     &\pp{(r^2P_1)}{t} = {\color{blue}D_1}\po{r}\left(r^2\pp{P_1}{r}\right) + \frac{{\color{blue}\alpha_1}r^2M}{{\color{blue}\beta_1}/{\color{blue}\theta}+M} - {\color{blue}\gamma_1} r^2P_1\;,\\
     &\pp{(r^2P_2)}{t} = {\color{blue}D_2}\po{r}\left(r^2\pp{P_2}{r}\right) + \frac{{\color{blue}\alpha_2}r^2G}{{\color{blue}\beta_2}/{\color{blue}\theta}+G} - {\color{blue}\gamma_2} r^2P_2\;,\\
-    &\frac{1}{r^2}\po{r}\left[r^2\left(V+{\color{blue}\alpha} M\pp{A}{r}\right)\right] = {\color{blue}\lambda}\left[1+\frac{{\color{blue}b'}P_2}{{\color{blue}b}+P_2}\right] G - {\color{blue}\delta_1} H - {\color{blue}\delta_2} M\;.
+    &\frac{1}{r^2}\po{r}\left[r^2\left(V+{\color{blue}\alpha} M\pp{A}{r}\right)\right] = {\color{blue}\lambda}\left(\frac{r}{R(t)}\right)^{\color{blue}q}\left[1+\frac{{\color{blue}b'}P_2}{{\color{blue}b}+P_2}\right] G - {\color{blue}\delta_1} H - {\color{blue}\delta_2} M\;.
   \end{align*}
 \end{itemize}
 
@@ -491,6 +492,7 @@ Input file        & PDGF      & OPN        & \texttt{C} variable & Default value
 \texttt{b}        & N/A       & $b$        & \texttt{b}          & $100.0$       \\ \hline
 \texttt{a\_prime} & N/A       & $a'$       & \texttt{a\_prime}   & $1.0$         \\ \hline
 \texttt{b\_prime} & N/A       & $b'$       & \texttt{b\_prime}   & $1.0$         \\ \hline
+\texttt{q}        & $q$       & $q$        & \texttt{q}          & $0.0$         \\ \hline
 \end{tabular}
 \setlength{\tabcolsep}{1pt}
 \end{table}

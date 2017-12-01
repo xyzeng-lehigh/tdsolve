@@ -34,6 +34,7 @@ TDInput::TDInput(void) {
   tdCoef.beta_2      = 1000.0;
   tdCoef.gamma_1     = 1.0;
   tdCoef.gamma_2     = 1.0;
+  tdCoef.q           = 0.0;
 
   tdMesh.x_l     = 0.0;
   tdMesh.x_r     = 1.0;
@@ -188,6 +189,8 @@ void TDInput::parse(void) {
       tdCoef.gamma_1 = atof(value);
     else if (strcmp(name,"gamma_2")==0)
       tdCoef.gamma_2 = atof(value);
+    else if (strcmp(name,"q")==0)
+      tdCoef.q = atof(value);
     else if (strcmp(name,"x_l")==0)
       tdMesh.x_l = atof(value);
     else if (strcmp(name,"x_r")==0)
