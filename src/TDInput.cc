@@ -20,6 +20,7 @@ TDInput::TDInput(void) {
   tdCoef.n_bc        = 5.0e-3;
   tdCoef.R_0         = 1.0;
   tdCoef.mu_slp      = 0.0;
+  tdCoef.q           = 0.0;
   
   //OPN model
   tdCoef.a           = 100.0;
@@ -34,7 +35,7 @@ TDInput::TDInput(void) {
   tdCoef.beta_2      = 1000.0;
   tdCoef.gamma_1     = 1.0;
   tdCoef.gamma_2     = 1.0;
-  tdCoef.q           = 0.0;
+  tdCoef.omega       = 0.0;
 
   tdMesh.x_l     = 0.0;
   tdMesh.x_r     = 1.0;
@@ -193,6 +194,8 @@ void TDInput::parse(void) {
       tdCoef.gamma_2 = atof(value);
     else if (strcmp(name,"q")==0)
       tdCoef.q = atof(value);
+    else if (strcmp(name,"omega")==0)
+      tdCoef.omega = atof(value);
     else if (strcmp(name,"x_l")==0)
       tdMesh.x_l = atof(value);
     else if (strcmp(name,"x_r")==0)

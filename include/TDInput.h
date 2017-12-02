@@ -41,12 +41,13 @@ struct TDCoef {
   DType D, alpha_a, beta_a, gamma_a;
   DType n_bc;
   DType R_0;
+  DType q;
 
   // Additional parameters of the OPN model
   DType a, b, D_1, D_2; 
   DType a_prime, b_prime;
   DType alpha_1, alpha_2, beta_1, beta_2, gamma_1, gamma_2;
-  DType q;
+  DType omega;
 };
 
 struct TDMesh {

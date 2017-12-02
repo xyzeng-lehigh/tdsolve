@@ -1249,6 +1249,7 @@ void TDSolveFVM::update_cells_opn_upw(const int fr, const int to) {
   DType q       = tdCoef->q;
   DType mu      = tdCoef->mu;
   DType mu_slp  = tdCoef->mu_slp;
+  DType omega   = tdCoef->omega;
 
   // Additional source terms
   for ( int i = 0; i < Nx; i++ ) {
@@ -1260,6 +1261,13 @@ void TDSolveFVM::update_cells_opn_upw(const int fr, const int to) {
     (*data_h[to])[i] += dtn * (
         loc_mu * a_prime * (*data_p1[fr])[i] / ( a + (*data_p1[fr])[i] ) * (*data_g[fr])[i] );
   }
+
+  if ( omega != 0.0 )
+    for ( int i = 0; i < Nx; i++ ) {
+      DType loc_r = x_c[i] * data_r[fr];
+      (*data_g[to])[i] += dtn * (
+          - omega * (*data_g[fr])[i] * (*data_n[fr])[i] / loc_r / loc_r );
+    }
 
   //if ( tdSetup->logistic ) {
   //  for ( int i = 0; i < Nx; i++ ) {
@@ -1284,6 +1292,7 @@ void TDSolveFVM::update_cells_opn_muscl(const int fr, const int to) {
   DType q       = tdCoef->q;
   DType mu      = tdCoef->mu;
   DType mu_slp  = tdCoef->mu_slp;
+  DType omega   = tdCoef->omega;
 
   // Additional source terms
   for ( int i = 0; i < Nx; i++ ) {
@@ -1295,6 +1304,13 @@ void TDSolveFVM::update_cells_opn_muscl(const int fr, const int to) {
     (*data_h[to])[i] += dtn * (
         loc_mu * a_prime * (*data_p1[fr])[i] / ( a + (*data_p1[fr])[i] ) * (*data_g[fr])[i] );
   }
+
+  if ( omega != 0.0 )
+    for ( int i = 0; i < Nx; i++ ) {
+      DType loc_r = x_c[i] * data_r[fr];
+      (*data_g[to])[i] += dtn * (
+          - omega * (*data_g[fr])[i] * (*data_n[fr])[i] / loc_r / loc_r );
+    }
 
   return;
 }
