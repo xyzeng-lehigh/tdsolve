@@ -309,6 +309,8 @@ This is also where you should modify to introduce more initial conditions (and r
 \item \texttt{cfl}: The Courant number $\alpha_{\textrm{cfl}}$ to compute the time step size. For explicit method its value should be no more than $1.0$ and the suggested value is $0.4$; for implicit method its value can be increased to $\sim 20.0$.
 \item \texttt{Tinit}: The initial time -- the default is zero.
 \item \texttt{Tterm}: The terminal time -- the difference between the terminal and the initial times is the time span of the numerical simulations.
+\item \texttt{Rterm}: The terminal radius -- the computation will stop when Rterm is reached.
+\item \texttt{Rdead}: The diminishing radius -- the computation will stop when Rdead is reached. It is required that \texttt{Rterm} $>$ \texttt{R\_0} $>$ \texttt{Rdead}.
 \item \texttt{Tfreq}: The frequency at which the solution is sampled and written to the solution files.
 \item \texttt{time\_method}: Time-integrator; 0 for a first-order method and 1 for a second-order method.
 \item \texttt{max\_iter}: Maximum allowed number of iterations. The program will end whenever this number is reached or the terminal time is achieved, whichever is earlier.
