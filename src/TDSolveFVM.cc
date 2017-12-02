@@ -224,6 +224,9 @@ void TDSolveFVM::calc_dt(const int nt) {
   if ( iter != 0 )
     tsol += dtn;
 
+  if ( data_r[nt] <= tdSetup->Rdead || data_r[nt] >= tdSetup->Rterm )
+    reach_term_now = true;
+
   if ( reach_term_next )
     reach_term_now = true;
 

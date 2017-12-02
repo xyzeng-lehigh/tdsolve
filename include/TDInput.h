@@ -69,6 +69,7 @@ struct TDSetup {
   int   scell, schem, vel, rbc, lbc;
   int   tmeth;
   DType Tinit, Tterm, Tfreq;
+  DType Rterm, Rdead;
   int   freq;
   int   maxit;
   DType dTinit, dTgrow;

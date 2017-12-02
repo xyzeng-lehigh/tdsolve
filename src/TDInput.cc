@@ -59,6 +59,8 @@ TDInput::TDInput(void) {
   tdSetup.tmeth  = 1;
   tdSetup.Tinit  = 0.0;
   tdSetup.Tterm  = 1.0;
+  tdSetup.Rterm  = 6.0;
+  tdSetup.Rdead  = 0.0;
   tdSetup.Tfreq  = -1.0;
   tdSetup.freq   = 1;
   tdSetup.maxit  = INT_MAX;
@@ -221,6 +223,10 @@ void TDInput::parse(void) {
       tdSetup.Tinit = atof(value);
     else if (strcmp(name,"Tterm")==0)
       tdSetup.Tterm = atof(value);
+    else if (strcmp(name,"Rterm")==0)
+      tdSetup.Rterm = atof(value);
+    else if (strcmp(name,"Rdead")==0)
+      tdSetup.Rdead = atof(value);
     else if (strcmp(name,"Tfreq")==0)
       tdSetup.Tfreq = atof(value);
     else if (strcmp(name,"frequency")==0)
