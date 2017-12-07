@@ -406,17 +406,20 @@ void TDSolveFVM::update_vel_prbid1(const int nt) {
   DType b       = tdCoef->b;
   DType b_prime = tdCoef->b_prime;
   DType alpha   = tdCoef->alpha;
+  DType omega   = tdCoef->omega;
       
   (*data_v[nt])[0] = 0.0; // b.c. for velocity at x=0
   // First do the integration of
   // x^2R[lambda(1+b'P2/(b+P2))*G-delta_h*H-delta_n*N]
   for ( int i = 0; i < Nx; i++ ) {
     DType loc_lambda = ( q == 0.0 ) ? lambda : lambda * pow(x_c[i],q);
+    DType loc_r = x_c[i] * data_r[nt];
     DType logistic_term = ( tdSetup->logistic ) ? 1.0 : 0.0;
     (*data_v[nt])[i+1] = (*data_v[nt])[i] + dx * (
         loc_lambda * ( 1.0 + (b_prime * (*data_p2[nt])[i])/(b + (*data_p2[nt])[i]) ) * (*data_g[nt])[i] * 
         ( 1.0 - logistic_term * (*data_g[nt])[i] ) - 
-        delta_h * (*data_h[nt])[i] - delta_n * (*data_n[nt])[i] ) / data_r[nt]; // G, H, and M have not been upscaled
+        delta_h * (*data_h[nt])[i] - delta_n * (*data_n[nt])[i] -
+        omega * (*data_g[nt])[i] * (*data_n[nt])[i] / loc_r / loc_r ) / data_r[nt]; // G, H, and M have not been upscaled
   }
 
   downscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt] );
