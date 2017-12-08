@@ -61,11 +61,11 @@ class TDSolveFVM : public TDSolve {
     void update_chem_opn_upw_be(const int fr, const int to, 
                                 const DType coef_D, const DType coef_alpha, 
                                 const DType coef_beta, const DType coef_gamma, 
-                                HVEC**& data_P);
+                                HVEC**& data_source, HVEC**& data_P);
     void update_chem_opn_muscl_imex(const int fr, const int to, 
                                 const DType coef_D, const DType coef_alpha, 
                                 const DType coef_beta, const DType coef_gamma, 
-                                HVEC**& data_P, HVEC**& flux_P, HVEC**& slope_P);
+                                HVEC**& data_source, HVEC**& data_P, HVEC**& flux_P, HVEC**& slope_P);
 
     void upscale_var(HVEC&, HVEC&, DType*&, int, DType);
     void downscale_var(HVEC&, HVEC&, DType*&, int, DType);
@@ -74,11 +74,6 @@ class TDSolveFVM : public TDSolve {
     void output_pdgf(const int nt);
     void output_opn(const int nt);
 
-    // Try the non-dimensionalized version
-    void set_ic_dim(void);
-    void update_sol_dim(const int fr, const int to);
-    void update_chem_upw_be_dim(const int fr, const int to);
-    void update_vel_dim(const int nt);
 };
 
 #endif

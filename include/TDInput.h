@@ -77,7 +77,6 @@ struct TDSetup {
 
   bool  logistic;
   bool  bc_lim;
-  bool  nonDim;
 
   int   prob_id;
 };

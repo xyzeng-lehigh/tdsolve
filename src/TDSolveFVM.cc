@@ -81,11 +81,6 @@ void TDSolveFVM::setup(void) {
 
 void TDSolveFVM::set_ic(void) {
 
-  if ( !tdSetup->nonDim ) {
-    set_ic_dim();
-    return;
-  }
-
   data_r[0] = tdCoef->R_0;
   switch ( tdSetup->ic ) {
     case 0: 
@@ -136,47 +131,6 @@ void TDSolveFVM::set_ic(void) {
   FILE* ot_file = fopen( tdInput->radiusFile, "w" );
   fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\t%10.20f\n", 
       tsol, data_r[0], (*data_v[0])[Nx], 
-      -((*data_a[0])[Nx]-(*data_a[0])[Nx-1])/dx/data_r[0]);
-  fclose(ot_file);
-
-  return;
-}
-
-void TDSolveFVM::set_ic_dim(void) {
-
-  data_r[0] = tdCoef->R_0;
-  DType theta = tdCoef->theta;
-
-  switch ( tdSetup->ic ) {
-    case 0: 
-      {
-        (*data_g[0]) = 0.84 * theta;
-        (*data_h[0]) = (0.16-tdCoef->n_bc) * theta;
-        (*data_n[0]) = (tdCoef->n_bc) * theta;
-        DType a_coef = 1.0e+3;
-        for ( int i = 0; i < Na; i++ ) {
-          DType tvar = x_a_c[i] * data_r[0];
-          (*data_a[0])[i] = a_coef * std::exp( -tvar*tvar );
-        }
-      }
-      break;
-    default:
-      std::cout << "Error: No initial condition is defined ... Exit ...\n" << std::endl;
-      exit(1);
-      break;
-  }
-
-  tdCoef->n_bc = tdCoef->n_bc * theta;
-
-  upscale_var( *data_g[0], *data_g[0], x_c, Nx, data_r[0]);
-  upscale_var( *data_h[0], *data_h[0], x_c, Nx, data_r[0]);
-  upscale_var( *data_n[0], *data_n[0], x_c, Nx, data_r[0]);
-
-  update_vel_dim(0);
-
-  FILE* ot_file = fopen( tdInput->radiusFile, "w" );
-  fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\t%10.20f\n", 
-      tsol, data_r[0], (*data_v[0])[Nx],
       -((*data_a[0])[Nx]-(*data_a[0])[Nx-1])/dx/data_r[0]);
   fclose(ot_file);
 
@@ -367,11 +321,6 @@ void TDSolveFVM::output_opn(const int nt) {
 
 void TDSolveFVM::update_vel(const int nt) {
 
-  if ( !tdSetup->nonDim ) {
-    update_vel_dim( nt );
-    return;
-  }
-  
   switch ( tdSetup->prob_id ) {
     case 0:
       switch ( tdSetup->vel ) {
@@ -548,11 +497,6 @@ void TDSolveFVM::update_vel_int_test(const int nt) {
 
 void TDSolveFVM::update_sol(const int fr, const int to) {
 
-  if ( !tdSetup->nonDim ) {
-    update_sol_dim( fr, to );
-    return;
-  }
-
   update_rad( fr, to );
 
   switch( tdSetup->prob_id ) {
@@ -617,15 +561,17 @@ void TDSolveFVM::update_sol(const int fr, const int to) {
           // Update A
           update_chem_upw_be( fr, to ); 
           // Update P1 and P2
-          update_chem_opn_upw_be( fr, to, tdCoef->D_1, tdCoef->alpha_1, tdCoef->beta_1, tdCoef->gamma_1, data_p1 );
-          update_chem_opn_upw_be( fr, to, tdCoef->D_2, tdCoef->alpha_2, tdCoef->beta_2, tdCoef->gamma_2, data_p2 );
+          update_chem_opn_upw_be( fr, to, tdCoef->D_1, tdCoef->alpha_1, tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1 );
+          update_chem_opn_upw_be( fr, to, tdCoef->D_2, tdCoef->alpha_2, tdCoef->beta_2, tdCoef->gamma_2, data_g, data_p2 );
           break;
         case 1: // Explicit second-order muscl for advection and implicit cd for diffusion
           // Update A
           update_chem_muscl_imex( fr, to ); 
           // Update P1 and P2
-          update_chem_opn_muscl_imex( fr, to, tdCoef->D_1, tdCoef->alpha_1, tdCoef->beta_1, tdCoef->gamma_1, data_p1, flux_p1, slope_p1 );
-          update_chem_opn_muscl_imex( fr, to, tdCoef->D_2, tdCoef->alpha_2, tdCoef->beta_2, tdCoef->gamma_2, data_p2, flux_p2, slope_p2 );
+          update_chem_opn_muscl_imex( fr, to, tdCoef->D_1, tdCoef->alpha_1, tdCoef->beta_1, tdCoef->gamma_1, 
+                                      data_n, data_p1, flux_p1, slope_p1 );
+          update_chem_opn_muscl_imex( fr, to, tdCoef->D_2, tdCoef->alpha_2, tdCoef->beta_2, tdCoef->gamma_2, 
+                                      data_g, data_p2, flux_p2, slope_p2 );
           break;
         default:
           std::cout << "Warning: The spatial scheme for chem not defined, "
@@ -633,70 +579,14 @@ void TDSolveFVM::update_sol(const int fr, const int to) {
           // Update A
           update_chem_upw_be( fr, to );
           // Update P1 and P2
-          update_chem_opn_upw_be( fr, to, tdCoef->D_1, tdCoef->alpha_1, tdCoef->beta_1, tdCoef->gamma_1, data_p1 );
-          update_chem_opn_upw_be( fr, to, tdCoef->D_2, tdCoef->alpha_2, tdCoef->beta_2, tdCoef->gamma_2, data_p2 );
+          update_chem_opn_upw_be( fr, to, tdCoef->D_1, tdCoef->alpha_1, tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1 );
+          update_chem_opn_upw_be( fr, to, tdCoef->D_2, tdCoef->alpha_2, tdCoef->beta_2, tdCoef->gamma_2, data_g, data_p2 );
           break;
       }
       break;
   }
 
   update_vel( to );
-  return;
-}
-
-void TDSolveFVM::update_sol_dim(const int fr, const int to) {
-  update_rad( fr, to );
-
-  update_cells_upw( fr, to );
-
-  update_chem_upw_be_dim( fr, to );
-
-  update_vel_dim( to );
-
-  return;
-}
-
-void TDSolveFVM::update_vel_dim(const int nt) {
-
-  DType lambda  = tdCoef->lambda;
-  DType q       = tdCoef->q;
-  DType delta_h = tdCoef->delta_h;
-  DType alpha   = tdCoef->alpha;
-
-  (*data_v[nt])[0] = 0.0; // b.c. for velocity at x=0
-
-  for ( int i = 0; i < Nx; i++ ) {
-    DType loc_lambda = ( q == 0.0 ) ? lambda : lambda * pow(x_c[i],q);
-    DType denom = (*data_g[nt])[i] + (*data_h[nt])[i] + (*data_n[nt])[i];
-    (*data_v[nt])[i+1] = (*data_v[nt])[i] + dx * x_c[i] * x_c[i] * data_r[nt] *
-      ( loc_lambda * (*data_g[nt])[i] - delta_h * (*data_h[nt])[i] ) / denom;
-    DType val_r = 0.0;
-    DType val_l = 0.0;
-
-    if ( i == 0 )
-      val_l = 0.0;
-    else
-      val_l = (alpha/data_r[nt]/data_r[nt]/data_r[nt]) * 
-        0.5 * ( (*data_n[nt])[i-1] + (*data_n[nt])[i] ) * 
-        ( ( (*data_a[nt])[i]-(*data_a[nt])[i-1]) / dx );
-
-    if ( i == Nx-1 )
-      val_r = (alpha/data_r[nt]/data_r[nt]/data_r[nt]) * 
-        0.5 * ( (*data_n[nt])[i] + 
-            tdCoef->n_bc * (x_f[Nx]+0.5*dx) * (x_f[Nx]+0.5*dx) * data_r[nt] * data_r[nt] ) * 
-        ( ( (*data_a[nt])[i+1]-(*data_a[nt])[i]) / dx );
-    else
-      val_r = (alpha/data_r[nt]/data_r[nt]/data_r[nt]) * 
-        0.5 * ( (*data_n[nt])[i] + (*data_n[nt])[i+1] ) * 
-        ( ( (*data_a[nt])[i+1]-(*data_a[nt])[i]) / dx );
-
-    (*data_v[nt])[i+1] = (*data_v[nt])[i+1] - ( val_r - val_l ) 
-      * x_c[i] * x_c[i] * data_r[nt] * data_r[nt] / denom;
-  }
-
-  for ( int i = 1; i < Nx+1; i++ )
-    (*data_v[nt])[i] = (*data_v[nt])[i]/x_f[i]/x_f[i];
-
   return;
 }
 
@@ -1580,7 +1470,7 @@ void TDSolveFVM::update_chem_muscl_imex(const int fr, const int to) {
 
 void TDSolveFVM::update_chem_opn_upw_be(const int fr, const int to, 
     const DType coef_D, const DType coef_alpha, const DType coef_beta, 
-    const DType coef_gamma, HVEC**& data_P) {
+    const DType coef_gamma, HVEC**& data_source, HVEC**& data_P) {
   rhs_p->reset( 0.0 );
   mat_p->reset( 0.0 );
   sol_p->reset( 0.0 );
@@ -1595,8 +1485,8 @@ void TDSolveFVM::update_chem_opn_upw_be(const int fr, const int to,
     DType loc_r_fr = x_c[i] * data_r[fr];
     DType loc_r_to = x_c[i] * data_r[to];
     comp = loc_r_fr * loc_r_fr * (*data_P[fr])[i];
-    comp += dtn * coef_alpha * (*data_n[to])[i] / 
-      (coef_beta/theta+(*data_n[to])[i]/loc_r_to/loc_r_to);
+    comp += dtn * coef_alpha * (*data_source[to])[i] / 
+      (coef_beta/theta+(*data_source[to])[i]/loc_r_to/loc_r_to);
     comp /= loc_r_to * loc_r_to;
   }
 
@@ -1714,7 +1604,8 @@ void TDSolveFVM::update_chem_opn_upw_be(const int fr, const int to,
 
 void TDSolveFVM::update_chem_opn_muscl_imex(const int fr, const int to, 
     const DType coef_D, const DType coef_alpha, const DType coef_beta, 
-    const DType coef_gamma, HVEC**& data_P, HVEC**& flux_P, HVEC**& slope_P) {
+    const DType coef_gamma, HVEC**& data_source, 
+    HVEC**& data_P, HVEC**& flux_P, HVEC**& slope_P) {
   rhs_p->reset( 0.0 );
   mat_p->reset( 0.0 );
   sol_p->reset( 0.0 );
@@ -1769,8 +1660,8 @@ void TDSolveFVM::update_chem_opn_muscl_imex(const int fr, const int to,
     DType loc_r_fr = x_c[i] * data_r[fr];
     DType loc_r_to = x_c[i] * data_r[to];
     comp = loc_r_fr * loc_r_fr * (*data_P[fr])[i];
-    comp += dtn * coef_alpha * (*data_n[to])[i] / 
-      (coef_beta/theta+(*data_n[to])[i]/loc_r_to/loc_r_to);
+    comp += dtn * coef_alpha * (*data_source[to])[i] / 
+      (coef_beta/theta+(*data_source[to])[i]/loc_r_to/loc_r_to);
     comp -= ((*flux_P[0])[i+1] - (*flux_P[0])[i]) * (dtn/dx);
     comp /= loc_r_to * loc_r_to;
     rhs_p->set(i,comp);
@@ -1834,137 +1725,6 @@ void TDSolveFVM::update_chem_opn_muscl_imex(const int fr, const int to,
     HVEC vsol(1);
     vsol = comp.getVal();
     (*data_P[to])[i] = vsol[0];
-  }
-
-  return;
-}
-
-void TDSolveFVM::update_chem_upw_be_dim(const int fr, const int to) {
-  rhs_a->reset( 0.0 );
-  mat_a->reset( 0.0 );
-  sol_a->reset( 0.0 );
-
-  DType alpha_a = tdCoef->alpha_a;
-  DType D       = tdCoef->D;
-  DType beta_a  = tdCoef->beta_a;
-  DType gamma_a = tdCoef->gamma_a;
-
-  DType dror = (*data_v[fr])[Nx]/data_r[fr];
-
-  // RHS
-  VComp comp(1,0.0);
-  for ( int i = 0; i < Na; i++ ) {
-    DType loc_r_fr = x_a_c[i] * data_r[fr];
-    DType loc_r_to = x_a_c[i] * data_r[to];
-    comp = loc_r_fr * loc_r_fr * (*data_a[fr])[i];
-    if ( i < Nx ) { // G is active 
-      comp += dtn * alpha_a * (*data_g[to])[i] / 
-        (beta_a+(*data_g[to])[i]/loc_r_to/loc_r_to);
-    }
-    comp /= loc_r_to*loc_r_to;
-    rhs_a->set(i,comp);
-  }
-
-  // Matrix
-  Entry elem(1,0.0);
-
-  // Left boundary
-  {
-    DType loc_v_r = - x_a_f[1] * dror;
-    DType coef_adv_0 = 0.0;
-    DType coef_adv_1 = 0.0;
-
-    DType loc_r_0 = x_a_c[0] * data_r[to];
-    DType loc_r_1 = x_a_c[1] * data_r[to];
-
-    if ( loc_v_r >= 0.0 )
-      coef_adv_0 += (dtn*loc_v_r/dx)*loc_r_0*loc_r_0;
-    else
-      coef_adv_1 += (dtn*loc_v_r/dx)*loc_r_1*loc_r_1;
-
-    DType coef_diff_1 = dtn * D * x_a_f[1] * x_a_f[1] / dx / dx;
-
-    elem = 1.0 + dtn * ( gamma_a + dror ) + 
-      (coef_diff_1 + coef_adv_0) / loc_r_0 / loc_r_0;
-    mat_a->set(0,0,elem);
-
-    elem = (- coef_diff_1 + coef_adv_1) / loc_r_0 / loc_r_0;
-    mat_a->set(0,1,elem);
-  }
-  // Interior cells
-  for ( int i = 1; i < Na-1; i++ ) {
-    DType loc_v_r = - x_a_f[i+1] * dror;
-    DType loc_v_l = - x_a_f[i] * dror;
-    DType coef_adv_c = 0.0;
-    DType coef_adv_r = 0.0;
-    DType coef_adv_l = 0.0;
-
-    DType loc_r_r = x_a_c[i+1] * data_r[to];
-    DType loc_r_c = x_a_c[i] * data_r[to];
-    DType loc_r_l = x_a_c[i-1] * data_r[to];
-
-    if ( loc_v_r >= 0.0 ) 
-      coef_adv_c += (dtn*loc_v_r/dx)*loc_r_c*loc_r_c;
-    else
-      coef_adv_r += (dtn*loc_v_r/dx)*loc_r_r*loc_r_r;
-
-    if ( loc_v_l >= 0.0 )
-      coef_adv_l -= (dtn*loc_v_l/dx)*loc_r_l*loc_r_l;
-    else
-      coef_adv_c -= (dtn*loc_v_l/dx)*loc_r_c*loc_r_c;
-
-    DType coef_diff_r = dtn * D * x_a_f[i+1] * x_a_f[i+1] / dx / dx;
-    DType coef_diff_l = dtn * D * x_a_f[i] * x_a_f[i] / dx / dx;
-
-    elem = (- coef_diff_l + coef_adv_l) / loc_r_c / loc_r_c;
-    mat_a->set(i,i-1,elem);
-
-    elem = 1.0 + dtn * ( gamma_a + dror ) + 
-      (coef_diff_l + coef_diff_r + coef_adv_c) / loc_r_c / loc_r_c;
-    mat_a->set(i,i,elem);
-
-    elem = (- coef_diff_r + coef_adv_r) / loc_r_c / loc_r_c;
-    mat_a->set(i,i+1,elem);
-  }
-  // Right boundary
-  {
-    DType loc_v_l = - x_a_f[Na-1] * dror;
-    DType coef_adv_l = 0.0;
-    DType coef_adv_c = 0.0;
-
-    DType loc_r_l = x_a_c[Na-2] * data_r[to];
-    DType loc_r_c = x_a_c[Na-1] * data_r[to];
-
-    if ( loc_v_l >= 0.0 )
-      coef_adv_l -= (dtn*loc_v_l/dx)*loc_r_l*loc_r_l;
-    else
-      coef_adv_c -= (dtn*loc_v_l/dx)*loc_r_c*loc_r_c;
-
-    DType coef_diff_r = dtn * D * x_a_f[Na] * x_a_f[Na] / dx / dx;
-    DType coef_diff_l = dtn * D * x_a_f[Na-1] * x_a_f[Na-1] / dx / dx;
-
-    elem = (- coef_diff_l + coef_adv_l) / loc_r_c / loc_r_c;
-    mat_a->set(Na-1,Na-2,elem);
-
-    elem = 1.0 + dtn * ( gamma_a + dror ) + 
-      (coef_diff_l + coef_diff_r + coef_adv_c) / loc_r_c / loc_r_c;
-    mat_a->set(Na-1,Na-1,elem);
-  }
-
-  // Initialize solution
-  for ( int i = 0; i < Na; i++ ) {
-    comp = (*data_a[fr])[i];
-    sol_a->set(i,comp);
-  }
-
-  linSolve_a->solve();
-
-  // Fetch solution
-  for ( int i = 0; i < Na; i++ ) {
-    comp = sol_a->get(i);
-    HVEC vsol(1);
-    vsol = comp.getVal();
-    (*data_a[to])[i] = vsol[0];
   }
 
   return;
