@@ -305,13 +305,14 @@ R^{k+1} = R^k + \Delta\tau^kV_M^k\;.
 {\bf Step 4.} Computing the velocity $V_i^{k+1}$ makes use of the integral equation~(\ref{eq:eqn_pde_v_sol}) with the boundary condition $V_0^{k+1} = V(\eta=0,\tau^{k+1}) = 0$.
 The integral of (\ref{eq:eqn_pde_v_sol}) for $\eta=\eta_i=ih$ is clearly approximated by:
 \begin{displaymath}
-\int_0^{ih}\xi^2(\lambda G(\eta,\tau^{k+1})-\delta H(\eta,\tau^{k+1}))d\xi
+\int_0^{ih}\xi^2(\lambda G(\xi,\tau^{k+1})-\delta H(\xi,\tau^{k+1}))d\xi
 \approx \frac{1}{(R^{k+1})^2}\sum_{j=1}^i\Delta\eta\left(\lambda\tilde{G}_j^{k+1}-\delta\tilde{H}_j^{k+1}\right)\;,
 \end{displaymath}
 thus the following formula is used to compute the velocity at each grid point:
 \begin{align}
 \label{eq:num_gen_v_0}
 V_0^{k+1} &= 0\;; \\
+\label{eq:num_gen_v_i}
 V_i^{k+1} &= \frac{1}{(\eta_i^{k+1})^2R^{k+1}}\sum_{j=1}^i\Delta\eta\left(\lambda\tilde{G}_j^{k+1}-\delta\tilde{H}_j^{k+1}\right) - \frac{\alpha}{R^{k+1}}\overline{N_{i+1/2}}^{k+1}\frac{A_{i+1}^{k+1}-A_i^{k+1}}{\Delta\eta}\;,\ 1\le i\le M\;.
 \end{align}
 Here $\overline{N_{i+1/2}}^{k+1} = (N_i^{k+1}+N_{i+1}^{k+1})/2$.
@@ -325,7 +326,7 @@ To derive a finite-volume formulation for $G$, for example, we integrate (\ref{e
 Here $F_j^G$ is a numerical flux approximating $(V/R-\eta R'/R)\tilde{G}$ at $\eta_j$.
 Similar formulations can be described for $H$ and $N$:
 \begin{align*}
-&\frac{d\tilde{H}_i}{d\tau} + \frac{1}{\Delta\eta}\left[F^H_{i}-F^H_{i-1}\right] = \lambda\tilde{G}_i-\mu\tilde{H}_i-\frac{R'}{R}\tilde{H}_i\;,\\
+&\frac{d\tilde{H}_i}{d\tau} + \frac{1}{\Delta\eta}\left[F^H_{i}-F^H_{i-1}\right] = \mu\tilde{G}_i-\delta\tilde{H}_i-\frac{R'}{R}\tilde{H}_i\;,\\
 &\frac{d\tilde{N}_i}{d\tau} + \frac{1}{\Delta\eta}\left[F^N_{i}-F^N_{i-1}\right] = -\frac{R'}{R}\tilde{N}_i\;.
 \end{align*}
 In general, a $p$-th order flux function leads to a $p$-th order spatial discretization.
