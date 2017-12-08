@@ -296,14 +296,14 @@ We denote the solutions by $\mathcal{S}$, it contains the following information 
 \begin{itemize}
 \item The radius $R$.
 \item The cell numbers $\tilde{G}_i$, $\tilde{H}_i$, and $\tilde{M}_i$ for $1\le i\le N$.
-\item The velocity $V_i$, where $0\le i\le M$.
+\item The velocity $V_i$, where $0\le i\le N$.
 \item The chemotaxis attractant concentration $A_i$ for $1\le i\le mN$.
 \item The osteopontin concentrations $P_1$ and $P_2$ for $1\le i \le N$.
 \end{itemize}
 Here $m>1$ is a positive number that denotes the truncated domain for computing $A$.
 Particularly, because $A$ is defined on $\eta\in\overline{\mathbb{R}^+}$ it is not easy to solve for $A$ on the entire half line.
 Nevertheless, because the source term involving $G$ vanishes for $\eta\ge1$, we expect $A$ to decay exponentially as $\eta\to\infty$.
-Hence we approximate this unbounded differential equation by setting the boundary condition $A(\eta=m,\tau)=0$ and solve for $A$ on the truncated interval $[0,\ m]$, which is discretized using $mM$ intervals of the same size $\Delta\eta$.
+Hence we approximate this unbounded differential equation by setting the boundary condition $A(\eta=m,\tau)=0$ and solve for $A$ on the truncated interval $[0,\ m]$, which is discretized using $mN$ intervals of the same size $\Delta\eta$.
 
 \subsection{The Method of Lines}
 We consider discretizations in space and in time separately.
@@ -339,38 +339,38 @@ For all the different methods described below, the first and the last steps will
 \noindent
 {\bf Step 1.} Forward Euler method is used to update the radius of the tumor:
 \begin{equation}\label{eq:num_gen_r}
-R^{k+1} = R^k + \Delta\tau^kV_M^k\;.
+R^{k+1} = R^k + \Delta\tau^kV_N^k\;.
 \end{equation}
 
 \vglue .1 truein
 
 \noindent
-{\bf Step 4.} Computing the velocity $V_i^{k+1}$ makes use of the integral equation~(\ref{eq:eqn_pde_v_sol}) with the boundary condition $V_0^{k+1} = V(\eta=0,\tau^{k+1}) = 0$.
+{\bf Step 5.} Computing the velocity $V_i^{k+1}$ makes use of the integral equation~(\ref{eq:eqn_pde_v_sol}) with the boundary condition $V_0^{k+1} = V(\eta=0,\tau^{k+1}) = 0$.
 The integral of (\ref{eq:eqn_pde_v_sol}) for $\eta=\eta_i=ih$ is clearly approximated by:
 \begin{align*}
 &\int_0^{ih}\xi^2\left[\lambda'\left(1+\frac{b'P_2(\xi,\tau^{k+1})}{b+P_2(\xi,\tau^{k+1})}\right)G(\xi,\tau^{k+1})(1-l'G(\xi,\tau^{k+1}))-\delta_1 H(\xi,\tau^{k+1})-\delta_2M(\xi,\tau^{k+1})\right. \\
 &\hspace*{.24in}\left.\vphantom{\left(1+\frac{b'P_2(\xi,\tau^{k+1})}{b+P_2(\xi,\tau^{k+1})}\right)}-\omega G(\xi,\tau^{k+1})M(\xi,\tau^{k+1})\right]d\xi
 \approx \\
-&\frac{\Delta\eta}{(R^{k+1})^2}\sum_{j=1}^i\left[\lambda'\left(1\!+\!\frac{b'P_{2j}}{b+P_{2j}}\right)\tilde{G}_j^{k+1}\left(1\!-\!\frac{l'\tilde{G}_j^{k+1}}{\eta_{j-1/2}^2(R^{k+1})^2}\right)-\delta_1\tilde{H}_j^{k+1}-\delta_2\tilde{M}_j^{k+1}-\frac{\omega\tilde{G}_j^{k+1}\tilde{M}_j^{k+1}}{\eta_{j-1/2}^2(R^{k+1})^2}\right]\;,
+&\frac{\Delta\eta}{(R^{k+1})^2}\sum_{j=1}^i\left[\lambda'\left(1+\frac{b'P_{2j}}{b+P_{2j}}\right)\tilde{G}_j^{k+1}\left(1-l'G_j^{k+1}\right)-\delta_1\tilde{H}_j^{k+1}-\delta_2\tilde{M}_j^{k+1}-\omega \tilde{G}_j^{k+1}M_j^{k+1}\right]\;,
 \end{align*}
 thus the following formula is used to compute the velocity at each grid point:
 \begin{align}
 \label{eq:num_gen_v_0}
 V_0^{k+1} =& 0\;; \\
 \label{eq:num_gen_v_i}
-V_i^{k+1} =& \frac{\Delta\eta}{(\eta_i^{k+1})^2R^{k+1}}\sum_{j=1}^i\left[\lambda'\left(1\!+\!\frac{b'P_{2j}}{b+P_{2j}}\right)\tilde{G}_j^{k+1}\left(1\!-\!\frac{l'\tilde{G}_j^{k+1}}{\eta_{j-1/2}^2(R^{k+1})^2}\right)-\delta_1\tilde{H}_j^{k+1}\right. \\
+V_i^{k+1} =& \frac{\Delta\eta}{(\eta_i^{k+1})^2R^{k+1}}\sum_{j=1}^i\left[\lambda'\left(1+\frac{b'P_{2j}}{b+P_{2j}}\right)\tilde{G}_j^{k+1}\left(1-l'G_j^{k+1}\right)-\delta_1\tilde{H}_j^{k+1}\right. \\
 \notag
-& \left.-\delta_2\tilde{M}_j^{k+1}-\frac{\omega\tilde{G}_j^{k+1}\tilde{M}_j^{k+1}}{\eta_{j-1/2}^2(R^{k+1})^2}\right] - \frac{\rho}{R^{k+1}}\overline{M_{i+1/2}}^{k+1}\frac{A_{i+1}^{k+1}-A_i^{k+1}}{\Delta\eta}\;,\ \ 1\le i\le N\;.
+& \left.-\delta_2\tilde{M}_j^{k+1}-\omega \tilde{G}_j^{k+1}M_j^{k+1}\right] - \frac{\rho}{R^{k+1}}\overline{M_{i+1/2}}^{k+1}\frac{A_{i+1}^{k+1}-A_i^{k+1}}{\Delta\eta}\;,\ \ 1\le i\le N\;.
 \end{align}
 Here $\overline{M_{i+1/2}}^{k+1} = (M_i^{k+1}+M_{i+1}^{k+1})/2$.
 Note that for $i=N$, this formula requires both $M_{N+1}^{k+1}$ and $A_{N+1}^{k+1}$, the former is set to $M_{\textrm{bc}}$ and the latter is always available if the domain for $A$ is larger than $[0,\ 1]$.
 
-\subsection{Step 3: Updating the Cell Numbers}
+\subsection{Step 2: Updating the Cell Numbers}
 To derive a finite-volume formulation for $G$, for example, we integrate (\ref{eq:eqn_pde_g}) over each cell $\mathcal{C}_i$ to obtain:
 \begin{align*}
 \frac{d\tilde{G}_i}{d\tau} + \frac{1}{\Delta\eta}\left[F^G_{i}-F^G_{i-1}\right] =& 
-     \lambda'\left(1+\frac{b'P_{2i}}{b+P_{2i}}\right)\tilde{G}_i\left(1-\frac{l'\tilde{G}_i}{\eta_{i-1/2}^2R^2}\right)\\
-    &-\mu\left(1+\frac{a'P_{1i}}{a+P_{1i}}\right)\tilde{G}_i-\omega\frac{\tilde{G}_i\tilde{M}_i}{\eta_{i-1/2}^2R^2}-\frac{R'}{R}\tilde{G}_i\;,
+     \lambda'\left(1+\frac{b'P_{2i}}{b+P_{2i}}\right)\tilde{G}_i\left(1-l'G_i\right)\\
+    &-\mu\left(1+\frac{a'P_{1i}}{a+P_{1i}}\right)\tilde{G}_i-\omega\tilde{G}_iM_i-\frac{R'}{R}\tilde{G}_i\;,
 \end{align*}
 Here $F_j^G$ is a numerical flux approximating $(V/R-\eta R'/R)\tilde{G}$ at $\eta_j$.
 Similar formulations can be described for $H$ and $M$:
@@ -387,7 +387,7 @@ In general, a $p$-th order flux function leads to a $p$-th order spatial discret
 A classical nonlinearly stable method is given by the upwind flux.
 For example, $F_j^G$ is computed using the local advection velocity:
 \begin{equation}\label{eq:num_adv_u_gh}
-U_j \eqdef \frac{V_j}{R}-\frac{\eta_jV_M}{R}
+U_j \eqdef \frac{V_j}{R}-\frac{\eta_jV_N}{R}
 \end{equation}
 and the information of $\tilde{G}$ from the direction where information is coming in:
 \begin{equation}\label{eq:num_flux_upw_g}
@@ -420,13 +420,14 @@ To this end, an explicit first-order upwind method $\mathcal{M}$ can be devised 
 \label{eq:num_ex_upw_cell_g}
 &\tilde{G}_i^{k+1} = \tilde{G}_i^k - \frac{\Delta\tau^k}{\Delta\eta}\left[\mathcal{F}_i(U_i^k,\tilde{G}_i^k,\tilde{G}_{i+1}^k)-\mathcal{F}_{i-1}(U_{i-1}^k,\tilde{G}_{i-1}^k,\tilde{G}_i^k)\right] + \Delta\tau^k\times \\
 \notag
-    & \left[\lambda'\left(1\!+\!\frac{b'P_{2i}^k}{b+P_{2i^k}}\right)\tilde{G}_i^k\left(1\!-\!\frac{l'\tilde{G}_i^k}{\eta_{i-1/2}^2(R^k)^2}\right)\!-\!\mu\left(1\!+\!\frac{a'P_{1i}^k}{a+P_{1i}^k}\right)\tilde{G}_i^k\!-\!\frac{\omega\tilde{G}_i^k\tilde{M}_i^k}{\eta_{i-1/2}^2(R^k)^2}\!-\!\frac{V_N^k}{R^k}\tilde{G}_i^k\right]\;, \\
+    & \left[\lambda'\left(1+\frac{b'P_{2i}^k}{b+P_{2i}^k}\right)\tilde{G}_i^k\left(1-l'G_i^k\right)-\mu\left(1+\frac{a'P_{1i}^k}{a+P_{1i}^k}\right)\tilde{G}_i^k-\omega\tilde{G}_i^kM_i^k-\frac{V_N^k}{R^k}\tilde{G}_i^k\right]\;, \\
 \label{eq:num_ex_upw_cell_h}
 &\tilde{H}_i^{k+1} = \tilde{H}_i^k - \frac{\Delta\tau^k}{\Delta\eta}\left[\mathcal{F}_i(U_i^k,\tilde{H}_i^k,\tilde{H}_{i+1}^k)-\mathcal{F}_{i-1}(U_{i-1}^k,\tilde{H}_{i-1}^k,\tilde{H}_i^k)\right] \\
 \notag
-& \hspace*{.4in} + \Delta\tau^k\left[\mu\left(1\!+\!\frac{a'P_{1i}^k}{a+P_{1i}^k}\right)\tilde{G}_i^k-\delta_1\tilde{H}_i^k-\frac{V_N^k}{R^k}\tilde{H}_i^k\right]\;, \\
+& \hspace*{.4in} + \Delta\tau^k\left[\mu\left(1+\frac{a'P_{1i}^k}{a+P_{1i}^k}\right)\tilde{G}_i^k-\delta_1\tilde{H}_i^k-\frac{V_N^k}{R^k}\tilde{H}_i^k\right]\;, \\
 \label{eq:num_ex_upw_cell_n}
 &\tilde{M}_i^{k+1} = \tilde{M}_i^k - \frac{\Delta\tau^k}{\Delta\eta}\left[\mathcal{F}_i(\check{U}_i^k,\tilde{M}_i^k,\tilde{M}_{i+1}^k)-\mathcal{F}_{i-1}(\check{U}_{i-1}^k,\tilde{M}_{i-1}^k,\tilde{M}_i^k)\right] \\
+\notag
 & \hspace*{.4in} + \Delta\tau^k\left[-\delta_2\tilde{M}_i^k-\frac{V_N^k}{R^k}\tilde{M}_i^k\right]\;.
 \end{align}
 \end{subequations}
@@ -435,39 +436,17 @@ The explicit method is generally stable if the time-step size is computed by usi
 \vglue .1 truein
 
 \noindent
-{\bf Method 2 -- implicit first-order upwind method.}
-The Courant number barrier can be removed by using a fully implicit time-integrator. 
-In the case of first-order upwind method showing before, it reads:
-\begin{subequations}\label{eq:num_im_upw_cell}
-\begin{align}
-\label{eq:num_im_upw_cell_g}
-\tilde{G}_i^{k+1} + &\frac{\Delta\tau^k}{\Delta\eta}\left[\mathcal{F}_i(U_i^k,\tilde{G}_i^{k+1},\tilde{G}_{i+1}^{k+1})-\mathcal{F}_{i-1}(U_{i-1}^k,\tilde{G}_{i-1}^{k+1},\tilde{G}_i^{k+1})\right] \\
-\notag
-    &- \Delta\tau^k(\lambda\tilde{G}_i^{k+1}-\mu\tilde{G}_i^{k+1}-\frac{V_M^k}{R^k}\tilde{G}_i^{k+1})= \tilde{G}_i^k  \;, \\
-\label{eq:num_im_upw_cell_h}
-\tilde{H}_i^{k+1} + &\frac{\Delta\tau^k}{\Delta\eta}\left[\mathcal{F}_i(U_i^k,\tilde{H}_i^{k+1},\tilde{H}_{i+1}^{k+1})-\mathcal{F}_{i-1}(U_{i-1}^k,\tilde{H}_{i-1}^{k+1},\tilde{H}_i^{k+1})\right] \\
-\notag
-    &- \Delta\tau^k(-\delta\tilde{H}_i^{k+1}-\frac{V_M^k}{R^k}\tilde{H}_i^{k+1}) = \tilde{H}_i^k  + \Delta\tau^k\mu\tilde{G}_i^{k+1}\;, \\
-\label{eq:num_im_upw_cell_n}
-\tilde{M}_i^{k+1} + &\frac{\Delta\tau^k}{\Delta\eta}\left[\mathcal{F}_i(\check{U}_i^k,\tilde{M}_i^{k+1},\tilde{M}_{i+1}^{k+1})-\mathcal{F}_{i-1}(\check{U}_{i-1}^k,\tilde{M}_{i-1}^{k+1},\tilde{M}_i^{k+1})\right] + \Delta\tau^k\frac{V_M^k}{R^k}\tilde{M}_i^{k+1} = \tilde{M}_i^k \;.
-\end{align}
-\end{subequations}
-Note that we've frozen the advection velocities as well as the reaction coefficient $V_M^k/R^k$ to $t^k$, so that (\ref{eq:num_im_upw_cell}) only involves linear systems to solve.
-
-\vglue .1 truein
-
-\noindent
-{\bf Method 3 -- explicit second-order MUSCL method.}
+{\bf Method 2 -- explicit second-order MUSCL method.}
 A second-order extension of the first-order upwind method is achieved by the MUSCL technique; particularly, we consider linear reconstruction and the minmod slope limiter.
 The MUSCL scheme differs from the explicit first-order upwind method in two aspects.
 Firstly, a limited slope is construct for each variable on each cell:
 \begin{align*}
 &\tilde{G}^k(\eta) \approx \tilde{G}^k_i + \widetilde{DG}^k_i(\eta-\eta_i) \\
 &\tilde{H}^k(\eta) \approx \tilde{H}^k_i + \widetilde{DH}^k_i(\eta-\eta_i) \\
-&\tilde{M}^k(\eta) \approx \tilde{M}^k_i + \widetilde{DN}^k_i(\eta-\eta_i)
+&\tilde{M}^k(\eta) \approx \tilde{M}^k_i + \widetilde{DM}^k_i(\eta-\eta_i)
 \end{align*}
 for all $\eta\in\mathcal{C}_i$.
-Here $\widetilde{DG}^k_i$ is a numerical approximation to $\partial_{\eta}\tilde{G}$ at $(\eta_i,t^k)$; and similarly for $\widetilde{DH}^k_i$ and $\widetilde{DN}^k_i$.
+Here $\widetilde{DG}^k_i$ is a numerical approximation to $\partial_{\eta}\tilde{G}$ at $(\eta_i,t^k)$; and similarly for $\widetilde{DH}^k_i$ and $\widetilde{DM}^k_i$.
 The slopes are in particular constructed to ensure total variational diminishing (TVD) property with the linearly reconstructed data.
 In this work we employ the minmod limiter and compute the slopes by:
 \begin{align*}
@@ -476,7 +455,7 @@ In this work we employ the minmod limiter and compute the slopes by:
 \min\left(0\;,\ \max\left(\frac{\tilde{G}^k_{i+1}-\tilde{G}^k_i}{\Delta\eta} , \frac{\tilde{G}^k_i-\tilde{G}^k_{i-1}}{\Delta\eta}\right)\right) & & \tilde{G}^k_{i+1}<\tilde{G}^k_i\;.
 \end{array}\right.
 \end{align*}
-The other two quantities $\widetilde{DH}^k_i$ and $\widetilde{DN}^k_i$ are defined similarly.
+The other two quantities $\widetilde{DH}^k_i$ and $\widetilde{DM}^k_i$ are defined similarly.
 At the boundaries, the slopes are simply turned off, which makes the method locally first-order at the two boundaries; nevertheless, it is well known that one-order lower accuracy at the boundaries won't affect the global order of accuracy of the method for hyperbolic problems.
 
 Once the limited slopes are constructed, the numerical fluxes are computed using the linearly extrapolated data at both sides of the cell face.
@@ -487,22 +466,22 @@ For example, the numerical flux for $\tilde{G}$ at the right boundary of $\mathc
 Similar formula is used to compute the numerical flux at the left end of $\mathcal{C}_i$, which leads to the following formula to update $\tilde{G}$ from $t^k$ to $t^{k+1}$:
 \begin{align*}
 \tilde{G}_i^{k+1} =& \tilde{G}_i^k - \frac{\Delta\tau^k}{\Delta\eta}\left[\mathcal{F}_i\left(U_i^k,\tilde{G}_i^k+\frac{1}{2}\Delta\eta\widetilde{DG}^k_i,\tilde{G}_{i+1}^k-\frac{1}{2}\Delta\eta\widetilde{DG}^k_{i+1}\right)-\right. \\
-    &\qquad\qquad\left.\mathcal{F}_{i-1}\left(U_{i-1}^k,\tilde{G}_{i-1}^k+\frac{1}{2}\Delta\eta\widetilde{DG}^k_{i-1},\tilde{G}_i^k-\frac{1}{2}\Delta\eta\widetilde{DG}^k_i\right)\right] \\
+    &\qquad\qquad\left.\mathcal{F}_{i-1}\left(U_{i-1}^k,\tilde{G}_{i-1}^k+\frac{1}{2}\Delta\eta\widetilde{DG}^k_{i-1},\tilde{G}_i^k-\frac{1}{2}\Delta\eta\widetilde{DG}^k_i\right)\right] + \Delta\tau^k\times \\
 \notag
-    & + \Delta\tau^k(\lambda\tilde{G}_i^k-\mu\tilde{G}_i^k-\frac{V_M^k}{R^k}\tilde{G}_i^k)\;.
+    &\left[\lambda'\left(1+\frac{b'P_{2i}^k}{b+P_{2i}^k}\right)\tilde{G}_i^k\left(1-l'G_i^k\right)-\mu\left(1+\frac{a'P_{1i}^k}{a+P_{1i}^k}\right)\tilde{G}_i^k-\omega\tilde{G}_i^kM_i^k-\frac{V_N^k}{R^k}\tilde{G}_i^k\right]\;.
 \end{align*}
 The equations to update $\tilde{H}$ and $\tilde{M}$ are modified from (\ref{eq:num_ex_upw_cell_h}) and (\ref{eq:num_ex_upw_cell_h}) accordingly.
 
-\subsection{Step 4: Updating the Chemotaxis Attractant Concentration}
+\subsection{Step 3: Updating the Chemotaxis Attractant Concentration}
 The equation for chemotaxis attractant concentration $A$ involves both advection and diffusions.
 In order to avoid a tiny time step size in explicit time-integration, we adopt a fully implicit method for both advection and diffusion here.
 Particularly, a first-order method can be constructed by using the first-order upwind flux for advection and central difference for diffusion.
-Integrating (\ref{eq:eqn_pde_a}) over a cell $\mathcal{C}_i$ where $1\le i\le mM$ leads to the following semi-discrete formula for $A$:
+Integrating (\ref{eq:eqn_pde_a}) over a cell $\mathcal{C}_i$ where $1\le i\le mN$ leads to the following semi-discrete formula for $A$:
 \begin{align*}
-\frac{d(\eta_i^2R^2A_i)}{d\tau} + \frac{1}{\Delta\eta}\left[F_i^A-F_{i-1}^A\right] =& \frac{D}{\Delta\eta}\left[\eta_i^2\frac{A_{i+1}-A_i}{\Delta\eta}-\eta_{i-1}^2\frac{A_i-A_{i-1}}{\Delta\eta}\right] \\
-&+ \chi_{i\le M}\frac{m\tilde{G}_i}{\beta/\theta+G_i}-\left(\gamma+\frac{V_M}{R}\right)\eta_i^2R^2A_i\;,
+\frac{d(\eta_i^2R^2A_i)}{d\tau} + \frac{1}{\Delta\eta}\left[F_i^A-F_{i-1}^A\right] =& \frac{D_3}{\Delta\eta}\left[\eta_i^2\frac{A_{i+1}-A_i}{\Delta\eta}-\eta_{i-1}^2\frac{A_i-A_{i-1}}{\Delta\eta}\right] \\
+&+ \chi_{i\le N}\frac{\alpha_3\tilde{G}_i}{\beta_3/\theta+G_i}-\left(\gamma+\frac{V_N}{R}\right)\eta_i^2R^2A_i\;,
 \end{align*}
-Here $\chi_{i\le M}$ is an indicator function showing that the source term containing $G$ should only be included for $1\le i\le M$, i.e., when the cell is in the tumor.
+Here $\chi_{i\le N}$ is an indicator function showing that the source term containing $G$ should only be included for $1\le i\le N$, i.e., when the cell is in the tumor.
 
 \vglue .1 truein
 
@@ -512,8 +491,8 @@ Similar as the cell number case, a first-order upwind flux $F_j^A$ can be comput
 \begin{displaymath}
 F_j^A = \mathcal{F}_j(\hat{U}_j,\eta_j^2R^2A_j,\eta_{j+1}^2R^2A_{j+1})\;,
 \end{displaymath}
-where $\hat{U}_j=-\eta_jV_M/R$ is the advection speed for $A$.
-At the two boundaries, $F_0^A$ is set to zero because $\hat{U}_0=0$, and $F_{mM+1}^A$ is also set to zero because we assume that $A$ vanishes at this boundary.
+where $\hat{U}_j=-\eta_jV_N/R$ is the advection speed for $A$.
+At the two boundaries, $F_0^A$ is set to zero because $\hat{U}_0=0$, and $F_{mN+1}^A$ is also set to zero because we assume that $A$ vanishes at this boundary.
 In the end, the update formula for $A^{k+1}$ is summarized below:
 \begin{align}
 \label{eq:num_im_upw_chem}
@@ -521,9 +500,9 @@ A_i^{k+1} &+ \frac{1}{\eta_i^2(R^{k+1})^2}\frac{\Delta\tau^k}{\Delta\eta}\times 
 \notag
 &\left[\mathcal{F}_i(\hat{U}_i^k,\eta_i^2(R^{k+1})^2A_i^{k+1},\eta_{i+1}^2(R^{k+1})^2A_{i+1}^{k+1})-\mathcal{F}_{i-1}(\hat{U}_{i-1}^k,\eta_i^2(R^{k+1})^2A_{i-1}^{k+1},\eta_i^2(R^{k+1})^2A_i^{k+1})\right] \\
 \notag
-&-\frac{1}{\eta_i^2(R^{k+1})^2}\frac{D\Delta\tau^k}{\Delta\eta}\left[\eta_i^2\frac{A_{i+1}^{k+1}-A_i^{k+1}}{\Delta\eta}-\eta_{i-1}^2\frac{A_i^{k+1}-A_{i-1}^{k+1}}{\Delta\eta}\right] + \Delta\tau^k\left(\gamma+\frac{V_M^k}{R^k}\right)A_i^{k+1} \\
+&-\frac{1}{\eta_i^2(R^{k+1})^2}\frac{D_3\Delta\tau^k}{\Delta\eta}\left[\eta_i^2\frac{A_{i+1}^{k+1}-A_i^{k+1}}{\Delta\eta}-\eta_{i-1}^2\frac{A_i^{k+1}-A_{i-1}^{k+1}}{\Delta\eta}\right] + \Delta\tau^k\left(\gamma+\frac{V_N^k}{R^k}\right)A_i^{k+1} \\
 \notag
-= & \frac{(R^k)^2}{(R^{k+1})^2}A_i^k + \chi_{i\le m}\frac{\Delta\tau^k m\tilde{G}_i^{k+1}}{\beta/\theta+G_i^{k+1}}\;.
+= & \frac{(R^k)^2}{(R^{k+1})^2}A_i^k + \chi_{i\le m}\frac{\Delta\tau^k \alpha_3\tilde{G}_i^{k+1}}{\beta_3/\theta+G_i^{k+1}}\;.
 \end{align}
 Again, we froze the advection velocity so that only a linear system needs to be solved.
 
@@ -540,175 +519,23 @@ A_i^{k+1} &+ \frac{1}{\eta_i^2(R^{k+1})^2}\frac{\Delta\tau^k}{\Delta\eta}\times 
 \notag
 &\ \left.\mathcal{F}_{i-1}\left(\hat{U}_{i-1}^k,\eta_i^2(R^k)^2A_{i-1}^k+\frac{1}{2}\Delta\eta\widetilde{DA}^k_{i-1},\eta_i^2(R^k)^2A_i^k-\frac{1}{2}\Delta\eta\widetilde{DA}^k_i\right)\right] \\
 \notag
-&-\frac{1}{\eta_i^2(R^{k+1})^2}\frac{D\Delta\tau^k}{\Delta\eta}\left[\eta_i^2\frac{A_{i+1}^{k+1}-A_i^{k+1}}{\Delta\eta}-\eta_{i-1}^2\frac{A_i^{k+1}-A_{i-1}^{k+1}}{\Delta\eta}\right] + \Delta\tau^k\left(\gamma+\frac{V_M^k}{R^k}\right)A_i^{k+1} \\
+&-\frac{1}{\eta_i^2(R^{k+1})^2}\frac{D_3\Delta\tau^k}{\Delta\eta}\left[\eta_i^2\frac{A_{i+1}^{k+1}-A_i^{k+1}}{\Delta\eta}-\eta_{i-1}^2\frac{A_i^{k+1}-A_{i-1}^{k+1}}{\Delta\eta}\right] + \Delta\tau^k\left(\gamma+\frac{V_N^k}{R^k}\right)A_i^{k+1} \\
 \notag
-= & \frac{(R^k)^2}{(R^{k+1})^2}A_i^k + \chi_{i\le m}\frac{\Delta\tau^k m\tilde{G}_i^{k+1}}{\beta/\theta+G_i^{k+1}}\;.
+= & \frac{(R^k)^2}{(R^{k+1})^2}A_i^k + \chi_{i\le m}\frac{\Delta\tau^k \alpha_3\tilde{G}_i^{k+1}}{\beta_3/\theta+G_i^{k+1}}\;.
 \end{align}
+
+\subsection{Step 4: Updating the Osteopontin Concentrations}
+The osteopontin concentrations $P_1$ and $P_2$ are updated the same way as the chemotaxis attractant concentration $A$, i.e., by (1) the implicit first-order upwind/central-difference method or (2) the IMEX second-order MUSCL/central-difference method.
+The only difference is that the two equations are defined on $1\le i\le N$, and we imforce the homogeneous Neumann boundary condition at the right boundary -- hence the finite differencing stencil needs to be biased for both $i=1$ and $i=N$.
 
 \subsection{Time Step Calculation}
 Finally, the time-step size $\Delta\tau^k$ is computed according to the Courant condition.
 Especially, because all the diffusion terms are treated implicitly, we set the Courant number according to the advection velocity:
 \begin{equation}\label{eq:num_dtau}
-\Delta\tau^k = \alpha_{\textrm{cfl}}\min_{1\le i\le M}\frac{h}{\max(\abs{\frac{V_i^k-\eta_iV_M^k}{R^k}},\abs{\frac{V_i^k-\eta_iV_M^k}{R^k}+\frac{\rho}{(R^k)^2}\frac{A_{i+1}^k-A_i^k}{\Delta\eta}})}\;,
+\Delta\tau^k = \alpha_{\textrm{cfl}}\min_{1\le i\le N}\frac{h}{\max(\abs{\frac{V_i^k-\eta_iV_N^k}{R^k}},\abs{\frac{V_i^k-\eta_iV_N^k}{R^k}+\frac{\rho}{(R^k)^2}\frac{A_{i+1}^k-A_i^k}{\Delta\eta}})}\;,
 \end{equation}
 where $\alpha_{\textrm{cfl}}$ is the Courant number specified by the user, which typically takes a value smaller than $1$ for partially explicit computations and can take any value when everything is implicit.
 Note that if we drop the advection velocity for $A$ because this term is always treated implicitly.
 
 \end{document}
-
-
-
-\noindent
-
-\subsection{Step 3: Updating the Cell Numbers}
-\label{sec:num_cell}
-We consider both explicit and implicit methods to update the cell numbers $G$, $H$, and $N$.
-In the explicit method (Method 1) first-order upwinding is used to discretize the advection term; whereas in the implicit method (Method 2) the fourth-order Pad\'{e} method is used instead.
-
-\vglue .1 truein
-
-\noindent
-{\bf Method 1 -- explicit first-order upwind method.}
-Two-point differencing is used to discretize the advection term, but the stencil depends on the advection velocity direction.
-Particularly, we define:
-\begin{displaymath}
-i' = (U_i^k\ge 0 )\ ?\ i+1\ :\ i\;,
-\end{displaymath}
-for all $0<i<M$, then the method reads for the inner nodes:
-\begin{equation}\label{eq:num_cell_uw_inner}
-\left\{\begin{array}{l}
-G_i^{k+1} = G_i^k - \frac{\Delta\tau^k U_i^k}{\Delta\eta}\left(G_{i'}^k-G_{i'-1}^k\right) + \Delta\tau^k\left(\lambda G_i^k-\mu G_i^k - Z_i^kG_i^k\right)\;, \\
-H_i^{k+1} = H_i^k - \frac{\Delta\tau^k U_i^k}{\Delta\eta}\left(H_{i'}^k-H_{i'-1}^k\right) + \Delta\tau^k\left(\mu G_i^k-\delta H_i^k - Z_i^kH_i^k\right)\;, \\
-M_i^{k+1} = M_i^k - \frac{\Delta\tau^k U_i^k}{\Delta\eta}\left(M_{i'}^k-M_{i'-1}^k\right) + \Delta\tau^k\left(-\rho W_i^k - Z_i^kM_i^k\right)\;, 
-\end{array}\right.\quad
-\forall 0<i<M\;.
-\end{equation}
-Once the inner nodes are updated, the left boundary values are determined from the no-flux condition~(\ref{eq:eqn_pde_nfcell_o}) as below:
-\begin{equation}\label{eq:num_cell_uw_bc_o}
-G_0^{k+1} = G_1^{k+1}\,\quad
-H_0^{k+1} = H_1^{k+1}\,\quad
-M_0^{k+1} = M_1^{k+1}\;.
-\end{equation}
-At the right boundary, the advection velocity is zero and the boundary value is obtained from integrating an ODE:
-\begin{equation}\label{eq:num_cell_uw_bc_r}
-\left\{\begin{array}{l}
-G_M^{k+1} = G_M^k + \Delta\tau^k\left(\lambda G_M^k-\mu G_M^k - Z_M^kG_M^k\right)\;, \\ 
-H_M^{k+1} = H_M^k + \Delta\tau^k\left(\mu G_M^k-\delta H_M^k - Z_M^kH_M^k\right)\;, \\ 
-M_M^{k+1} = M_M^k + \Delta\tau^k\left( - \rho W_M^k - Z_M^kM_M^k\right)\;.
-\end{array}\right.
-\end{equation}
-
-\vglue .1 truein
-
-\noindent
-{\bf Method 2 -- implicit fourth-order Pad\'{e} method.}
-The compact Pad\'{e} method considered here is fourth-order in the advection term; but because the reaction coefficients are only second-order accurate, the overall accuracy remains second-order at the moment.
-The Pad\'{e} method use a linear combination of adjacent grid points to discretize the time-derivative term and a central difference for the advection term, hence it is inherent implicit.
-For this reason, we use backward Euler method to update the solutions from $t^k$ to $t^{k+1}$.
-At the inner nodes we solve for $0<i<M$:
-\begin{equation}\label{eq:num_cell_pade_inner}
-\left\{\begin{array}{ll}
-&\frac{1}{6}G_{i-1}^{k+1}+\frac{4}{6}G_i^{k+1}+\frac{1}{6}G_{i+1}^{k+1} 
-+ \frac{\Delta\tau^k U_i^{k+1}}{2\Delta\eta}\left(G_{i+1}^{k+1}-G_{i-1}^{k+1}\right) - \Delta\tau^k\left(\lambda G_i^{k+1}-\mu G_i^{k+1} - Z_i^kG_i^{k+1}\right) \\
-= &\frac{1}{6}G_{i-1}^k+\frac{4}{6}G_i^k+\frac{1}{6}G_{i+1}^k \;, \\
-&\frac{1}{6}H_{i-1}^{k+1}+\frac{4}{6}H_i^{k+1}+\frac{1}{6}H_{i+1}^{k+1} 
-- \frac{\Delta\tau^k U_i^k}{2\Delta\eta}\left(H_{i+1}^{k+1}-H_{i-1}^{k+1}\right) - \Delta\tau^k\left(-\delta H_i^{k+1} - Z_i^kH_i^{k+1}\right) \\
-= &\frac{1}{6}H_{i-1}^k+\frac{4}{6}H_i^k+\frac{1}{6}H_{i+1}^k + \Delta\tau^k\mu G_i^{k+1}\;, \\
-&\frac{1}{6}M_{i-1}^{k+1}+\frac{4}{6}M_i^{k+1}+\frac{1}{6}M_{i+1}^{k+1} 
-+ \frac{\Delta\tau^k U_i^k}{2\Delta\eta}\left(M_{i+1}^{k+1}-M_{i-1}^{k+1}\right) - \Delta\tau^k\left( - Z_i^kM_i^{k+1}\right) \\ 
-= &\frac{1}{6}M_{i-1}^k+\frac{4}{6}M_i^k+\frac{1}{6}M_{i+1}^k +\Delta\tau^k\left(-\rho W_i^k\right)\;. 
-\end{array}\right.\quad
-\end{equation}
-The left boundary condition is the same as (\ref{eq:num_cell_uw_bc_o}); and the right boundary condition is similar to (\ref{eq:num_cell_uw_bc_r}) except that the reaction terms are handled implicitly:
-\begin{equation}\label{eq:num_cell_pade_bc_r}
-\left\{\begin{array}{l}
-G_M^{k+1} - \Delta\tau^k\left(\lambda G_M^{k+1}-\mu G_M^{k+1} - Z_M^kG_M^{k+1}\right) = G_M^k \;, \\ 
-H_M^{k+1} - \Delta\tau^k\left(-\delta H_M^{k+1} - Z_M^kH_M^{k+1}\right) = H_M^k + \Delta\tau^k\mu G_M^{k+1}\;, \\ 
-M_M^{k+1} - \Delta\tau^k\left(-Z_M^kM_M^{k+1}\right) = M_M^k + \Delta\tau^k\left( - \rho W_M^k \right)\;.
-\end{array}\right.
-\end{equation}
-Note that we keep the $Z_i^k$ and $W_i^k$ parts explicit, and as a result the three equations for $G$, $H$, and $N$, respectively, separate; hence we can solve them one by one and keep the linear system small.
-
-\subsection{Step 4: Updating the Chemotaxis Attractant Concentration}
-\label{sec:num_chem}
-The concentration of chemotaxis attractant is governed by the advection-diffusion-reaction equation~(\ref{eq:eqn_pde_simp_a}); similar to Step 3, we consider explicit first-order upwind method and the implicit fourth-order Pad\'{e} method to discretize the advection part.
-The diffusion term, however, is always discretized using the central difference and backward Euler method to avoid tiny time step size.
-So in both methods given below, a linear solve is required.
-The reaction term is handled by backward-Euler scheme.
-
-\vglue .1 truein
-
-\noindent
-{\bf Method 1 -- first-order upwind method.}
-The advection velocity is $-\eta R'/R = -\eta V_M/R$, hence we define:
-\begin{displaymath}
-i' = (-\frac{\eta_iV_M^k}{R^k}\ge 0 )\ ?\ i+1\ :\ i\;.
-\end{displaymath}
-The discretization for inner nodes $0<i<M$ is given by:
-\begin{align}
-\label{eq:num_chem_uw_inner}
-&A_i^{k+1} + \gamma\Delta\eta A_i^{k+1} - D\frac{1}{\eta_i^2(R^k)^2}\frac{\Delta\tau^k}{\Delta\eta}\left(\eta_{i+1/2}^2\frac{A_{i+1}^{k+1}-A_i^{k+1}}{\Delta\eta}-\eta_{i-1/2}^2\frac{A_i^{k+1}-A_{i-1}^{k+1}}{\Delta\eta}\right) \\
-\notag
-= &- \left(-\frac{\eta_iV_M^k}{R^k}\right)\frac{\Delta\tau^k}{\Delta\eta}\left(A_{i'}^k-A_{i'-1}^k\right) + \Delta\tau^k\frac{mG_i^{k+1}}{\beta/\theta+G_i^{k+1}}\;.
-\end{align}
-This is accompanied by the boundary condition at $\eta=0$:
-\begin{equation}\label{eq:num_chem_uw_bc_o}
-A_1^{k+1} = A_0^{k+1}\;.
-\end{equation}
-
-\vglue .1 truein
-
-\noindent
-{\bf Method 2 -- compact Pad\'{e} method.}
-Replacing the upwind differencing by the Pad\'{e} operator, we have a second-order implicit method.
-The linear system is built for the inner nodes $0<i<M$ as:
-\begin{align}
-\notag
-&\frac{1}{6}A_{i-1}^{k+1}+\frac{4}{6}A_i^{k+1}+\frac{1}{6}A_{i+1}^{k+1} + \left(-\frac{\eta_iV_M^k}{R^k}\right)\frac{\Delta\tau^k}{2\Delta\eta}\left(A_{i+1}^{k+1}-A_{i-1}^{k+1}\right) + \gamma\Delta\eta A_i^{k+1} \\
-\label{eq:num_chem_pade_inner}
-&- D\frac{1}{\eta_i^2(R^k)^2}\frac{\Delta\tau^k}{\Delta\eta}\left(\eta_{i+1/2}^2\frac{A_{i+1}^{k+1}-A_i^{k+1}}{\Delta\eta}-\eta_{i-1/2}^2\frac{A_i^{k+1}-A_{i-1}^{k+1}}{\Delta\eta}\right) \\
-\notag
-= & \frac{1}{6}A_{i-1}^k + \frac{4}{6}A_i^k + \frac{1}{6}A_i^k + \Delta\tau^k\frac{mG_i^{k+1}}{\beta/\theta+G_i^{k+1}}\;.
-\end{align}
-The equations for the two boundary conditions are the same as in Method 1.
-
-\subsection{Step 5: Updating the Velocity}
-\label{sec:num_vel}
-The velocity equation~(\ref{eq:eqn_pde_simp_v}) is an ODE for $V$, with information propagating from $\eta=0$ towards $\eta=1$.
-Thus consider two methods to compute $V_i^{k+1}$ from the source terms (right hand sides) $Z_i^{k+1}$.
-
-\vglue .1 truein
-
-\noindent
-{\bf Method 1 -- first-order backward differencing (BDF).}
-One of the simplest method to implement is to use upwind-differencing, which corresponds to backward Euler in this case:
-\begin{equation}\label{eq:num_vel_bdf}
-\left\{\begin{array}{ll}
-V_0^{k+1} = 0\;, \\ \\
-V_i^{k+1} = \frac{\eta_{i-1}^2}{\eta_i^2}V_{i-1}^{k+1} + \Delta\eta R^{k+1}Z_i^{k+1}, & 1\le i\le M\;.
-\end{array}\right.
-\end{equation}
-
-\vglue .1 truein
-
-\noindent
-{\bf Method 2 -- second-order backward differencing (BDF2).}
-An extension of the BDF to second-order accuracy is the BDF2 algorithm, where the same formula of BDF is applied at $\eta_1$ and the BDF2 operator is applied at all nodes to the right:
-\begin{equation}\label{eq:num_vel_bdf2}
-\left\{\begin{array}{ll}
-V_0^{k+1} = 0\;, \\ \\
-V_1^{k+1} = \Delta\eta R^{k+1}Z_1^{k+1}\;, \\ \\
-V_i^{k+1} = \frac{4}{3}\frac{\eta_{i-1}^2}{\eta_i^2}V_{i-1}^{k+1} - 
-            \frac{1}{3}\frac{\eta_{i-2}^2}{\eta_i^2}V_{i-2}^{k+1} + \frac{2}{3}\Delta\eta R^{k+1}Z_i^{k+1}, & 2\le i\le M\;.
-\end{array}\right.
-\end{equation}
-
-\begin{comment}
-\vglue .1 truein
-
-\noindent
-{\bf Method 3 -- fourth-order compact differencing.}
-Extension to higher second-order accuracy is achieved by the (implicit) compact differencing method.
-\end{comment}
-
 
