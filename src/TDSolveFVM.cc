@@ -1488,6 +1488,7 @@ void TDSolveFVM::update_chem_opn_upw_be(const int fr, const int to,
     comp += dtn * coef_alpha * (*data_source[to])[i] / 
       (coef_beta/theta+(*data_source[to])[i]/loc_r_to/loc_r_to);
     comp /= loc_r_to * loc_r_to;
+    rhs_p->set(i,comp);
   }
 
   // Matrix
