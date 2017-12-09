@@ -363,10 +363,15 @@ void TDSolveFVM::update_vel_prbid1(const int nt) {
   for ( int i = 0; i < Nx; i++ ) {
     DType loc_lambda = ( q == 0.0 ) ? lambda : lambda * pow(x_c[i],q);
     DType loc_r = x_c[i] * data_r[nt];
-    DType logistic_term = ( tdSetup->logistic ) ? 1.0 : 0.0;
+    DType logistic_term = 1.0; //= ( tdSetup->logistic ) ? 1.0 : 0.0;
+    if ( tdSetup->logistic == 1 )
+      logistic_term = ( 1.0 - (*data_g[nt])[i] / loc_r / loc_r );
+    if ( tdSetup->logistic == 2 )
+      logistic_term = max( 0.0, ( 1.0 - (*data_g[nt])[i] / loc_r / loc_r ) );
     (*data_v[nt])[i+1] = (*data_v[nt])[i] + dx * (
         loc_lambda * ( 1.0 + (b_prime * (*data_p2[nt])[i])/(b + (*data_p2[nt])[i]) ) * (*data_g[nt])[i] * 
-        ( 1.0 - logistic_term * (*data_g[nt])[i] / loc_r / loc_r ) - 
+        logistic_term - 
+        //( 1.0 - logistic_term * (*data_g[nt])[i] / loc_r / loc_r ) - 
         delta_h * (*data_h[nt])[i] - delta_n * (*data_n[nt])[i] -
         omega * (*data_g[nt])[i] * (*data_n[nt])[i] / loc_r / loc_r ) / data_r[nt]; // G, H, and M have not been upscaled
   }
@@ -1162,12 +1167,21 @@ void TDSolveFVM::update_cells_opn_upw(const int fr, const int to) {
           - omega * (*data_g[fr])[i] * (*data_n[fr])[i] / loc_r / loc_r );
     }
 
-  if ( tdSetup->logistic )
+  if ( tdSetup->logistic == 1 )
     for ( int i = 0; i < Nx; i++ ) {
       DType loc_lambda = ( q == 0.0 ) ? lambda : lambda * pow(x_c[i],q);
       DType loc_r = x_c[i] * data_r[fr];
       (*data_g[to])[i] += dtn * loc_lambda * ( 1.0 + b_prime * (*data_p2[fr])[i] / ( b + (*data_p2[fr])[i] ) ) * 
         (*data_g[fr])[i] * ( - (*data_g[fr])[i] / loc_r / loc_r );
+    }
+  
+  if ( tdSetup->logistic == 2 )
+    for ( int i = 0; i < Nx; i++ ) {
+      DType loc_lambda = ( q == 0.0 ) ? lambda : lambda * pow(x_c[i],q);
+      DType loc_r = x_c[i] * data_r[fr];
+      DType logistic_term = min( 1.0, (*data_g[fr])[i] / loc_r / loc_r );
+      (*data_g[to])[i] += dtn * loc_lambda * ( 1.0 + b_prime * (*data_p2[fr])[i] / ( b + (*data_p2[fr])[i] ) ) * 
+        (*data_g[fr])[i] * ( - logistic_term ); //( - (*data_g[fr])[i] / loc_r / loc_r );
     }
 
   return;
@@ -1205,12 +1219,21 @@ void TDSolveFVM::update_cells_opn_muscl(const int fr, const int to) {
           - omega * (*data_g[fr])[i] * (*data_n[fr])[i] / loc_r / loc_r );
     }
 
-  if ( tdSetup->logistic ) 
+  if ( tdSetup->logistic == 1 ) 
     for ( int i = 0; i < Nx; i++ ) {
       DType loc_lambda = ( q == 0.0 ) ? lambda : lambda * pow(x_c[i],q);
       DType loc_r = x_c[i] * data_r[fr];
       (*data_g[to])[i] += dtn * loc_lambda * ( 1.0 + b_prime * (*data_p2[fr])[i] / ( b + (*data_p2[fr])[i] ) ) * 
         (*data_g[fr])[i] * ( - (*data_g[fr])[i] / loc_r / loc_r );
+    }
+
+  if ( tdSetup->logistic == 2 )
+    for ( int i = 0; i < Nx; i++ ) {
+      DType loc_lambda = ( q == 0.0 ) ? lambda : lambda * pow(x_c[i],q);
+      DType loc_r = x_c[i] * data_r[fr];
+      DType logistic_term = min( 1.0, (*data_g[fr])[i] / loc_r / loc_r );
+      (*data_g[to])[i] += dtn * loc_lambda * ( 1.0 + b_prime * (*data_p2[fr])[i] / ( b + (*data_p2[fr])[i] ) ) * 
+        (*data_g[fr])[i] * ( - logistic_term ); //( - (*data_g[fr])[i] / loc_r / loc_r );
     }
 
   return;
