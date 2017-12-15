@@ -21,6 +21,8 @@ TDInput::TDInput(void) {
   tdCoef.R_0         = 1.0;
   tdCoef.mu_slp      = 0.0;
   tdCoef.q           = 0.0;
+  tdCoef.p           = 0.0;
+  tdCoef.mu_coef     = 1.0;
   
   //OPN model
   tdCoef.a           = 100.0;
@@ -193,6 +195,10 @@ void TDInput::parse(void) {
       tdCoef.gamma_2 = atof(value);
     else if (strcmp(name,"q")==0)
       tdCoef.q = atof(value);
+    else if (strcmp(name,"p")==0)
+      tdCoef.p = atof(value);
+    else if (strcmp(name,"mu_coef")==0)
+      tdCoef.mu_coef = atof(value);
     else if (strcmp(name,"omega")==0)
       tdCoef.omega = atof(value);
     else if (strcmp(name,"x_l")==0)

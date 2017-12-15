@@ -326,7 +326,6 @@ void TDSolveFVM::update_vel(const int nt) {
       switch ( tdSetup->vel ) {
         case 0: // 2nd-order integral form
           update_vel_int(nt);
-          //update_vel_int_test(nt);
           break;
         case 1:
           update_vel_int_mod(nt);
@@ -464,42 +463,6 @@ void TDSolveFVM::update_vel_int_mod(const int nt) {
   return;
 }
 
-void TDSolveFVM::update_vel_int_test(const int nt) {
-
-  DType lambda  = tdCoef->lambda;
-  DType q       = tdCoef->q;
-  DType delta_h = tdCoef->delta_h;
-  DType alpha   = tdCoef->alpha;
-
-  (*data_v[nt])[0] = 0.0; // b.c. for velocity at x=0
-
-  // First do the integration of x^2R(lambda G - delta_h H)
-  for ( int i = 0; i < Nx; i++ ) {
-    int j = i+1;
-    DType loc_lambda = ( q == 0.0 ) ? lambda : lambda * pow(x_c[i],q);
-    (*data_v[nt])[j] = (*data_v[nt])[i] + dx * ( loc_lambda * (*data_g[nt])[i] - delta_h * (*data_h[nt])[i] ) / data_r[nt];
-  }
-
-  downscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt] );
-
-  // Next divide by x^2 and remove the contribution from N and dA
-  for ( int i = 1; i < Nx; i++ ) {
-    (*data_v[nt])[i] = (*data_v[nt])[i]/x_f[i]/x_f[i] - (alpha/data_r[nt]) * 
-      (*data_n[nt])[N_dir[i]] * 
-      ( ( (*data_a[nt])[i]-(*data_a[nt])[i-1]) / dx );
-  }
-  // Right boundary
-  {
-    (*data_v[nt])[Nx] = (*data_v[nt])[Nx]/x_f[Nx]/x_f[Nx] - (alpha/data_r[nt]) * 
-      ( ( N_dir[Nx]<Nx ) ? (*data_n[nt])[Nx-1] : tdCoef->n_bc ) *
-      ( ( (*data_a[nt])[Nx]-(*data_a[nt])[Nx-1]) / dx );
-  }
-
-  upscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt] );
-
-  return;
-}
-
 void TDSolveFVM::update_sol(const int fr, const int to) {
 
   update_rad( fr, to );
@@ -599,10 +562,14 @@ void TDSolveFVM::update_cells_upw(const int fr, const int to) {
   DType lambda  = tdCoef->lambda;
   DType q       = tdCoef->q;
   DType delta_h = tdCoef->delta_h;
-  DType mu      = tdCoef->mu;
-  DType mu_slp  = tdCoef->mu_slp;
   DType alpha   = tdCoef->alpha;
   DType delta_n = tdCoef->delta_n;
+
+  // mu = mu(mu_coef-mu_slp*x^p)
+  DType mu      = tdCoef->mu;
+  DType mu_slp  = tdCoef->mu_slp;
+  DType mu_coef = tdCoef->mu_coef;
+  DType p       = tdCoef->p;
 
   DType dror = (*data_v[fr])[Nx]/data_r[fr];
   DType aorr = alpha/data_r[fr]/data_r[fr];
@@ -610,7 +577,7 @@ void TDSolveFVM::update_cells_upw(const int fr, const int to) {
   // Source terms
   for ( int i = 0; i < Nx; i++ ) {
     DType loc_lambda = ( q == 0.0 ) ? lambda : lambda * pow(x_c[i],q);
-    DType loc_mu = mu - mu_slp * x_c[i];
+    DType loc_mu = ( p == 0.0 ) ? mu * ( mu_coef - mu_slp ) : mu * ( mu_coef - mu_slp * pow(x_c[i],p) ); 
     (*data_g[to])[i] = (*data_g[fr])[i] + dtn * (
         loc_lambda * (*data_g[fr])[i] - loc_mu * (*data_g[fr])[i]
         - dror * (*data_g[fr])[i] );
@@ -659,9 +626,13 @@ void TDSolveFVM::update_cells_upw_test(const int fr, const int to) {
   DType lambda  = tdCoef->lambda;
   DType q       = tdCoef->q;
   DType delta_h = tdCoef->delta_h;
+  DType alpha   = tdCoef->alpha;
+
+  // mu = mu(mu_coef-mu_slp*x^p)
   DType mu      = tdCoef->mu;
   DType mu_slp  = tdCoef->mu_slp;
-  DType alpha   = tdCoef->alpha;
+  DType mu_coef = tdCoef->mu_coef;
+  DType p       = tdCoef->p;
 
   DType dror = (*data_v[fr])[Nx]/data_r[fr];
   DType aorr = alpha/data_r[fr]/data_r[fr];
@@ -669,7 +640,7 @@ void TDSolveFVM::update_cells_upw_test(const int fr, const int to) {
   // Source terms
   for ( int i = 0; i < Nx; i++ ) {
     DType loc_lambda = ( q == 0.0 ) ? lambda : lambda * pow(x_c[i],q);
-    DType loc_mu = mu - mu_slp * x_c[i];
+    DType loc_mu = ( p == 0.0 ) ? mu * ( mu_coef - mu_slp ) : mu * ( mu_coef - mu_slp * pow(x_c[i],p) ); 
     (*data_g[to])[i] = (*data_g[fr])[i] + dtn * (
         loc_lambda * (*data_g[fr])[i] - loc_mu * (*data_g[fr])[i]
         - dror * (*data_g[fr])[i] );
@@ -727,10 +698,14 @@ void TDSolveFVM::update_cells_upw_be(const int fr, const int to) {
   DType lambda  = tdCoef->lambda;
   DType q       = tdCoef->q;
   DType delta_h = tdCoef->delta_h;
-  DType mu      = tdCoef->mu;
-  DType mu_slp  = tdCoef->mu_slp;
   DType alpha   = tdCoef->alpha;
   DType delta_n = tdCoef->delta_n;
+
+  // mu = mu(mu_coef-mu_slp*x^p)
+  DType mu      = tdCoef->mu;
+  DType mu_slp  = tdCoef->mu_slp;
+  DType mu_coef = tdCoef->mu_coef;
+  DType p       = tdCoef->p;
 
   DType dror = (*data_v[fr])[Nx]/data_r[fr];
   DType aorr = alpha/data_r[fr]/data_r[fr];
@@ -761,8 +736,8 @@ void TDSolveFVM::update_cells_upw_be(const int fr, const int to) {
     else 
       coef_adv_r += dtn*loc_v_r/dx;
 
-    DType loc_mu = mu - mu_slp * x_c[0];
-    DType loc_lambda = ( q == 0.0 ) ? lambda : 0.0;
+    DType loc_lambda = ( q == 0.0 ) ? lambda : lambda * pow(x_c[0],q);
+    DType loc_mu = ( p == 0.0 ) ? mu * ( mu_coef - mu_slp ) : mu * ( mu_coef - mu_slp * pow(x_c[0],p) ); 
     elem = 1.0 + coef_adv_c - dtn*( loc_lambda - loc_mu - dror );
     mat->set(0,0,elem);
 
@@ -791,7 +766,7 @@ void TDSolveFVM::update_cells_upw_be(const int fr, const int to) {
     elem = coef_adv_l;
     mat->set(i,i-1,elem);
 
-    DType loc_mu = mu - mu_slp * x_c[i];
+    DType loc_mu = ( p == 0.0 ) ? mu * ( mu_coef - mu_slp ) : mu * ( mu_coef - mu_slp * pow(x_c[i],p) ); 
     elem = 1.0 + coef_adv_c - dtn*( loc_lambda - loc_mu - dror );
     mat->set(i,i,elem);
 
@@ -813,9 +788,9 @@ void TDSolveFVM::update_cells_upw_be(const int fr, const int to) {
     elem = coef_adv_l;
     mat->set(Nx-1,Nx-2,elem);
 
-    DType loc_mu = mu - mu_slp * x_c[Nx-1];
-    // loc_lambda = lambda at right boundary
-    elem = 1.0 + coef_adv_c - dtn*( lambda - loc_mu - dror );
+    DType loc_lambda = ( q == 0.0 ) ? lambda : lambda * pow(x_c[Nx-1],q);
+    DType loc_mu = ( p == 0.0 ) ? mu * ( mu_coef - mu_slp ) : mu * ( mu_coef - mu_slp * pow(x_c[Nx-1],p) ); 
+    elem = 1.0 + coef_adv_c - dtn*( loc_lambda - loc_mu - dror );
     mat->set(Nx-1,Nx-1,elem);
   }
 
@@ -843,7 +818,7 @@ void TDSolveFVM::update_cells_upw_be(const int fr, const int to) {
 
   // RHS
   for ( int i = 0; i < Nx; i++ ) {
-    DType loc_mu = mu - mu_slp * x_c[i];
+    DType loc_mu = ( p == 0.0 ) ? mu * ( mu_coef - mu_slp ) : mu * ( mu_coef - mu_slp * pow(x_c[i],p) ); 
     comp = (*data_h[fr])[i] + dtn * loc_mu * (*data_g[to])[i];
     rhs->set(i,comp);
   }
@@ -1051,10 +1026,14 @@ void TDSolveFVM::update_cells_muscl(const int fr, const int to) {
   DType lambda  = tdCoef->lambda;
   DType q       = tdCoef->q;
   DType delta_h = tdCoef->delta_h;
-  DType mu      = tdCoef->mu;
-  DType mu_slp  = tdCoef->mu_slp;
   DType alpha   = tdCoef->alpha;
   DType delta_n = tdCoef->delta_n;
+
+  // mu = mu(mu_coef-mu_slp*x^p)
+  DType mu      = tdCoef->mu;
+  DType mu_slp  = tdCoef->mu_slp;
+  DType mu_coef = tdCoef->mu_coef;
+  DType p       = tdCoef->p;
 
   DType dror = (*data_v[fr])[Nx]/data_r[fr];
   DType aorr = alpha/data_r[fr]/data_r[fr];
@@ -1062,7 +1041,7 @@ void TDSolveFVM::update_cells_muscl(const int fr, const int to) {
   // Source terms
   for ( int i = 0; i < Nx; i++ ) {
     DType loc_lambda = ( q == 0.0 ) ? lambda : lambda * pow(x_c[i],q);
-    DType loc_mu = mu - mu_slp * x_c[i];
+    DType loc_mu = ( p == 0.0 ) ? mu * ( mu_coef - mu_slp ) : mu * ( mu_coef - mu_slp * pow(x_c[i],p) ); 
     (*data_g[to])[i] = (*data_g[fr])[i] + dtn * (
         loc_lambda * (*data_g[fr])[i] - loc_mu * (*data_g[fr])[i]
         - dror * (*data_g[fr])[i] );
@@ -1145,14 +1124,18 @@ void TDSolveFVM::update_cells_opn_upw(const int fr, const int to) {
   DType b_prime = tdCoef->b_prime;
   DType lambda  = tdCoef->lambda;
   DType q       = tdCoef->q;
+  DType omega   = tdCoef->omega;
+
+  // mu = mu(mu_coef-mu_slp*x^p)
   DType mu      = tdCoef->mu;
   DType mu_slp  = tdCoef->mu_slp;
-  DType omega   = tdCoef->omega;
+  DType mu_coef = tdCoef->mu_coef;
+  DType p       = tdCoef->p;
 
   // Additional source terms
   for ( int i = 0; i < Nx; i++ ) {
     DType loc_lambda = ( q == 0.0 ) ? lambda : lambda * pow(x_c[i],q);
-    DType loc_mu = mu - mu_slp * x_c[i];
+    DType loc_mu = ( p == 0.0 ) ? mu * ( mu_coef - mu_slp ) : mu * ( mu_coef - mu_slp * pow(x_c[i],p) ); 
     (*data_g[to])[i] += dtn * ( 
         loc_lambda * b_prime * (*data_p2[fr])[i] / ( b + (*data_p2[fr])[i] ) * (*data_g[fr])[i] - 
         loc_mu * a_prime * (*data_p1[fr])[i] / ( a + (*data_p1[fr])[i] ) * (*data_g[fr])[i] );
@@ -1197,14 +1180,18 @@ void TDSolveFVM::update_cells_opn_muscl(const int fr, const int to) {
   DType b_prime = tdCoef->b_prime;
   DType lambda  = tdCoef->lambda;
   DType q       = tdCoef->q;
+  DType omega   = tdCoef->omega;
+
+  // mu = mu(mu_coef-mu_slp*x^p)
   DType mu      = tdCoef->mu;
   DType mu_slp  = tdCoef->mu_slp;
-  DType omega   = tdCoef->omega;
+  DType mu_coef = tdCoef->mu_coef;
+  DType p       = tdCoef->p;
 
   // Additional source terms
   for ( int i = 0; i < Nx; i++ ) {
     DType loc_lambda = ( q == 0.0 ) ? lambda : lambda * pow(x_c[i],q);
-    DType loc_mu = mu - mu_slp * x_c[i];
+    DType loc_mu = ( p == 0.0 ) ? mu * ( mu_coef - mu_slp ) : mu * ( mu_coef - mu_slp * pow(x_c[i],p) ); 
     (*data_g[to])[i] += dtn * ( 
         loc_lambda * b_prime * (*data_p2[fr])[i] / ( b + (*data_p2[fr])[i] ) * (*data_g[fr])[i] - 
         loc_mu * a_prime * (*data_p1[fr])[i] / ( a + (*data_p1[fr])[i] ) * (*data_g[fr])[i] );

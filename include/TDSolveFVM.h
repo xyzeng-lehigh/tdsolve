@@ -41,7 +41,6 @@ class TDSolveFVM : public TDSolve {
   private:
     void update_vel_int(const int nt);
     void update_vel_int_mod(const int nt);
-    void update_vel_int_test(const int nt);
     //OPN model
     void update_vel_prbid1(const int nt);
 

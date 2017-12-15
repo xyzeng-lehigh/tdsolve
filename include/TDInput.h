@@ -33,6 +33,8 @@
 // b                                b
 // b_prime                          b_prime
 // q                                q
+// mu_coef                          mu_coef
+// p                                p
 
 struct TDCoef {
   DType lambda, mu, delta_h, alpha, theta, sigma;
@@ -42,6 +44,8 @@ struct TDCoef {
   DType n_bc;
   DType R_0;
   DType q;
+  DType mu_coef;
+  DType p;
 
   // Additional parameters of the OPN model
   DType a, b, D_1, D_2; 
