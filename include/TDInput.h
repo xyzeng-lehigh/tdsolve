@@ -79,7 +79,7 @@ struct TDSetup {
   int   maxit;
   DType dTinit, dTgrow;
 
-  bool  logistic;
+  int   logistic;
   bool  bc_lim;
 
   int   prob_id;
