@@ -151,15 +151,20 @@ void TDSolve::average_sol(const DType coef_1, const int fr_1,
   *data_n[to] = coef_1 * (*data_n[fr_1]) + coef_2 * (*data_n[fr_2]);
   *data_a[to] = coef_1 * (*data_a[fr_1]) + coef_2 * (*data_a[fr_2]);
   
-  // OPN model
-  if ( tdSetup->prob_id == 1 && tdSetup->frame == 1 ) {
+  // OPN model -- only implemented for FVM or FVM_Mod
+  if ( tdSetup->prob_id == 1 && 
+       ( tdSetup->frame == 1 || tdSetup->frame == 2 ) ) {
     *data_p1[to] = coef_1 * (*data_p1[fr_1]) + coef_2 * (*data_p1[fr_2]);
     *data_p2[to] = coef_1 * (*data_p2[fr_1]) + coef_2 * (*data_p2[fr_2]);
   }
 
   data_r[to]  = coef_1 * data_r[fr_1]    + coef_2 * data_r[fr_2];
 
-  this->update_vel(to);
+  if ( tdSetup->re_vel ) // Do not use this option for FVM_Mod
+    this->update_vel(to);
+  else
+    *data_v[to] = coef_1 * (*data_v[fr_1]) + coef_2 * (*data_v[fr_2]);
+
   return;
 }
 

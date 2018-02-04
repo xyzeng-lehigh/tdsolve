@@ -36,6 +36,7 @@ class TDSolve {
       iter++;
       return !reach_term_now;
     }
+
   protected:
     HVEC** data_g;  // G = number density of glimoa cells
     HVEC** data_h;  // H = number density of necrotic cells

@@ -9,6 +9,7 @@
 #include "TDSolve.h"
 #include "TDSolveFDM.h"
 #include "TDSolveFVM.h"
+#include "TDSolveFVMMod.h"
 using namespace std;
 
 char inputFile[40];
@@ -34,6 +35,11 @@ int main(int argc, char** argv) {
       break;
     case 1:
       tdSolve = new TDSolveFVM(&tdInput);
+      break;
+    case 2:
+      if ( tdInput.tdSetup.re_vel )
+        cout << "Warning: Need to turn-off recompute_vel for modified FVM." << std::endl;
+      tdSolve = new TDSolveFVMMod(&tdInput);
       break;
     default:
       tdSolve = new TDSolveFVM(&tdInput);

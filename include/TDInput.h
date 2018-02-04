@@ -78,6 +78,7 @@ struct TDSetup {
   int   freq;
   int   maxit;
   DType dTinit, dTgrow;
+  bool  re_vel;
 
   int   logistic;
   bool  bc_lim;

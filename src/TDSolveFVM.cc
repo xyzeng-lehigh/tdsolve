@@ -36,6 +36,14 @@ TDSolveFVM::TDSolveFVM(TDInput* tdInput_ptr) :
     alloc_array_full(slope_p1, Nx, 1);
     alloc_array_full(slope_p2, Nx, 1);
   }
+  else {
+    data_p1 = NULL;
+    data_p2 = NULL;
+    flux_p1 = NULL;
+    flux_p2 = NULL;
+    slope_p1 = NULL;
+    slope_p2 = NULL;
+  }
 
   alloc_array_full( N_dir, Nx+1 );
 
@@ -122,7 +130,7 @@ void TDSolveFVM::set_ic(void) {
     (*data_p2[0]) = 0.0;
   }
 
-  update_vel(0);
+  this->update_vel(0);
 
   N_dir[0] = 0;
   for ( int i = 1; i < Nx+1; i++ )
@@ -467,45 +475,30 @@ void TDSolveFVM::update_sol(const int fr, const int to) {
 
   update_rad( fr, to );
 
-  switch( tdSetup->prob_id ) {
-    case 0:
-      switch( tdSetup->scell ) {
-        case 0: // Explicit first-order upwind
-          update_cells_upw( fr, to );
-          //update_cells_upw_test( fr, to );
-          break;
-        case 1: // Implicit first-order upwind
-          update_cells_upw_be( fr, to );
-          break;
-        case 2: // Explicit second-order MUSCL
-          update_cells_muscl( fr, to );
-          break;
-        case 3: // Implicit second-order MUSCL
-          update_cells_muscl_be( fr, to );
-          break;
-        default:
-          std::cout << "Warning: The spatial scheme for cell not defined, "
-            << "using upwind instead\n" << std::endl;
-          update_cells_upw( fr, to );
-          break;
-      }
+  // Both original and OPN
+  switch ( tdSetup->scell ) {
+    case 0: // Explicit first-order upwind
+      update_cells_upw( fr, to );
+      //update_cells_upw_test( fr, to );
       break;
-    case 1:
-      switch ( tdSetup->scell ) {
-        case 0: // Explicit first-order upwind
-          update_cells_opn_upw( fr, to );
-          break;
-        case 2: // Explicit second-order MUSCL
-          update_cells_opn_muscl( fr, to );
-          break;
-        default:
-          std::cout << "Warning: The spatial scheme of cell not defined for the OPN model, "
-            << "using upwind instead\n" << std::endl;
-          update_cells_opn_upw( fr, to );
-          break;
-      }
+    case 1: // Implicit first-order upwind
+      update_cells_upw_be( fr, to );
+      break;
+    case 2: // Explicit second-order MUSCL
+      update_cells_muscl( fr, to );
+      break;
+    case 3: // Implicit second-order MUSCL
+      update_cells_muscl_be( fr, to );
+      break;
+    default:
+      std::cout << "Warning: The spatial scheme for cell not defined, "
+        << "using upwind instead\n" << std::endl;
+      update_cells_upw( fr, to );
       break;
   }
+
+  if ( tdSetup->prob_id == 1 ) // OPN
+    update_cells_opn_add( fr, to );
 
   switch( tdSetup->prob_id ) {
     case 0:
@@ -1114,66 +1107,8 @@ void TDSolveFVM::update_cells_muscl_be(const int fr, const int to) {
 }
 
 // OPN model
-void TDSolveFVM::update_cells_opn_upw(const int fr, const int to) {
-  // For an explicit method, reuse the previous part
-  update_cells_upw( fr, to );
-  
-  DType a       = tdCoef->a;
-  DType b       = tdCoef->b;
-  DType a_prime = tdCoef->a_prime;
-  DType b_prime = tdCoef->b_prime;
-  DType lambda  = tdCoef->lambda;
-  DType q       = tdCoef->q;
-  DType omega   = tdCoef->omega;
 
-  // mu = mu(mu_coef-mu_slp*x^p)
-  DType mu      = tdCoef->mu;
-  DType mu_slp  = tdCoef->mu_slp;
-  DType mu_coef = tdCoef->mu_coef;
-  DType p       = tdCoef->p;
-
-  // Additional source terms
-  for ( int i = 0; i < Nx; i++ ) {
-    DType loc_lambda = ( q == 0.0 ) ? lambda : lambda * pow(x_c[i],q);
-    DType loc_mu = ( p == 0.0 ) ? mu * ( mu_coef - mu_slp ) : mu * ( mu_coef - mu_slp * pow(x_c[i],p) ); 
-    (*data_g[to])[i] += dtn * ( 
-        loc_lambda * b_prime * (*data_p2[fr])[i] / ( b + (*data_p2[fr])[i] ) * (*data_g[fr])[i] - 
-        loc_mu * a_prime * (*data_p1[fr])[i] / ( a + (*data_p1[fr])[i] ) * (*data_g[fr])[i] );
-    (*data_h[to])[i] += dtn * (
-        loc_mu * a_prime * (*data_p1[fr])[i] / ( a + (*data_p1[fr])[i] ) * (*data_g[fr])[i] );
-  }
-
-  if ( omega != 0.0 )
-    for ( int i = 0; i < Nx; i++ ) {
-      DType loc_r = x_c[i] * data_r[fr];
-      (*data_g[to])[i] += dtn * (
-          - omega * (*data_g[fr])[i] * (*data_n[fr])[i] / loc_r / loc_r );
-    }
-
-  if ( tdSetup->logistic == 1 )
-    for ( int i = 0; i < Nx; i++ ) {
-      DType loc_lambda = ( q == 0.0 ) ? lambda : lambda * pow(x_c[i],q);
-      DType loc_r = x_c[i] * data_r[fr];
-      (*data_g[to])[i] += dtn * loc_lambda * ( 1.0 + b_prime * (*data_p2[fr])[i] / ( b + (*data_p2[fr])[i] ) ) * 
-        (*data_g[fr])[i] * ( - (*data_g[fr])[i] / loc_r / loc_r );
-    }
-  
-  if ( tdSetup->logistic == 2 )
-    for ( int i = 0; i < Nx; i++ ) {
-      DType loc_lambda = ( q == 0.0 ) ? lambda : lambda * pow(x_c[i],q);
-      DType loc_r = x_c[i] * data_r[fr];
-      DType logistic_term = min( 1.0, (*data_g[fr])[i] / loc_r / loc_r );
-      (*data_g[to])[i] += dtn * loc_lambda * ( 1.0 + b_prime * (*data_p2[fr])[i] / ( b + (*data_p2[fr])[i] ) ) * 
-        (*data_g[fr])[i] * ( - logistic_term ); //( - (*data_g[fr])[i] / loc_r / loc_r );
-    }
-
-  return;
-}
-
-void TDSolveFVM::update_cells_opn_muscl(const int fr, const int to) {
-  // For an explicit method, reuse the previous part
-  update_cells_muscl( fr, to );
-
+void TDSolveFVM::update_cells_opn_add(const int fr, const int to) {
   DType a       = tdCoef->a;
   DType b       = tdCoef->b;
   DType a_prime = tdCoef->a_prime;

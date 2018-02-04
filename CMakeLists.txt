@@ -7,7 +7,7 @@ set(TDS_MAJOR_VERSION 2)
 # The minor version number: Order of accuracy
 set(TDS_MINOR_VERSION 2)
 # The growth version number:
-set(TDS_GRWTH_VERSION 0)
+set(TDS_GRWTH_VERSION 1)
 # The full version
 set(TDS_VERSION
     ${TDS_MAJOR_VERSION}.${TDS_MINOR_VERSION}.${TDS_GRWTH_VERSION}

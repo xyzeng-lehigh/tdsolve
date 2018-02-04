@@ -20,12 +20,12 @@ class TDSolveFVM : public TDSolve {
     ~TDSolveFVM(void);
 
   protected:
-    HVEC** flux_g;
-    HVEC** flux_h;
-    HVEC** flux_n; // or M
     HVEC** slope_g;
     HVEC** slope_h;
     HVEC** slope_n; // or M
+    HVEC** flux_g;
+    HVEC** flux_h;
+    HVEC** flux_n; // or M
     HVEC** flux_a;
     HVEC** slope_a;
 
@@ -38,21 +38,12 @@ class TDSolveFVM : public TDSolve {
     // Needs to update whenever a or n is modified
     void update_vel(const int nt);
 
-  private:
-    void update_vel_int(const int nt);
-    void update_vel_int_mod(const int nt);
-    //OPN model
-    void update_vel_prbid1(const int nt);
+    void upscale_var(HVEC&, HVEC&, DType*&, int, DType);
+    void downscale_var(HVEC&, HVEC&, DType*&, int, DType);
 
-    int* N_dir;
-    void update_cells_upw(const int fr, const int to);
-    void update_cells_upw_test(const int fr, const int to);
-    void update_cells_upw_be(const int fr, const int to);
-    void update_cells_muscl(const int fr, const int to);
-    void update_cells_muscl_be(const int fr, const int to);
-    // OPN model
-    void update_cells_opn_upw(const int fr, const int to);
-    void update_cells_opn_muscl(const int fr, const int to);
+    // Various output function
+    void output_pdgf(const int nt);
+    void output_opn(const int nt);
 
     void update_chem_upw_be(const int fr, const int to);
     void update_chem_muscl_imex(const int fr, const int to);
@@ -66,12 +57,22 @@ class TDSolveFVM : public TDSolve {
                                 const DType coef_beta, const DType coef_gamma, 
                                 HVEC**& data_source, HVEC**& data_P, HVEC**& flux_P, HVEC**& slope_P);
 
-    void upscale_var(HVEC&, HVEC&, DType*&, int, DType);
-    void downscale_var(HVEC&, HVEC&, DType*&, int, DType);
+    virtual void update_cells_upw(const int fr, const int to);
+    virtual void update_cells_muscl(const int fr, const int to);
+    // OPN model
+    virtual void update_cells_opn_add(const int fr, const int to); 
 
-    // Various output function
-    void output_pdgf(const int nt);
-    void output_opn(const int nt);
+  private:
+    int*   N_dir;
+
+    void update_vel_int(const int nt);
+    void update_vel_int_mod(const int nt);
+    //OPN model
+    void update_vel_prbid1(const int nt);
+
+    void update_cells_upw_test(const int fr, const int to);
+    void update_cells_upw_be(const int fr, const int to);
+    void update_cells_muscl_be(const int fr, const int to);
 
 };
 
