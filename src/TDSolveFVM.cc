@@ -237,6 +237,7 @@ void TDSolveFVM::output(const int nt) {
 
   switch ( tdSetup->prob_id ) {
     case 0:
+    case -1: // Test
       output_pdgf( nt );
       break;
     case 1:
@@ -253,8 +254,11 @@ void TDSolveFVM::output(const int nt) {
 
 void TDSolveFVM::output_pdgf(const int nt) {
   FILE* ot_file = fopen( tdInput->radiusFile, "a" );
-  fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\t%10.20f\n", tsol, data_r[nt], (*data_v[nt])[Nx],
-      -((*data_a[nt])[Nx]-(*data_a[nt])[Nx-1])/dx/data_r[nt]);
+  if ( tdSetup->frame == 2 && tdSetup->prob_id < 0 )
+    this->print_custom_vel_u( ot_file, nt );
+  else
+    fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\t%10.20f\n", tsol, data_r[nt], (*data_v[nt])[Nx],
+        -((*data_a[nt])[Nx]-(*data_a[nt])[Nx-1])/dx/data_r[nt]);
   fclose(ot_file);
 
   if ( !reach_term_now ) {
@@ -291,8 +295,11 @@ void TDSolveFVM::output_pdgf(const int nt) {
 
 void TDSolveFVM::output_opn(const int nt) {
   FILE* ot_file = fopen( tdInput->radiusFile, "a" );
-  fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\t%10.20f\n", tsol, data_r[nt], (*data_v[nt])[Nx],
-      -((*data_a[nt])[Nx]-(*data_a[nt])[Nx-1])/dx/data_r[nt]);
+  if ( tdSetup->frame == 2 && tdSetup->prob_id < 0 )
+    this->print_custom_vel_u( ot_file, nt );
+  else
+    fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\t%10.20f\n", tsol, data_r[nt], (*data_v[nt])[Nx],
+        -((*data_a[nt])[Nx]-(*data_a[nt])[Nx-1])/dx/data_r[nt]);
   fclose(ot_file);
 
   if ( !reach_term_now ) {

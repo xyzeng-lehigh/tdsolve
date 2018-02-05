@@ -44,6 +44,7 @@ class TDSolveFVM : public TDSolve {
     // Various output function
     void output_pdgf(const int nt);
     void output_opn(const int nt);
+    virtual void print_custom_vel_u( FILE*, const int nt ) {};
 
     void update_chem_upw_be(const int fr, const int to);
     void update_chem_muscl_imex(const int fr, const int to);

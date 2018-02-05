@@ -74,7 +74,7 @@ TDInput::TDInput(void) {
   tdSetup.bc_lim   = true;
   tdSetup.prob_id  = 0;  // 0, default, single chemotaxis
                          // 1, OPN
-
+  tdSetup.init_u_pow = 1;
 
   tdLin.Type      = LSYS_TYPE_DIR;
   tdLin.Print     = true;
@@ -254,6 +254,8 @@ void TDInput::parse(void) {
       tdSetup.bc_lim = (atoi(value)!=0);
     else if (strcmp(name,"prob_id")==0)
       tdSetup.prob_id = atoi(value);
+    else if (strcmp(name,"init_u_pow")==0)
+      tdSetup.init_u_pow = atoi(value);
     else if (strcmp(name,"lsysType")==0)
       if (strcmp(value,"DIR")==0)
         tdLin.Type = LSYS_TYPE_DIR;

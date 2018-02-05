@@ -84,6 +84,9 @@ struct TDSetup {
   bool  bc_lim;
 
   int   prob_id;
+
+  // Test cases
+  int   init_u_pow;
 };
 
 struct TDLin {

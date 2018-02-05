@@ -10,6 +10,7 @@
 
 class TDSolveFVMMod : public TDSolveFVM {
   public:
+    void set_ic(void);
     void update_sol(const int fr, const int to);
 
     TDSolveFVMMod(TDInput* tdInput_ptr);
@@ -32,13 +33,16 @@ class TDSolveFVMMod : public TDSolveFVM {
     HVEC** flux_n_r; // or M
     HVEC** flux_n_u; // or M
 
-    void update_vel(const int nt);
+    HVEC** data_u;   // U = velocity due to chemical gradient
 
-    void update_cells_upw(const int fr, const int to);
-    void update_cells_muscl(const int fr, const int to);
+    void update_vel(const int nt);
+    void print_custom_vel_u( FILE*, const int nt );
 
   private:
     // Original model
+    void compute_vel_u(const int nt);
+    void compute_vel_u_chem(const int nt);
+
     void compute_cells_fluxes_u(const int nt);
     void compute_cells_fluxes_u_upw(const int nt);
     void compute_cells_fluxes_u_muscl(const int nt);
