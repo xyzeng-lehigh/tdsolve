@@ -49,6 +49,7 @@ class TDSolveFVMMod : public TDSolveFVM {
     void compute_cells_fluxes_v(const int nt);
     void compute_cells_fluxes_v_upw(const int nt);
     void compute_cells_fluxes_v_muscl(const int nt);
+    void compute_cells_fluxes_r(const int nt);
     void update_cells_common(const int fr, const int to);
     void update_vel_int(const int nt);
 
@@ -62,6 +63,10 @@ class TDSolveFVMMod : public TDSolveFVM {
       else
         return min(dval_l/dval_r, 1.0);
     }
+
+    // The PPM limiter
+    DType LimFun_PPM_BC(DType dval_c, DType dval_r); 
+    void  LimFun_PPM_INT(DType alpha1, DType alpha2, DType& lim_l, DType& lim_r);
 
 };
 

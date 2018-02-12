@@ -70,6 +70,7 @@ TDInput::TDInput(void) {
   tdSetup.dTinit = 1e-10;
   tdSetup.dTgrow = 1.2;
   tdSetup.re_vel = true;
+  tdSetup.slim_tot = false;
   tdSetup.logistic = 0;
   tdSetup.bc_lim   = true;
   tdSetup.prob_id  = 0;  // 0, default, single chemotaxis
@@ -247,7 +248,9 @@ void TDInput::parse(void) {
     else if (strcmp(name,"dt_growth")==0)
       tdSetup.dTgrow = atof(value);
     else if (strcmp(name,"recompute_vel")==0)
-      tdSetup.re_vel = !(atoi(value)==0);
+      tdSetup.re_vel = (atoi(value)!=0);
+    else if (strcmp(name,"lim_sync_tot")==0)
+      tdSetup.slim_tot = (atoi(value)!=0);
     else if (strcmp(name,"logistic")==0)
       tdSetup.logistic = atoi(value);
     else if (strcmp(name,"bc_lim")==0)

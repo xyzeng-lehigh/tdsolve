@@ -164,20 +164,20 @@ void TDSolveFVM::copy_data(const int nt_fr, const int nt_to) {
 
 void TDSolveFVM::upscale_var(
     HVEC& data_fr, HVEC& data_to, DType*& x_ptr, 
-    int Nsize, DType radius) {
+    int Nsize, DType radius, int scal_pow) {
   for ( int i = 0; i < Nsize; i++ ) {
     DType loc_r = x_ptr[i] * radius;
-    data_to[i] = data_fr[i] * loc_r * loc_r;
+    data_to[i] = data_fr[i] * pow(loc_r, scal_pow);
   }
   return;
 }
 
 void TDSolveFVM::downscale_var(
     HVEC& data_fr, HVEC& data_to, DType*& x_ptr, 
-    int Nsize, DType radius) {
+    int Nsize, DType radius, int scal_pow) {
   for ( int i = 0; i < Nsize; i++ ) {
     DType loc_r = x_ptr[i] * radius;
-    data_to[i] = data_fr[i] / loc_r / loc_r;
+    data_to[i] = data_fr[i] / pow(loc_r, scal_pow);
   }
   return;
 }

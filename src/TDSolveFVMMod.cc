@@ -8,10 +8,10 @@ using namespace std;
 TDSolveFVMMod::TDSolveFVMMod(TDInput* tdInput_ptr) :
   TDSolveFVM(tdInput_ptr) {
 
-  alloc_array_full( lim_g, Nx, 1 );
-  alloc_array_full( lim_h, Nx, 1 );
-  alloc_array_full( lim_n, Nx, 1 ); // M
-  alloc_array_full( lim_s, Nx, 1 ); // Sync
+  alloc_array_full( lim_g, Nx, 2 );
+  alloc_array_full( lim_h, Nx, 2 );
+  alloc_array_full( lim_n, Nx, 2 ); // M
+  alloc_array_full( lim_s, Nx, 2 ); // Sync
 
   alloc_array_full( flux_g_v, Nx+1, 1 );
   alloc_array_full( flux_g_r, Nx+1, 1 );
@@ -26,10 +26,10 @@ TDSolveFVMMod::TDSolveFVMMod(TDInput* tdInput_ptr) :
 }
 
 TDSolveFVMMod::~TDSolveFVMMod(void) {
-  erase_array( lim_g, 1 );
-  erase_array( lim_h, 1 );
-  erase_array( lim_n, 1 );
-  erase_array( lim_s, 1 );
+  erase_array( lim_g, 2 );
+  erase_array( lim_h, 2 );
+  erase_array( lim_n, 2 );
+  erase_array( lim_s, 2 );
   erase_array( flux_g_v, 1 );
   erase_array( flux_g_r, 1 );
   erase_array( flux_h_v, 1 );
@@ -190,6 +190,9 @@ void TDSolveFVMMod::update_vel(const int nt) {
   // The fluxes that need V
   compute_cells_fluxes_v( nt );
 
+  // The fluxes associated with R'
+  compute_cells_fluxes_r( nt );
+
   return;
 }
 
@@ -288,7 +291,7 @@ void TDSolveFVMMod::compute_cells_fluxes_u_muscl(const int nt) {
   downscale_var(*data_h[nt],*data_h[nt],x_c,Nx,data_r[nt]);
   downscale_var(*data_n[nt],*data_n[nt],x_c,Nx,data_r[nt]);
 
-  // Limiters
+  // Limiters for the velocity associated with u and with v
   { // Left boundary
     (*lim_g[0])[0] = 0.0;
     (*lim_h[0])[0] = 0.0;
@@ -305,13 +308,14 @@ void TDSolveFVMMod::compute_cells_fluxes_u_muscl(const int nt) {
     DType loc_lim_n = LimFun_Minmod(
         (*data_n[nt])[i] - (*data_n[nt])[i-1],
         (*data_n[nt])[i+1] - (*data_n[nt])[i] );
-    DType loc_theta[3];
-    loc_theta[0] = (*data_g[nt])[i-1] + (*data_h[nt])[i-1] + (*data_n[nt])[i-1];
-    loc_theta[1] = (*data_g[nt])[i] + (*data_h[nt])[i] + (*data_n[nt])[i];
-    loc_theta[2] = (*data_g[nt])[i+1] + (*data_h[nt])[i+1] + (*data_n[nt])[i+1];
-    DType loc_lim_theta = LimFun_Minmod(
-        loc_theta[1] - loc_theta[0],
-        loc_theta[2] - loc_theta[1] );
+    DType loc_lim_theta = 1.0;
+    if ( tdSetup->slim_tot ) {
+      DType loc_theta[3];
+      loc_theta[0] = (*data_g[nt])[i-1] + (*data_h[nt])[i-1] + (*data_n[nt])[i-1];
+      loc_theta[1] = (*data_g[nt])[i] + (*data_h[nt])[i] + (*data_n[nt])[i];
+      loc_theta[2] = (*data_g[nt])[i+1] + (*data_h[nt])[i+1] + (*data_n[nt])[i+1];
+      loc_lim_theta = LimFun_Minmod(loc_theta[1]-loc_theta[0], loc_theta[2]-loc_theta[1]);
+    }
 
     (*lim_g[0])[i] = loc_lim_g;
     (*lim_h[0])[i] = loc_lim_h;
@@ -378,9 +382,6 @@ void TDSolveFVMMod::compute_cells_fluxes_u_muscl(const int nt) {
 
 void TDSolveFVMMod::compute_cells_fluxes_v_upw(const int nt) {
 
-  DType dror = (*data_v[nt])[Nx]/data_r[nt];
-  dror = dror * ( 1.0 + 0.5 * dtn * dror );
-
   downscale_var(*data_g[nt],*data_g[nt],x_c,Nx,data_r[nt]);
   downscale_var(*data_h[nt],*data_h[nt],x_c,Nx,data_r[nt]);
   downscale_var(*data_n[nt],*data_n[nt],x_c,Nx,data_r[nt]);
@@ -388,13 +389,8 @@ void TDSolveFVMMod::compute_cells_fluxes_v_upw(const int nt) {
   // Fluxes
   { // Left boundary
     (*flux_g_v[0])[0] = 0.0;
-    (*flux_g_r[0])[0] = 0.0;
-
     (*flux_h_v[0])[0] = 0.0;
-    (*flux_h_r[0])[0] = 0.0;
-
     (*flux_n_v[0])[0] = 0.0;
-    (*flux_n_r[0])[0] = 0.0;
   }
   for ( int i = 1; i < Nx; i++ ) {
     DType loc_r  = x_f[i] * data_r[nt];
@@ -405,28 +401,11 @@ void TDSolveFVMMod::compute_cells_fluxes_v_upw(const int nt) {
     (*flux_g_v[0])[i] = loc_r2 * loc_vel_v * (*data_g[nt])[i_idx_v];
     (*flux_h_v[0])[i] = loc_r2 * loc_vel_v * (*data_h[nt])[i_idx_v];
     (*flux_n_v[0])[i] = loc_r2 * loc_vel_v * (*data_n[nt])[i_idx_v];
-
-    DType loc_vel_r = - x_f[i] * dror;
-    int i_idx_r = (loc_vel_r>=0.0) ? i-1 : i;
-    (*flux_g_r[0])[i] = loc_r2 * loc_vel_r * (*data_g[nt])[i_idx_r];
-    (*flux_h_r[0])[i] = loc_r2 * loc_vel_r * (*data_h[nt])[i_idx_r];
-    (*flux_n_r[0])[i] = loc_r2 * loc_vel_r * (*data_n[nt])[i_idx_r];
   }
   { // Right boundary
     (*flux_g_v[0])[Nx] = 0.0;
-    (*flux_g_r[0])[Nx] = 0.0;
-
     (*flux_h_v[0])[Nx] = 0.0;
-    (*flux_h_r[0])[Nx] = 0.0;
-
     (*flux_n_v[0])[Nx] = 0.0;
-    (*flux_n_r[0])[Nx] = 0.0;
-  }
-
-  for ( int i = 0; i < Nx+1; i++ ) {
-    (*flux_g[0])[i] = (*flux_g_v[0])[i]+(*flux_g_r[0])[i];
-    (*flux_h[0])[i] = (*flux_h_v[0])[i]+(*flux_h_r[0])[i];
-    (*flux_n[0])[i] = (*flux_n_v[0])[i]+(*flux_n_r[0])[i]+(*flux_n_u[0])[i];
   }
 
   upscale_var(*data_g[nt],*data_g[nt],x_c,Nx,data_r[nt]);
@@ -438,9 +417,6 @@ void TDSolveFVMMod::compute_cells_fluxes_v_upw(const int nt) {
 
 void TDSolveFVMMod::compute_cells_fluxes_v_muscl(const int nt) {
 
-  DType dror = (*data_v[nt])[Nx]/data_r[nt];
-  dror = dror * ( 1.0 + 0.5 * dtn * dror );
-
   downscale_var(*data_g[nt],*data_g[nt],x_c,Nx,data_r[nt]);
   downscale_var(*data_h[nt],*data_h[nt],x_c,Nx,data_r[nt]);
   downscale_var(*data_n[nt],*data_n[nt],x_c,Nx,data_r[nt]);
@@ -448,13 +424,8 @@ void TDSolveFVMMod::compute_cells_fluxes_v_muscl(const int nt) {
   // Fluxes
   { // Left boundary
     (*flux_g_v[0])[0] = 0.0;
-    (*flux_g_r[0])[0] = 0.0;
-
     (*flux_h_v[0])[0] = 0.0;
-    (*flux_h_r[0])[0] = 0.0;
-
     (*flux_n_v[0])[0] = 0.0;
-    (*flux_n_r[0])[0] = 0.0;
   }
   for ( int i = 1; i < Nx; i++ ) {
     DType loc_r  = x_f[i] * data_r[nt];
@@ -477,45 +448,250 @@ void TDSolveFVMMod::compute_cells_fluxes_v_muscl(const int nt) {
       (*flux_n_v[0])[i] = loc_r2 * loc_vel_v * (
           (*data_n[nt])[i]-0.5*dx*(*slope_n[0])[i] );
     }
-
-    DType loc_vel_r = - x_f[i] * dror;
-    if ( loc_vel_r >= 0.0 ) {
-      (*flux_g_r[0])[i] = loc_r2 * loc_vel_r * (
-          (*data_g[nt])[i-1]+0.5*dx*(*slope_g[0])[i-1] );
-      (*flux_h_r[0])[i] = loc_r2 * loc_vel_r * (
-          (*data_h[nt])[i-1]+0.5*dx*(*slope_h[0])[i-1] );
-      (*flux_n_r[0])[i] = loc_r2 * loc_vel_r * (
-          (*data_n[nt])[i-1]+0.5*dx*(*slope_n[0])[i-1] );
-    }
-    else {
-      (*flux_g_r[0])[i] = loc_r2 * loc_vel_r * (
-          (*data_g[nt])[i]-0.5*dx*(*slope_g[0])[i] );
-      (*flux_h_r[0])[i] = loc_r2 * loc_vel_r * (
-          (*data_h[nt])[i]-0.5*dx*(*slope_h[0])[i] );
-      (*flux_n_r[0])[i] = loc_r2 * loc_vel_r * (
-          (*data_n[nt])[i]-0.5*dx*(*slope_n[0])[i] );
-    }
   }
   { // Right boundary
     (*flux_g_v[0])[Nx] = 0.0;
-    (*flux_g_r[0])[Nx] = 0.0;
-
     (*flux_h_v[0])[Nx] = 0.0;
-    (*flux_h_r[0])[Nx] = 0.0;
-
     (*flux_n_v[0])[Nx] = 0.0;
+  }
+
+  upscale_var(*data_g[nt],*data_g[nt],x_c,Nx,data_r[nt]);
+  upscale_var(*data_h[nt],*data_h[nt],x_c,Nx,data_r[nt]);
+  upscale_var(*data_n[nt],*data_n[nt],x_c,Nx,data_r[nt]);
+
+  return;
+}
+
+void TDSolveFVMMod::compute_cells_fluxes_r(const int nt) {
+  DType dror = (*data_v[nt])[Nx]/data_r[nt];
+  dror = dror * ( 1.0 + 0.5 * dtn * dror );
+
+  const DType sot = 7.0/12.0;
+  const DType oot = 1.0/12.0;
+
+  // x^2R^2N -> x^3R^2N, etc.
+  upscale_var(*data_g[nt],*data_g[nt],x_c,Nx,1.0,1);
+  upscale_var(*data_h[nt],*data_h[nt],x_c,Nx,1.0,1);
+  upscale_var(*data_n[nt],*data_n[nt],x_c,Nx,1.0,1);
+
+  // Step one -- use flux_n, etc, to store the surface values
+  DType rbc_coef   = pow((x_c[Nx-1]+dx)/x_c[Nx-1],3);
+  DType rbc_coef_2 = pow((x_c[Nx-1]+2.0*dx)/x_c[Nx-1],3);
+  // Near left boundary
+  {
+    (*flux_g[0])[0] = 0.0;
+    (*flux_h[0])[0] = 0.0;
+    (*flux_n[0])[0] = 0.0;
+    
+    (*flux_g[0])[1] = sot*((*data_g[nt])[0]+(*data_g[nt])[1]) - oot*((*data_g[nt])[2]-(*data_g[nt])[0]);
+    (*flux_h[0])[1] = sot*((*data_h[nt])[0]+(*data_h[nt])[1]) - oot*((*data_h[nt])[2]-(*data_h[nt])[0]);
+    (*flux_n[0])[1] = sot*((*data_n[nt])[0]+(*data_n[nt])[1]) - oot*((*data_n[nt])[2]-(*data_n[nt])[0]);
+  }
+  for ( int i = 2; i < Nx-1; i++ )
+  {
+    (*flux_g[0])[i] = sot*((*data_g[nt])[i-1]+(*data_g[nt])[i]) - oot*((*data_g[nt])[i-2]+(*data_g[nt])[i+1]);
+    (*flux_h[0])[i] = sot*((*data_h[nt])[i-1]+(*data_h[nt])[i]) - oot*((*data_h[nt])[i-2]+(*data_h[nt])[i+1]);
+    (*flux_n[0])[i] = sot*((*data_n[nt])[i-1]+(*data_n[nt])[i]) - oot*((*data_n[nt])[i-2]+(*data_n[nt])[i+1]);
+  }
+  // Near right boundary (constant extrapolation in the primitive variables)
+  {
+    (*flux_g[0])[Nx-1] = sot*((*data_g[nt])[Nx-2]+(*data_g[nt])[Nx-1]) 
+      - oot*((*data_g[nt])[Nx-3]+rbc_coef*(*data_g[nt])[Nx-1]);
+    (*flux_h[0])[Nx-1] = sot*((*data_h[nt])[Nx-2]+(*data_h[nt])[Nx-1]) 
+      - oot*((*data_h[nt])[Nx-3]+rbc_coef*(*data_h[nt])[Nx-1]);
+    (*flux_n[0])[Nx-1] = sot*((*data_n[nt])[Nx-2]+(*data_n[nt])[Nx-1]) 
+      - oot*((*data_n[nt])[Nx-3]+rbc_coef*(*data_n[nt])[Nx-1]);
+
+    (*flux_g[0])[Nx] = sot*((*data_g[nt])[Nx-1]+rbc_coef*(*data_g[nt])[Nx-1])
+      - oot*((*data_g[nt])[Nx-2]+rbc_coef_2*(*data_g[nt])[Nx-1]);
+    (*flux_h[0])[Nx] = sot*((*data_h[nt])[Nx-1]+rbc_coef*(*data_h[nt])[Nx-1])
+      - oot*((*data_h[nt])[Nx-2]+rbc_coef_2*(*data_h[nt])[Nx-1]);
+    (*flux_n[0])[Nx] = sot*((*data_n[nt])[Nx-1]+rbc_coef*(*data_n[nt])[Nx-1])
+      - oot*((*data_n[nt])[Nx-2]+rbc_coef_2*(*data_n[nt])[Nx-1]);
+  }
+
+  // Step two -- compute the left limiters in lim_?[0] and the right ones
+  //             in lim_?[1]
+  // Left boundary
+  {
+    (*lim_g[0])[0] = 0.0;
+    (*lim_h[0])[0] = 0.0;
+    (*lim_n[0])[0] = 0.0;
+    (*lim_s[0])[0] = 0.0;
+
+    (*lim_g[1])[0] = LimFun_PPM_BC( (*data_g[nt])[0], (*flux_g[0])[1] );
+    (*lim_h[1])[0] = LimFun_PPM_BC( (*data_h[nt])[0], (*flux_h[0])[1] );
+    (*lim_n[1])[0] = LimFun_PPM_BC( (*data_n[nt])[0], (*flux_n[0])[1] );
+
+    (*lim_s[1])[0] = min( min((*lim_g[1])[0],(*lim_h[1])[0]), (*lim_n[1])[0] );
+
+    if ( tdSetup->slim_tot ) {
+      DType loc_lim_s = LimFun_PPM_BC( (*data_g[nt])[0] + (*data_h[nt])[0] + (*data_n[nt])[0],
+          (*flux_g[0])[1] + (*flux_h[0])[1] + (*flux_n[0])[1] );
+      (*lim_s[1])[0] = min( (*lim_s[1])[0], loc_lim_s );
+    }
+  }
+  for ( int i = 1; i < Nx; i++ ) {
+    DType diff_g_l = (*flux_g[0])[i]   - (*data_g[nt])[i];
+    DType diff_g_r = (*flux_g[0])[i+1] - (*data_g[nt])[i];
+    DType diff_h_l = (*flux_h[0])[i]   - (*data_h[nt])[i];
+    DType diff_h_r = (*flux_h[0])[i+1] - (*data_h[nt])[i];
+    DType diff_n_l = (*flux_n[0])[i]   - (*data_n[nt])[i];
+    DType diff_n_r = (*flux_n[0])[i+1] - (*data_n[nt])[i];
+    DType diff_s_l, diff_s_r;
+
+    DType alpha1_g, alpha1_h, alpha1_n, alpha1_s;
+    DType alpha2_g, alpha2_h, alpha2_n, alpha2_s;
+
+    bool zero_lim_g = false;
+    bool zero_lim_h = false;
+    bool zero_lim_n = false;
+    bool no_lim_g = fabs(diff_g_l)+fabs(diff_g_r)<2.0*TOL_ZERO;
+    bool no_lim_h = fabs(diff_h_l)+fabs(diff_h_r)<2.0*TOL_ZERO;
+    bool no_lim_n = fabs(diff_n_l)+fabs(diff_n_r)<2.0*TOL_ZERO;
+
+    if (!no_lim_g) {
+      if ( fabs(diff_g_l)<=TOL_ZERO || fabs(diff_g_r)<=TOL_ZERO || diff_g_l*diff_g_r > TOL_ZERO ) {
+        zero_lim_g = true;
+        (*lim_g[0])[i] = 0.0; (*lim_g[1])[i] = 0.0;
+      }
+      else {
+        alpha1_g = 2.0*fabs(diff_g_l)/fabs(diff_g_r);
+        alpha2_g = 0.25 * alpha1_g;
+        LimFun_PPM_INT(alpha1_g, alpha2_g, (*lim_g[0])[i], (*lim_g[1])[i]);
+      }
+    }
+    else {
+      (*lim_g[0])[i] = 1.0; (*lim_g[1])[i] = 1.0;
+      alpha1_g = DTYPE_MAX; alpha2_g = 0.0;
+    }
+
+    if (!no_lim_h) {
+      if ( fabs(diff_h_l)<=TOL_ZERO || fabs(diff_h_r)<=TOL_ZERO || diff_h_l*diff_h_r > TOL_ZERO ) {
+        zero_lim_h = true;
+        (*lim_h[0])[i] = 0.0; (*lim_h[1])[i] = 0.0;
+      }
+      else {
+        alpha1_h = 2.0*fabs(diff_h_l)/fabs(diff_h_r);
+        alpha2_h = 0.25 * alpha1_h;
+        LimFun_PPM_INT(alpha1_h, alpha2_h, (*lim_h[0])[i], (*lim_h[1])[i]);
+      }
+    }
+    else {
+      (*lim_h[0])[i] = 1.0; (*lim_h[1])[i] = 1.0;
+      alpha1_h = DTYPE_MAX; alpha2_h = 0.0;
+    }
+
+    if (!no_lim_n) {
+      if ( fabs(diff_n_l)<=TOL_ZERO || fabs(diff_n_r)<=TOL_ZERO || diff_n_l*diff_n_r > TOL_ZERO ) {
+        zero_lim_n = true;
+        (*lim_n[0])[i] = 0.0; (*lim_n[1])[i] = 0.0;
+      }
+      else {
+        alpha1_n = 2.0*fabs(diff_n_l)/fabs(diff_n_r);
+        alpha2_n = 0.25 * alpha1_n;
+        LimFun_PPM_INT(alpha1_n, alpha2_n, (*lim_n[0])[i], (*lim_n[1])[i]);
+      }
+    }
+    else {
+      (*lim_n[0])[i] = 1.0; (*lim_n[1])[i] = 1.0;
+      alpha1_n = DTYPE_MAX; alpha2_n = 0.0;
+    }
+
+    bool zero_lim_s = false;
+    bool no_lim_s = false; 
+
+    if ( tdSetup->slim_tot ) {
+      diff_s_l = diff_g_l + diff_h_l + diff_n_l;
+      diff_s_r = diff_g_r + diff_h_r + diff_n_r;
+      no_lim_s = fabs(diff_g_l)+fabs(diff_g_r)<2.0*TOL_ZERO;
+      if (!no_lim_s) {
+        if ( fabs(diff_s_l)<=TOL_ZERO || fabs(diff_s_r)<=TOL_ZERO || diff_s_l*diff_s_r > TOL_ZERO ) {
+          zero_lim_s = true;
+          (*lim_s[0])[i] = 0.0; (*lim_s[1])[i] = 0.0;
+        }
+        else {
+          alpha1_s = 2.0*fabs(diff_s_l)/fabs(diff_s_r);
+          alpha2_s = 0.25 * alpha1_s;
+          LimFun_PPM_INT(alpha1_s, alpha2_s, (*lim_s[0])[i], (*lim_s[1])[i]);
+        }
+      }
+      else {
+        (*lim_s[0])[i] = 1.0; (*lim_s[1])[i] = 1.0;
+        alpha1_s = DTYPE_MAX; alpha2_s = 0.0;
+      }
+    }
+
+    if ( tdSetup->slim_tot ) {
+      if ( zero_lim_g || zero_lim_h || zero_lim_n || zero_lim_s ) {
+        (*lim_s[0])[i] = 0.0; (*lim_s[1])[i] = 0.0;
+      }
+      else {
+        DType alpha1 = DTYPE_MAX;
+        DType alpha2 = 0.0;
+        if ( !no_lim_g ) { alpha1 = min(alpha1,alpha1_g); alpha2 = max(alpha2,alpha2_g); }
+        if ( !no_lim_h ) { alpha1 = min(alpha1,alpha1_h); alpha2 = max(alpha2,alpha2_h); }
+        if ( !no_lim_n ) { alpha1 = min(alpha1,alpha1_n); alpha2 = max(alpha2,alpha2_n); }
+        if ( !no_lim_s ) { alpha1 = min(alpha1,alpha1_s); alpha2 = max(alpha2,alpha2_s); }
+        LimFun_PPM_INT(alpha1, alpha2, (*lim_s[0])[i], (*lim_n[1])[i]);
+      }
+    }
+    else {
+      if ( zero_lim_g || zero_lim_h || zero_lim_n ) {
+        (*lim_s[0])[i] = 0.0; (*lim_s[1])[i] = 0.0;
+      }
+      else {
+        DType alpha1 = DTYPE_MAX;
+        DType alpha2 = 0.0;
+        if ( !no_lim_g ) { alpha1 = min(alpha1,alpha1_g); alpha2 = max(alpha2,alpha2_g); }
+        if ( !no_lim_h ) { alpha1 = min(alpha1,alpha1_h); alpha2 = max(alpha2,alpha2_h); }
+        if ( !no_lim_n ) { alpha1 = min(alpha1,alpha1_n); alpha2 = max(alpha2,alpha2_n); }
+        LimFun_PPM_INT(alpha1, alpha2, (*lim_s[0])[i], (*lim_n[1])[i]);
+      }
+    }
+  }
+
+  // Step 3 -- compute the fluxes
+  // Left boundary
+  {
+    (*flux_g_r[0])[0] = 0.0;
+    (*flux_h_r[0])[0] = 0.0;
+    (*flux_n_r[0])[0] = 0.0;
+  }
+  for ( int i = 1; i < Nx; i++ ) {
+    DType loc_vel_r = - dror;
+    DType lim_l = (*lim_s[1])[i-1];
+    DType lim_r = (*lim_s[0])[i];
+    //DType lim_l = 1.0;
+    //DType lim_r = 1.0;
+    if ( loc_vel_r >= 0.0 ) {
+      (*flux_g_r[0])[i] = loc_vel_r * ( (1.0-lim_l) * (*data_g[nt])[i-1] + lim_l*(*flux_g[0])[i] );
+      (*flux_h_r[0])[i] = loc_vel_r * ( (1.0-lim_l) * (*data_h[nt])[i-1] + lim_l*(*flux_h[0])[i] );
+      (*flux_n_r[0])[i] = loc_vel_r * ( (1.0-lim_l) * (*data_n[nt])[i-1] + lim_l*(*flux_n[0])[i] );
+    }
+    else {
+      (*flux_g_r[0])[i] = loc_vel_r * ( (1.0-lim_r) * (*data_g[nt])[i] + lim_r*(*flux_g[0])[i] );
+      (*flux_h_r[0])[i] = loc_vel_r * ( (1.0-lim_r) * (*data_h[nt])[i] + lim_r*(*flux_h[0])[i] );
+      (*flux_n_r[0])[i] = loc_vel_r * ( (1.0-lim_r) * (*data_n[nt])[i] + lim_r*(*flux_n[0])[i] );
+    }
+  }
+  // Right boundary
+  {
+    (*flux_g_r[0])[Nx] = 0.0;
+    (*flux_h_r[0])[Nx] = 0.0;
     (*flux_n_r[0])[Nx] = 0.0;
   }
+
+  // x^3R^2N -> x^2R^2N, etc.
+  downscale_var(*data_g[nt],*data_g[nt],x_c,Nx,1.0,1);
+  downscale_var(*data_h[nt],*data_h[nt],x_c,Nx,1.0,1);
+  downscale_var(*data_n[nt],*data_n[nt],x_c,Nx,1.0,1);
 
   for ( int i = 0; i < Nx+1; i++ ) {
     (*flux_g[0])[i] = (*flux_g_v[0])[i]+(*flux_g_r[0])[i];
     (*flux_h[0])[i] = (*flux_h_v[0])[i]+(*flux_h_r[0])[i];
     (*flux_n[0])[i] = (*flux_n_v[0])[i]+(*flux_n_r[0])[i]+(*flux_n_u[0])[i];
   }
-
-  upscale_var(*data_g[nt],*data_g[nt],x_c,Nx,data_r[nt]);
-  upscale_var(*data_h[nt],*data_h[nt],x_c,Nx,data_r[nt]);
-  upscale_var(*data_n[nt],*data_n[nt],x_c,Nx,data_r[nt]);
 
   return;
 }
@@ -617,3 +793,25 @@ void TDSolveFVMMod::update_cells_common(const int fr, const int to) {
   return;
 }
 
+DType TDSolveFVMMod::LimFun_PPM_BC(DType dval_c, DType dval_r) {
+  if ( fabs(dval_c)<TOL_ZERO && fabs(dval_r)<TOL_ZERO )
+    return 1.0;
+  if ( dval_c * dval_r <= 0.0 ||
+       3.0*fabs(dval_r) <= 8.0*fabs(dval_c) )
+    return 0.0;
+  else
+    return min(1.0, 5.0/(fabs(dval_r)/fabs(dval_c)-1.0));
+}
+
+void TDSolveFVMMod::LimFun_PPM_INT(DType alpha1, DType alpha2, DType& lim_l, DType& lim_r) {
+  if ( alpha2 > alpha1 + TOL_ZERO ) {
+    lim_l = 0.0; lim_r = 0.0;
+  } else if ( alpha1 < 1.0 ) {
+    lim_l = 1.0; lim_r = alpha1;
+  } else if ( alpha2 > 1.0 ) {
+    lim_l = 1.0/alpha2; lim_r = 1.0;
+  } else {
+    lim_l = 1.0; lim_r = 1.0;
+  }
+  return;
+}

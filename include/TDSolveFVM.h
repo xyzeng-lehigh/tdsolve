@@ -38,8 +38,8 @@ class TDSolveFVM : public TDSolve {
     // Needs to update whenever a or n is modified
     void update_vel(const int nt);
 
-    void upscale_var(HVEC&, HVEC&, DType*&, int, DType);
-    void downscale_var(HVEC&, HVEC&, DType*&, int, DType);
+    void upscale_var(HVEC&, HVEC&, DType*&, int, DType, int scal_pow=2);
+    void downscale_var(HVEC&, HVEC&, DType*&, int, DType, int scal_pow=2);
 
     // Various output function
     void output_pdgf(const int nt);
