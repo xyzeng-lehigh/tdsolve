@@ -104,7 +104,7 @@ void TDSolveFVMMod::print_custom_vel_u( FILE* ot_file, const int nt ){
   fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\t%10.20f\n", tsol, data_r[nt], (*data_v[nt])[Nx], -(*data_u[0])[Nx] );
 }
 
-void TDSolveFVMMod::update_sol(const int fr, const int to) {
+void TDSolveFVMMod::update_sol(const int fr, const int to, const int shift_dt) {
 
   // Use data_v[fr], which is computed in previous iteration
   update_rad( fr, to );
@@ -138,17 +138,19 @@ void TDSolveFVMMod::update_sol(const int fr, const int to) {
           // Update A
           update_chem_upw_be( fr, to );
           // Update P1 and P2
-          update_chem_opn_upw_be( fr, to, tdCoef->D_1, tdCoef->alpha_1, tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1 );
-          update_chem_opn_upw_be( fr, to, tdCoef->D_2, tdCoef->alpha_2, tdCoef->beta_2, tdCoef->gamma_2, data_g, data_p2 );
+          update_chem_opn_upw_be( tsol+shift_dt*dtn, fr, to, tdCoef->D_1, tdCoef->alpha_1, 
+              tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1, tdCoef->treatP1 );
+          update_chem_opn_upw_be( tsol+shift_dt*dtn, fr, to, tdCoef->D_2, 
+              tdCoef->alpha_2, tdCoef->beta_2, tdCoef->gamma_2, data_g, data_p2 );
           break;
         case 1: // Explicit second-order muscl for advection and implicit cd for diffusion
           // Update A
           update_chem_muscl_imex( fr, to ); 
           // Update P1 and P2
-          update_chem_opn_muscl_imex( fr, to, tdCoef->D_1, tdCoef->alpha_1, tdCoef->beta_1, tdCoef->gamma_1, 
-                                      data_n, data_p1, flux_p1, slope_p1 );
-          update_chem_opn_muscl_imex( fr, to, tdCoef->D_2, tdCoef->alpha_2, tdCoef->beta_2, tdCoef->gamma_2, 
-                                      data_g, data_p2, flux_p2, slope_p2 );
+          update_chem_opn_muscl_imex( tsol+shift_dt*dtn, fr, to, tdCoef->D_1, tdCoef->alpha_1, 
+              tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1, flux_p1, slope_p1, tdCoef->treatP1 );
+          update_chem_opn_muscl_imex( tsol+shift_dt*dtn, fr, to, tdCoef->D_2, tdCoef->alpha_2, 
+              tdCoef->beta_2, tdCoef->gamma_2, data_g, data_p2, flux_p2, slope_p2 );
           break;
         default:
           std::cout << "Warning: The spatial scheme for chem not defined, "
@@ -156,8 +158,10 @@ void TDSolveFVMMod::update_sol(const int fr, const int to) {
           // Update A
           update_chem_upw_be( fr, to );
           // Update P1 and P2
-          update_chem_opn_upw_be( fr, to, tdCoef->D_1, tdCoef->alpha_1, tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1 );
-          update_chem_opn_upw_be( fr, to, tdCoef->D_2, tdCoef->alpha_2, tdCoef->beta_2, tdCoef->gamma_2, data_g, data_p2 );
+          update_chem_opn_upw_be( tsol+shift_dt*dtn, fr, to, tdCoef->D_1, tdCoef->alpha_1, 
+              tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1, tdCoef->treatP1 );
+          update_chem_opn_upw_be( tsol+shift_dt*dtn, fr, to, tdCoef->D_2, tdCoef->alpha_2, 
+              tdCoef->beta_2, tdCoef->gamma_2, data_g, data_p2 );
           break;
       }
       break;

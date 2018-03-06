@@ -11,7 +11,7 @@
 class TDSolveFVMMod : public TDSolveFVM {
   public:
     void set_ic(void);
-    void update_sol(const int fr, const int to);
+    void update_sol(const int fr, const int to, const int shift_dt=0);
 
     TDSolveFVMMod(TDInput* tdInput_ptr);
     ~TDSolveFVMMod(void);

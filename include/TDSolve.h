@@ -27,7 +27,7 @@ class TDSolve {
     virtual void output(const int nt) = 0;
     void diagnostic(const int nt);
 
-    virtual void update_sol(const int fr, const int to) = 0;
+    virtual void update_sol(const int fr, const int to, const int shift_dt=0) = 0;
     void average_sol(const DType, const int, 
                      const DType, const int, const int);
     virtual void copy_data(const int fr, const int to) = 0;

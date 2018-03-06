@@ -1,3 +1,4 @@
+#include <cmath>
 #include "TDSolveFVM.h"
 #include "Alloc_Utils.h"
 #include "TDInput.h"
@@ -478,7 +479,7 @@ void TDSolveFVM::update_vel_int_mod(const int nt) {
   return;
 }
 
-void TDSolveFVM::update_sol(const int fr, const int to) {
+void TDSolveFVM::update_sol(const int fr, const int to, const int shift_dt) {
 
   update_rad( fr, to );
 
@@ -529,17 +530,19 @@ void TDSolveFVM::update_sol(const int fr, const int to) {
           // Update A
           update_chem_upw_be( fr, to ); 
           // Update P1 and P2
-          update_chem_opn_upw_be( fr, to, tdCoef->D_1, tdCoef->alpha_1, tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1 );
-          update_chem_opn_upw_be( fr, to, tdCoef->D_2, tdCoef->alpha_2, tdCoef->beta_2, tdCoef->gamma_2, data_g, data_p2 );
+          update_chem_opn_upw_be( tsol+shift_dt*dtn, fr, to, tdCoef->D_1, tdCoef->alpha_1, 
+              tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1, tdCoef->treatP1 );
+          update_chem_opn_upw_be( tsol+shift_dt*dtn, fr, to, tdCoef->D_2, tdCoef->alpha_2, 
+              tdCoef->beta_2, tdCoef->gamma_2, data_g, data_p2 );
           break;
         case 1: // Explicit second-order muscl for advection and implicit cd for diffusion
           // Update A
           update_chem_muscl_imex( fr, to ); 
           // Update P1 and P2
-          update_chem_opn_muscl_imex( fr, to, tdCoef->D_1, tdCoef->alpha_1, tdCoef->beta_1, tdCoef->gamma_1, 
-                                      data_n, data_p1, flux_p1, slope_p1 );
-          update_chem_opn_muscl_imex( fr, to, tdCoef->D_2, tdCoef->alpha_2, tdCoef->beta_2, tdCoef->gamma_2, 
-                                      data_g, data_p2, flux_p2, slope_p2 );
+          update_chem_opn_muscl_imex( tsol+shift_dt*dtn, fr, to, tdCoef->D_1, tdCoef->alpha_1, 
+              tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1, flux_p1, slope_p1, tdCoef->treatP1 );
+          update_chem_opn_muscl_imex( tsol+shift_dt*dtn, fr, to, tdCoef->D_2, tdCoef->alpha_2, 
+              tdCoef->beta_2, tdCoef->gamma_2, data_g, data_p2, flux_p2, slope_p2 );
           break;
         default:
           std::cout << "Warning: The spatial scheme for chem not defined, "
@@ -547,8 +550,10 @@ void TDSolveFVM::update_sol(const int fr, const int to) {
           // Update A
           update_chem_upw_be( fr, to );
           // Update P1 and P2
-          update_chem_opn_upw_be( fr, to, tdCoef->D_1, tdCoef->alpha_1, tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1 );
-          update_chem_opn_upw_be( fr, to, tdCoef->D_2, tdCoef->alpha_2, tdCoef->beta_2, tdCoef->gamma_2, data_g, data_p2 );
+          update_chem_opn_upw_be( tsol+shift_dt*dtn, fr, to, tdCoef->D_1, tdCoef->alpha_1, 
+              tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1, tdCoef->treatP1 );
+          update_chem_opn_upw_be( tsol+shift_dt*dtn, fr, to, tdCoef->D_2, tdCoef->alpha_2, 
+              tdCoef->beta_2, tdCoef->gamma_2, data_g, data_p2 );
           break;
       }
       break;
@@ -1167,6 +1172,17 @@ void TDSolveFVM::update_cells_opn_add(const int fr, const int to) {
 
   return;
 }
+
+DType TDSolveFVM::calc_treatment(const DType tsol_loc) {
+  DType t0 = tdCoef->treatP1_t0;
+  DType T  = tdCoef->treatP1_T;
+  DType h  = tdCoef->treatP1_h;
+
+  if ( tsol_loc <= t0 )
+    return 0.0;
+  else 
+    return T * (1.0+cos(2.0*PI*tsol_loc/h));
+}
  
 void TDSolveFVM::update_chem_upw_be(const int fr, const int to) {
   rhs_a->reset( 0.0 );
@@ -1420,9 +1436,11 @@ void TDSolveFVM::update_chem_muscl_imex(const int fr, const int to) {
   return;
 }
 
-void TDSolveFVM::update_chem_opn_upw_be(const int fr, const int to, 
+void TDSolveFVM::update_chem_opn_upw_be(
+    const DType tsol_loc, const int fr, const int to, 
     const DType coef_D, const DType coef_alpha, const DType coef_beta, 
-    const DType coef_gamma, HVEC**& data_source, HVEC**& data_P) {
+    const DType coef_gamma, HVEC**& data_source, HVEC**& data_P,
+    const bool treatment) {
   rhs_p->reset( 0.0 );
   mat_p->reset( 0.0 );
   sol_p->reset( 0.0 );
@@ -1430,6 +1448,10 @@ void TDSolveFVM::update_chem_opn_upw_be(const int fr, const int to,
   DType theta = tdCoef->theta;
 
   DType dror = (*data_v[fr])[Nx]/data_r[fr];
+
+  DType f_treat = 0.0;
+  if ( treatment ) // Backward Euler
+    f_treat = calc_treatment(tsol_loc+dtn);
 
   // RHS
   VComp comp(1,0.0);
@@ -1439,6 +1461,7 @@ void TDSolveFVM::update_chem_opn_upw_be(const int fr, const int to,
     comp = loc_r_fr * loc_r_fr * (*data_P[fr])[i];
     comp += dtn * coef_alpha * (*data_source[to])[i] / 
       (coef_beta/theta+(*data_source[to])[i]/loc_r_to/loc_r_to);
+    comp += dtn * loc_r_to * loc_r_to * f_treat;
     comp /= loc_r_to * loc_r_to;
     rhs_p->set(i,comp);
   }
@@ -1555,10 +1578,12 @@ void TDSolveFVM::update_chem_opn_upw_be(const int fr, const int to,
   return;
 }
 
-void TDSolveFVM::update_chem_opn_muscl_imex(const int fr, const int to, 
+void TDSolveFVM::update_chem_opn_muscl_imex(
+    const DType tsol_loc, const int fr, const int to, 
     const DType coef_D, const DType coef_alpha, const DType coef_beta, 
     const DType coef_gamma, HVEC**& data_source, 
-    HVEC**& data_P, HVEC**& flux_P, HVEC**& slope_P) {
+    HVEC**& data_P, HVEC**& flux_P, HVEC**& slope_P,
+    const bool treatment) {
   rhs_p->reset( 0.0 );
   mat_p->reset( 0.0 );
   sol_p->reset( 0.0 );
@@ -1566,6 +1591,10 @@ void TDSolveFVM::update_chem_opn_muscl_imex(const int fr, const int to,
   DType theta = tdCoef->theta;
 
   DType dror = (*data_v[fr])[Nx]/data_r[fr];
+
+  DType f_treat = 0.0;
+  if ( treatment ) // Backward Euler
+    f_treat = calc_treatment(tsol_loc+dtn);
 
   // Slopes
   (*slope_P[0])[0] = 0.0;
@@ -1616,6 +1645,7 @@ void TDSolveFVM::update_chem_opn_muscl_imex(const int fr, const int to,
     comp += dtn * coef_alpha * (*data_source[to])[i] / 
       (coef_beta/theta+(*data_source[to])[i]/loc_r_to/loc_r_to);
     comp -= ((*flux_P[0])[i+1] - (*flux_P[0])[i]) * (dtn/dx);
+    comp += dtn * loc_r_to * loc_r_to * f_treat;
     comp /= loc_r_to * loc_r_to;
     rhs_p->set(i,comp);
   }

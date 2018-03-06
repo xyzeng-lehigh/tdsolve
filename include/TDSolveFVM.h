@@ -13,7 +13,7 @@ class TDSolveFVM : public TDSolve {
     void set_ic(void);
     void calc_dt(const int nt);
     void output(const int nt);
-    void update_sol(const int fr, const int to);
+    void update_sol(const int fr, const int to, const int shift_dt=0);
     void copy_data(const int fr, const int to);
 
     TDSolveFVM(TDInput* tdInput_ptr);
@@ -49,19 +49,23 @@ class TDSolveFVM : public TDSolve {
     void update_chem_upw_be(const int fr, const int to);
     void update_chem_muscl_imex(const int fr, const int to);
     // OPN model -- to be reused between P1 and P2
-    void update_chem_opn_upw_be(const int fr, const int to, 
+    void update_chem_opn_upw_be(const DType tsol_loc, const int fr, const int to, 
                                 const DType coef_D, const DType coef_alpha, 
                                 const DType coef_beta, const DType coef_gamma, 
-                                HVEC**& data_source, HVEC**& data_P);
-    void update_chem_opn_muscl_imex(const int fr, const int to, 
+                                HVEC**& data_source, HVEC**& data_P, const bool treatment=false);
+    void update_chem_opn_muscl_imex(const DType tsol_loc, const int fr, const int to, 
                                 const DType coef_D, const DType coef_alpha, 
                                 const DType coef_beta, const DType coef_gamma, 
-                                HVEC**& data_source, HVEC**& data_P, HVEC**& flux_P, HVEC**& slope_P);
+                                HVEC**& data_source, HVEC**& data_P, HVEC**& flux_P, HVEC**& slope_P, 
+                                const bool treatment=false);
 
     virtual void update_cells_upw(const int fr, const int to);
     virtual void update_cells_muscl(const int fr, const int to);
     // OPN model
     virtual void update_cells_opn_add(const int fr, const int to); 
+
+    // Treatment for OPN model
+    DType calc_treatment(const DType tsol_loc);
 
   private:
     int*   N_dir;

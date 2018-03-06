@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
   while ( tdSolve->nextIter() ) {
     tdSolve->update_sol(0,1);
     if ( tdInput.tdSetup.tmeth == 1 ) {
-      tdSolve->update_sol(1,2);
+      tdSolve->update_sol(1,2,1);
       tdSolve->average_sol(0.5,0,0.5,2,1);
     }
     tdSolve->copy_data(1,0);

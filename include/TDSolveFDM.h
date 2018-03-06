@@ -13,7 +13,7 @@ class TDSolveFDM : public TDSolve {
     void set_ic(void);
     void calc_dt(const int nt);
     void output(const int nt);
-    void update_sol(const int fr, const int to);
+    void update_sol(const int fr, const int to, const int shift_dt=0);
     void copy_data(const int fr, const int to);
 
     TDSolveFDM(TDInput* tdInput_ptr);

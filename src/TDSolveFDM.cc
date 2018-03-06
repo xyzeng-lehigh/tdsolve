@@ -78,7 +78,7 @@ void TDSolveFDM::copy_data(const int nt_fr, const int nt_to) {
   return;
 }
 
-void TDSolveFDM::update_sol(const int fr, const int to) {
+void TDSolveFDM::update_sol(const int fr, const int to, const int shift_dt) {
 
   update_rad( fr, to );
 
