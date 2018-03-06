@@ -1452,6 +1452,9 @@ void TDSolveFVM::update_chem_opn_upw_be(
   DType f_treat = 0.0;
   if ( treatment ) // Backward Euler
     f_treat = calc_treatment(tsol_loc+dtn);
+  DType bc_treat = 0.0;
+  if ( treatment ) // Backward Euler
+    bc_treat = tdCoef->treatP1_bc * calc_treatment(tsol_loc+dtn);
 
   // RHS
   VComp comp(1,0.0);
@@ -1595,6 +1598,9 @@ void TDSolveFVM::update_chem_opn_muscl_imex(
   DType f_treat = 0.0;
   if ( treatment ) // Backward Euler
     f_treat = calc_treatment(tsol_loc+dtn);
+  DType bc_treat = 0.0;
+  if ( treatment ) // Backward Euler
+    bc_treat = tdCoef->treatP1_bc * calc_treatment(tsol_loc+dtn);
 
   // Slopes
   (*slope_P[0])[0] = 0.0;

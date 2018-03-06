@@ -42,6 +42,7 @@ TDInput::TDInput(void) {
   tdCoef.treatP1_t0  = 0.0;
   tdCoef.treatP1_T   = 0.0;
   tdCoef.treatP1_h   = 1.0;
+  tdCoef.treatP1_bc  = 0.0;
 
   tdMesh.x_l     = 0.0;
   tdMesh.x_r     = 1.0;
@@ -215,6 +216,8 @@ void TDInput::parse(void) {
       tdCoef.treatP1_T = atof(value);
     else if (strcmp(name,"treatment_P1_h")==0)
       tdCoef.treatP1_h = atof(value);
+    else if (strcmp(name,"treatment_P1_bc")==0)
+      tdCoef.treatP1_bc = atof(value);
     else if (strcmp(name,"x_l")==0)
       tdMesh.x_l = atof(value);
     else if (strcmp(name,"x_r")==0)
