@@ -1468,6 +1468,25 @@ void TDSolveFVM::update_chem_opn_upw_be(
     comp /= loc_r_to * loc_r_to;
     rhs_p->set(i,comp);
   }
+  if ( bc_treat != 0.0 ) { // Fix the non-hom Neumann condition
+    comp = rhs_p->get(Nx-1);
+    DType loc_r_to = x_c[Nx-1] * data_r[to];
+    comp *= loc_r_to * loc_r_to;
+
+    // Advection part
+    DType loc_v_r = -x_f[Nx] * dror;
+    if ( loc_v_r<0.0 ) {
+      DType loc_r_r = (2.0*x_c[Nx-1]-x_c[Nx-2]) * data_r[to];
+      comp += dtn * loc_v_r * loc_r_r * loc_r_r * data_r[to] * bc_treat;
+    }
+
+    // Diffusion part
+    comp += dtn * coef_D * x_f[Nx] * x_f[Nx] * 
+      ( - data_r[to] * bc_treat ) / dx;
+
+    comp /= loc_r_to * loc_r_to;
+    rhs_p->set(Nx-1,comp);
+  }
 
   // Matrix
   Entry elem(1,0.0);
@@ -1599,8 +1618,8 @@ void TDSolveFVM::update_chem_opn_muscl_imex(
   if ( treatment ) // Backward Euler
     f_treat = calc_treatment(tsol_loc+dtn);
   DType bc_treat = 0.0;
-  if ( treatment ) // Backward Euler
-    bc_treat = tdCoef->treatP1_bc * calc_treatment(tsol_loc+dtn);
+  if ( treatment ) // Forward Euler Euler
+    bc_treat = tdCoef->treatP1_bc * calc_treatment(tsol_loc);
 
   // Slopes
   (*slope_P[0])[0] = 0.0;
@@ -1619,7 +1638,7 @@ void TDSolveFVM::update_chem_opn_muscl_imex(
     DType loc_r_r = (2.0*x_c[Nx-1]-x_c[Nx-2]) * data_r[fr];
     (*slope_P[0])[Nx-1] = Alg_LimSlope_Minmod(
         loc_r_c * loc_r_c * (*data_P[fr])[Nx-1], loc_r_l * loc_r_l * (*data_P[fr])[Nx-2],
-        loc_r_r * loc_r_r * (*data_P[fr])[Nx-1], dx );
+        loc_r_r * loc_r_r * ((*data_P[fr])[Nx-1] - dx*data_r[fr]*bc_treat), dx );
   }
 
   // Fluxes
@@ -1639,7 +1658,7 @@ void TDSolveFVM::update_chem_opn_muscl_imex(
     DType loc_vel = - x_f[Nx] * dror;
     (*flux_P[0])[Nx] = loc_vel * (
       (loc_vel>=0.0) ? loc_r_l*loc_r_l*(*data_P[fr])[Nx-1] + 0.5*dx*(*slope_P[0])[Nx-1] : 
-                       loc_r_r*loc_r_r*(*data_P[fr])[Nx-1] );
+                       loc_r_r*loc_r_r*((*data_P[fr])[Nx-1] - dx*data_r[fr]*bc_treat) );
   }
 
   // RHS
@@ -1654,6 +1673,17 @@ void TDSolveFVM::update_chem_opn_muscl_imex(
     comp += dtn * loc_r_to * loc_r_to * f_treat;
     comp /= loc_r_to * loc_r_to;
     rhs_p->set(i,comp);
+  }
+  if ( bc_treat != 0.0 ) { // Fix the non-hom Neumann condition
+    comp = rhs_p->get(Nx-1);
+    DType loc_r_to = x_c[Nx-1] * data_r[to];
+    comp *= loc_r_to * loc_r_to;
+
+    comp += dtn * coef_D * x_f[Nx] * x_f[Nx] * 
+      ( - data_r[to] * bc_treat ) / dx;
+
+    comp /= loc_r_to * loc_r_to;
+    rhs_p->set(Nx-1,comp);
   }
 
   // Matrix
