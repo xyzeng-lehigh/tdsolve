@@ -53,7 +53,7 @@ struct TDCoef {
   DType alpha_1, alpha_2, beta_1, beta_2, gamma_1, gamma_2;
   DType omega;
   DType treatP1_t0, treatP1_T, treatP1_h, treatP1_bc;
-  bool  treatP1;
+  bool  treatP1, treatP1BC;
 };
 
 struct TDMesh {

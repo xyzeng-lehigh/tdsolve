@@ -39,6 +39,7 @@ TDInput::TDInput(void) {
   tdCoef.gamma_2     = 1.0;
   tdCoef.omega       = 0.0;
   tdCoef.treatP1     = false;
+  tdCoef.treatP1BC   = false;
   tdCoef.treatP1_t0  = 0.0;
   tdCoef.treatP1_T   = 0.0;
   tdCoef.treatP1_h   = 1.0;
@@ -210,6 +211,8 @@ void TDInput::parse(void) {
       tdCoef.omega = atof(value);
     else if (strcmp(name,"use_treatment_P1")==0)
       tdCoef.treatP1 = (atoi(value)!=0);
+    else if (strcmp(name,"use_treatmentBC_P1")==0)
+      tdCoef.treatP1BC = (atoi(value)!=0);
     else if (strcmp(name,"treatment_P1_t0")==0)
       tdCoef.treatP1_t0 = atof(value);
     else if (strcmp(name,"treatment_P1_T")==0)

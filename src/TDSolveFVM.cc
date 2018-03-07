@@ -531,7 +531,7 @@ void TDSolveFVM::update_sol(const int fr, const int to, const int shift_dt) {
           update_chem_upw_be( fr, to ); 
           // Update P1 and P2
           update_chem_opn_upw_be( tsol+shift_dt*dtn, fr, to, tdCoef->D_1, tdCoef->alpha_1, 
-              tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1, tdCoef->treatP1 );
+              tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1, tdCoef->treatP1, tdCoef->treatP1BC );
           update_chem_opn_upw_be( tsol+shift_dt*dtn, fr, to, tdCoef->D_2, tdCoef->alpha_2, 
               tdCoef->beta_2, tdCoef->gamma_2, data_g, data_p2 );
           break;
@@ -540,7 +540,8 @@ void TDSolveFVM::update_sol(const int fr, const int to, const int shift_dt) {
           update_chem_muscl_imex( fr, to ); 
           // Update P1 and P2
           update_chem_opn_muscl_imex( tsol+shift_dt*dtn, fr, to, tdCoef->D_1, tdCoef->alpha_1, 
-              tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1, flux_p1, slope_p1, tdCoef->treatP1 );
+              tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1, flux_p1, slope_p1, 
+              tdCoef->treatP1, tdCoef->treatP1BC );
           update_chem_opn_muscl_imex( tsol+shift_dt*dtn, fr, to, tdCoef->D_2, tdCoef->alpha_2, 
               tdCoef->beta_2, tdCoef->gamma_2, data_g, data_p2, flux_p2, slope_p2 );
           break;
@@ -551,7 +552,7 @@ void TDSolveFVM::update_sol(const int fr, const int to, const int shift_dt) {
           update_chem_upw_be( fr, to );
           // Update P1 and P2
           update_chem_opn_upw_be( tsol+shift_dt*dtn, fr, to, tdCoef->D_1, tdCoef->alpha_1, 
-              tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1, tdCoef->treatP1 );
+              tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1, tdCoef->treatP1, tdCoef->treatP1BC );
           update_chem_opn_upw_be( tsol+shift_dt*dtn, fr, to, tdCoef->D_2, tdCoef->alpha_2, 
               tdCoef->beta_2, tdCoef->gamma_2, data_g, data_p2 );
           break;
@@ -1440,7 +1441,7 @@ void TDSolveFVM::update_chem_opn_upw_be(
     const DType tsol_loc, const int fr, const int to, 
     const DType coef_D, const DType coef_alpha, const DType coef_beta, 
     const DType coef_gamma, HVEC**& data_source, HVEC**& data_P,
-    const bool treatment) {
+    const bool treatment, const bool treatment_bc) {
   rhs_p->reset( 0.0 );
   mat_p->reset( 0.0 );
   sol_p->reset( 0.0 );
@@ -1453,7 +1454,7 @@ void TDSolveFVM::update_chem_opn_upw_be(
   if ( treatment ) // Backward Euler
     f_treat = calc_treatment(tsol_loc+dtn);
   DType bc_treat = 0.0;
-  if ( treatment ) // Backward Euler
+  if ( treatment_bc ) // Backward Euler
     bc_treat = tdCoef->treatP1_bc * calc_treatment(tsol_loc+dtn);
 
   // RHS
@@ -1605,7 +1606,7 @@ void TDSolveFVM::update_chem_opn_muscl_imex(
     const DType coef_D, const DType coef_alpha, const DType coef_beta, 
     const DType coef_gamma, HVEC**& data_source, 
     HVEC**& data_P, HVEC**& flux_P, HVEC**& slope_P,
-    const bool treatment) {
+    const bool treatment, const bool treatment_bc) {
   rhs_p->reset( 0.0 );
   mat_p->reset( 0.0 );
   sol_p->reset( 0.0 );
@@ -1618,7 +1619,7 @@ void TDSolveFVM::update_chem_opn_muscl_imex(
   if ( treatment ) // Backward Euler
     f_treat = calc_treatment(tsol_loc+dtn);
   DType bc_treat = 0.0;
-  if ( treatment ) // Forward Euler Euler
+  if ( treatment_bc ) // Forward Euler Euler
     bc_treat = tdCoef->treatP1_bc * calc_treatment(tsol_loc);
 
   // Slopes

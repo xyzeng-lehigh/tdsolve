@@ -139,7 +139,7 @@ void TDSolveFVMMod::update_sol(const int fr, const int to, const int shift_dt) {
           update_chem_upw_be( fr, to );
           // Update P1 and P2
           update_chem_opn_upw_be( tsol+shift_dt*dtn, fr, to, tdCoef->D_1, tdCoef->alpha_1, 
-              tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1, tdCoef->treatP1 );
+              tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1, tdCoef->treatP1, tdCoef->treatP1BC );
           update_chem_opn_upw_be( tsol+shift_dt*dtn, fr, to, tdCoef->D_2, 
               tdCoef->alpha_2, tdCoef->beta_2, tdCoef->gamma_2, data_g, data_p2 );
           break;
@@ -148,7 +148,8 @@ void TDSolveFVMMod::update_sol(const int fr, const int to, const int shift_dt) {
           update_chem_muscl_imex( fr, to ); 
           // Update P1 and P2
           update_chem_opn_muscl_imex( tsol+shift_dt*dtn, fr, to, tdCoef->D_1, tdCoef->alpha_1, 
-              tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1, flux_p1, slope_p1, tdCoef->treatP1 );
+              tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1, flux_p1, slope_p1, 
+              tdCoef->treatP1, tdCoef->treatP1BC );
           update_chem_opn_muscl_imex( tsol+shift_dt*dtn, fr, to, tdCoef->D_2, tdCoef->alpha_2, 
               tdCoef->beta_2, tdCoef->gamma_2, data_g, data_p2, flux_p2, slope_p2 );
           break;
@@ -159,7 +160,7 @@ void TDSolveFVMMod::update_sol(const int fr, const int to, const int shift_dt) {
           update_chem_upw_be( fr, to );
           // Update P1 and P2
           update_chem_opn_upw_be( tsol+shift_dt*dtn, fr, to, tdCoef->D_1, tdCoef->alpha_1, 
-              tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1, tdCoef->treatP1 );
+              tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1, tdCoef->treatP1, tdCoef->treatP1BC );
           update_chem_opn_upw_be( tsol+shift_dt*dtn, fr, to, tdCoef->D_2, tdCoef->alpha_2, 
               tdCoef->beta_2, tdCoef->gamma_2, data_g, data_p2 );
           break;
