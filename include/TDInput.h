@@ -4,6 +4,7 @@
 #include <iostream>
 #include <cstdio>
 #include <cstring>
+#include <vector>
 #include "Data_Type.h"
 #include "Comput_Choices.h"
 
@@ -52,7 +53,8 @@ struct TDCoef {
   DType a_prime, b_prime;
   DType alpha_1, alpha_2, beta_1, beta_2, gamma_1, gamma_2;
   DType omega;
-  DType treatP1_t0, treatP1_T, treatP1_h, treatP1_bc;
+  DType treatP1_T, treatP1_h, treatP1_bc;
+  std::vector<DType> treatP1_t0;
   bool  treatP1, treatP1BC;
 };
 

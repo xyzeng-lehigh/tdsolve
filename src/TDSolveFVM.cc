@@ -1175,11 +1175,22 @@ void TDSolveFVM::update_cells_opn_add(const int fr, const int to) {
 }
 
 DType TDSolveFVM::calc_treatment(const DType tsol_loc) {
-  DType t0 = tdCoef->treatP1_t0;
+  std::vector<DType> t0 = tdCoef->treatP1_t0;
   DType T  = tdCoef->treatP1_T;
   DType h  = tdCoef->treatP1_h;
 
-  if ( tsol_loc <= t0 )
+  if ( t0.size() == 0 )
+    return 0.0;
+
+  int pass_count = 0;
+
+  for ( unsigned i = 0; i < t0.size(); i++ )
+    if ( tsol_loc <= t0[i] )
+      break;
+    else
+      pass_count++;
+
+  if ( pass_count%2==0 )
     return 0.0;
   else 
     return T * (1.0+cos(2.0*PI*tsol_loc/h));

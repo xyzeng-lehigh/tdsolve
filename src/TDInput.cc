@@ -40,10 +40,10 @@ TDInput::TDInput(void) {
   tdCoef.omega       = 0.0;
   tdCoef.treatP1     = false;
   tdCoef.treatP1BC   = false;
-  tdCoef.treatP1_t0  = 0.0;
   tdCoef.treatP1_T   = 0.0;
   tdCoef.treatP1_h   = 1.0;
   tdCoef.treatP1_bc  = 0.0;
+  tdCoef.treatP1_t0.clear();
 
   tdMesh.x_l     = 0.0;
   tdMesh.x_r     = 1.0;
@@ -214,7 +214,7 @@ void TDInput::parse(void) {
     else if (strcmp(name,"use_treatmentBC_P1")==0)
       tdCoef.treatP1BC = (atoi(value)!=0);
     else if (strcmp(name,"treatment_P1_t0")==0)
-      tdCoef.treatP1_t0 = atof(value);
+      tdCoef.treatP1_t0.push_back( atof(value) );
     else if (strcmp(name,"treatment_P1_T")==0)
       tdCoef.treatP1_T = atof(value);
     else if (strcmp(name,"treatment_P1_h")==0)
@@ -343,6 +343,9 @@ void TDInput::parse(void) {
       continue;
     }
   }
+
+  if ( tdCoef.treatP1_t0.size() > 0 )
+    std::sort( tdCoef.treatP1_t0.begin(), tdCoef.treatP1_t0.end() );
 
   tdMesh.dx = (tdMesh.x_r-tdMesh.x_l)/(1.0*tdMesh.Nx);
   alloc_array_full( tdMesh.x_f, tdMesh.Nx+1 );
