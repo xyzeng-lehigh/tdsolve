@@ -1,5 +1,6 @@
 #include <fstream>
 #include <climits>
+#include <algorithm>
 #include "TDInput.h"
 #include "HighDim_Alg.h"
 #include "Alloc_Utils.h"
