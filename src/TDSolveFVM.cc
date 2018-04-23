@@ -116,6 +116,27 @@ void TDSolveFVM::set_ic(void) {
         }
       }
       break;
+    case 2:
+      {
+        (*data_g[0]) = 1.0 - tdCoef->n_bc;
+        (*data_h[0]) = 0.0;
+        (*data_n[0]) = tdCoef->n_bc;
+        DType r0 = tdCoef->R_0;
+        DType lambda = tdCoef->lambda;
+        DType alpha  = tdCoef->alpha;
+        DType A0     = 10.0 * r0 * r0 * lambda / 6.0 / alpha;
+        for ( int i = 0; i < Nx; i++ ) {
+          DType loc_r = x_a_c[i] * data_r[0];
+          (*data_a[0])[i] = A0 - loc_r * loc_r * lambda / 6.0 / alpha;
+        }
+        DType AR     = A0 - r0 * r0 * lambda / 6.0 / alpha;
+        DType slope  = r0 * lambda / 3.0 / alpha / AR;
+        for ( int i = Nx; i< Na; i++ ) {
+          DType loc_r = x_a_c[i] * data_r[0];
+          (*data_a[0])[i] = AR * exp(-slope*(loc_r-r0));
+        }
+      }
+      break;
     default:
       std::cout << "Error: No initial condition is defined ... Exit ...\n" << std::endl;
       exit(1);
