@@ -56,7 +56,7 @@ void TDSolveFDM::set_ic(void) {
       break;
   }
 
-  update_vel(0);
+  update_vel(0,0.0);
 
   FILE* ot_file = fopen( tdInput->radiusFile, "w" );
   fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\n", tsol, data_r[0], (*data_v[0])[Nx]);
@@ -78,7 +78,8 @@ void TDSolveFDM::copy_data(const int nt_fr, const int nt_to) {
   return;
 }
 
-void TDSolveFDM::update_sol(const int fr, const int to, const int shift_dt) {
+void TDSolveFDM::update_sol(const int fr, const int to, 
+    const DType shift_dt_fr, const DType shift_dt_to) {
 
   update_rad( fr, to );
 
@@ -113,11 +114,11 @@ void TDSolveFDM::update_sol(const int fr, const int to, const int shift_dt) {
       break;
   }
 
-  update_vel( to );
+  update_vel( to, shift_dt_to );
   return;
 }
 
-void TDSolveFDM::update_vel(const int nt) {
+void TDSolveFDM::update_vel(const int nt, const DType shift_dt) {
   switch ( tdSetup->vel ) {
     case 0: // 2nd-order integral form
       update_vel_int(nt);

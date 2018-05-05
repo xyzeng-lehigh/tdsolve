@@ -83,6 +83,7 @@ struct TDSetup {
   int   maxit;
   DType dTinit, dTgrow;
   bool  re_vel;
+  int   dr_opt, r_opt;
   bool  slim_tot;
 
   int   logistic;
@@ -91,7 +92,7 @@ struct TDSetup {
   int   prob_id;
 
   // Test cases
-  int   init_u_pow;
+  DType init_u_par;
 };
 
 struct TDLin {

@@ -9,6 +9,8 @@ using namespace std;
 TDSolveFVM::TDSolveFVM(TDInput* tdInput_ptr) : 
   TDSolve(tdInput_ptr) {
 
+  cout << "TDSolveFVM: " << tdSetup->prob_id << std::endl;
+
   alloc_array_full( data_g, Nx, 3 );
   alloc_array_full( data_h, Nx, 3 );
   alloc_array_full( data_n, Nx, 3 ); // M
@@ -49,7 +51,9 @@ TDSolveFVM::TDSolveFVM(TDInput* tdInput_ptr) :
   alloc_array_full( N_dir, Nx+1 );
 
   FILE* ot_file = fopen( tdInput->outputFile, "w" );
-  if ( tdSetup->prob_id == 0 )
+  if ( tdSetup->prob_id < 0 ) // This is only relevant for FVMMod
+    fprintf( ot_file, "Time, time step size, num. point / x_c, G, H, N, 1-G-H-N /newline x_f, V\n");
+  if ( tdSetup->prob_id = 0 )
     fprintf( ot_file, "Time, time step size, num. point / x_c, G, H, N, A /newline x_f, V\n");
   if ( tdSetup->prob_id == 1 )
     fprintf( ot_file, "Time, time step size, num. point / x_c, G, H, M, A, P1, P2 /newline x_f, V\n");
@@ -152,7 +156,7 @@ void TDSolveFVM::set_ic(void) {
     (*data_p2[0]) = 0.0;
   }
 
-  this->update_vel(0);
+  this->update_vel(0, 0.0);
 
   N_dir[0] = 0;
   for ( int i = 1; i < Nx+1; i++ )
@@ -260,6 +264,7 @@ void TDSolveFVM::output(const int nt) {
   switch ( tdSetup->prob_id ) {
     case 0:
     case -1: // Test
+    case -2: // Test
       output_pdgf( nt );
       break;
     case 1:
@@ -356,7 +361,7 @@ void TDSolveFVM::output_opn(const int nt) {
   return;
 }
 
-void TDSolveFVM::update_vel(const int nt) {
+void TDSolveFVM::update_vel(const int nt, const DType shift_dt) {
 
   switch ( tdSetup->prob_id ) {
     case 0:
@@ -500,7 +505,8 @@ void TDSolveFVM::update_vel_int_mod(const int nt) {
   return;
 }
 
-void TDSolveFVM::update_sol(const int fr, const int to, const int shift_dt) {
+void TDSolveFVM::update_sol(const int fr, const int to, 
+    const DType shift_dt_fr, const DType shift_dt_to) {
 
   update_rad( fr, to );
 
@@ -551,19 +557,19 @@ void TDSolveFVM::update_sol(const int fr, const int to, const int shift_dt) {
           // Update A
           update_chem_upw_be( fr, to ); 
           // Update P1 and P2
-          update_chem_opn_upw_be( tsol+shift_dt*dtn, fr, to, tdCoef->D_1, tdCoef->alpha_1, 
+          update_chem_opn_upw_be( tsol+shift_dt_fr*dtn, fr, to, tdCoef->D_1, tdCoef->alpha_1, 
               tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1, tdCoef->treatP1, tdCoef->treatP1BC );
-          update_chem_opn_upw_be( tsol+shift_dt*dtn, fr, to, tdCoef->D_2, tdCoef->alpha_2, 
+          update_chem_opn_upw_be( tsol+shift_dt_fr*dtn, fr, to, tdCoef->D_2, tdCoef->alpha_2, 
               tdCoef->beta_2, tdCoef->gamma_2, data_g, data_p2 );
           break;
         case 1: // Explicit second-order muscl for advection and implicit cd for diffusion
           // Update A
           update_chem_muscl_imex( fr, to ); 
           // Update P1 and P2
-          update_chem_opn_muscl_imex( tsol+shift_dt*dtn, fr, to, tdCoef->D_1, tdCoef->alpha_1, 
+          update_chem_opn_muscl_imex( tsol+shift_dt_fr*dtn, fr, to, tdCoef->D_1, tdCoef->alpha_1, 
               tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1, flux_p1, slope_p1, 
               tdCoef->treatP1, tdCoef->treatP1BC );
-          update_chem_opn_muscl_imex( tsol+shift_dt*dtn, fr, to, tdCoef->D_2, tdCoef->alpha_2, 
+          update_chem_opn_muscl_imex( tsol+shift_dt_fr*dtn, fr, to, tdCoef->D_2, tdCoef->alpha_2, 
               tdCoef->beta_2, tdCoef->gamma_2, data_g, data_p2, flux_p2, slope_p2 );
           break;
         default:
@@ -572,16 +578,16 @@ void TDSolveFVM::update_sol(const int fr, const int to, const int shift_dt) {
           // Update A
           update_chem_upw_be( fr, to );
           // Update P1 and P2
-          update_chem_opn_upw_be( tsol+shift_dt*dtn, fr, to, tdCoef->D_1, tdCoef->alpha_1, 
+          update_chem_opn_upw_be( tsol+shift_dt_fr*dtn, fr, to, tdCoef->D_1, tdCoef->alpha_1, 
               tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1, tdCoef->treatP1, tdCoef->treatP1BC );
-          update_chem_opn_upw_be( tsol+shift_dt*dtn, fr, to, tdCoef->D_2, tdCoef->alpha_2, 
+          update_chem_opn_upw_be( tsol+shift_dt_fr*dtn, fr, to, tdCoef->D_2, tdCoef->alpha_2, 
               tdCoef->beta_2, tdCoef->gamma_2, data_g, data_p2 );
           break;
       }
       break;
   }
 
-  update_vel( to );
+  update_vel( to, shift_dt_to );
   return;
 }
 

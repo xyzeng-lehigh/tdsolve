@@ -77,12 +77,18 @@ TDInput::TDInput(void) {
   tdSetup.dTinit = 1e-10;
   tdSetup.dTgrow = 1.2;
   tdSetup.re_vel = true;
+  tdSetup.dr_opt = 0; // 0, default, dr = V
+                      // 1, dx independent, dR = V(1+0.5*dt*V/R)
+                      // 2, dx dependent, dR = (1/1-dx^2/4)V
+  tdSetup.r_opt  = 0; // 0, default, R_{n+1} = R_n + dt*V
+                      // 1, consistent, R_{n+1}^2 = R_n^2 + 2*dt*R_n*dR
   tdSetup.slim_tot = false;
   tdSetup.logistic = 0;
   tdSetup.bc_lim   = true;
   tdSetup.prob_id  = 0;  // 0, default, single chemotaxis
                          // 1, OPN
-  tdSetup.init_u_pow = 1;
+  tdSetup.init_u_par = 1.0; // prob_id = -1: u = - eta^init_u_par
+                            // prob_id = -2: v = r init_u_par
 
   tdLin.Type      = LSYS_TYPE_DIR;
   tdLin.Print     = true;
@@ -268,16 +274,32 @@ void TDInput::parse(void) {
       tdSetup.dTgrow = atof(value);
     else if (strcmp(name,"recompute_vel")==0)
       tdSetup.re_vel = (atoi(value)!=0);
+    else if (strcmp(name,"dr_option")==0)
+      tdSetup.dr_opt = atoi(value);
+    else if (strcmp(name,"r_option")==0)
+      tdSetup.dr_opt = atoi(value);
     else if (strcmp(name,"lim_sync_tot")==0)
       tdSetup.slim_tot = (atoi(value)!=0);
     else if (strcmp(name,"logistic")==0)
       tdSetup.logistic = atoi(value);
     else if (strcmp(name,"bc_lim")==0)
       tdSetup.bc_lim = (atoi(value)!=0);
-    else if (strcmp(name,"prob_id")==0)
+    else if (strcmp(name,"prob_id")==0) {
       tdSetup.prob_id = atoi(value);
-    else if (strcmp(name,"init_u_pow")==0)
-      tdSetup.init_u_pow = atoi(value);
+      cout << "prob_id: " << tdSetup.prob_id << std::endl;
+      cout << "prob_id: " << tdSetup.prob_id << std::endl;
+      cout << "prob_id: " << tdSetup.prob_id << std::endl;
+      cout << "prob_id: " << tdSetup.prob_id << std::endl;
+      cout << "prob_id: " << tdSetup.prob_id << std::endl;
+      cout << "prob_id: " << tdSetup.prob_id << std::endl;
+      cout << "prob_id: " << tdSetup.prob_id << std::endl;
+      cout << "prob_id: " << tdSetup.prob_id << std::endl;
+      cout << "prob_id: " << tdSetup.prob_id << std::endl;
+      cout << "prob_id: " << tdSetup.prob_id << std::endl;
+      cout << "prob_id: " << tdSetup.prob_id << std::endl;
+    }
+    else if (strcmp(name,"init_u_par")==0)
+      tdSetup.init_u_par = atof(value);
     else if (strcmp(name,"lsysType")==0)
       if (strcmp(value,"DIR")==0)
         tdLin.Type = LSYS_TYPE_DIR;

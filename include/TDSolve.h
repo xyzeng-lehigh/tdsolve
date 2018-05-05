@@ -27,9 +27,15 @@ class TDSolve {
     virtual void output(const int nt) = 0;
     void diagnostic(const int nt);
 
-    virtual void update_sol(const int fr, const int to, const int shift_dt=0) = 0;
-    void average_sol(const DType, const int, 
-                     const DType, const int, const int);
+    // The solver centers at tsol
+    // In case of higher-order time integration, one may need to update the solutions from time collocation
+    //   tsol + shift_dt_fr * dtn
+    // to
+    //   tsol + shift_dt_to * dtn
+    virtual void update_sol(const int fr, const int to, const DType shift_dt_fr=0.0, const DType shift_dt_to=1.0) = 0;
+    // tsol + shift_dt_to * dtn is the targeted time collocation for the averaged solution
+    void average_sol(const DType coef_1, const int nt_1, 
+                     const DType coef_2, const int nt_2, const int to, const DType shift_dt_to=1.0);
     virtual void copy_data(const int fr, const int to) = 0;
 
     bool nextIter(void) {
@@ -101,7 +107,8 @@ class TDSolve {
     int iter;
 
     void setupLinSolve( LinMat*&, LinMat*&, LinVec*&, LinVec*&, LinVec*&, LinSolve*&, int );
-    virtual void update_vel(const int nt) = 0;
+    // offset_dt is the difference between the target tsol and the current tsol
+    virtual void update_vel(const int nt, const DType offset_dt=0.0) = 0;
     void update_rad(const int fr, const int to);
 };
 

@@ -13,14 +13,14 @@ class TDSolveFDM : public TDSolve {
     void set_ic(void);
     void calc_dt(const int nt);
     void output(const int nt);
-    void update_sol(const int fr, const int to, const int shift_dt=0);
+    void update_sol(const int fr, const int to, const DType shift_dt_fr=0.0, const DType shift_dt_to=1.0);
     void copy_data(const int fr, const int to);
 
     TDSolveFDM(TDInput* tdInput_ptr);
     ~TDSolveFDM(void);
   protected:
     // Needs to update whenever a or n is modified
-    void update_vel(const int nt);
+    void update_vel(const int nt, const DType shift_dt=0.0);
   private:
     void update_cells_upw(const int fr, const int to);
     void update_cells_upw_be(const int fr, const int to);

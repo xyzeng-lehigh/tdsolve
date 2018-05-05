@@ -19,6 +19,8 @@ TDSolve::TDSolve(TDInput* tdInput_ptr) {
   x_a_f   = tdMesh->x_a_f;
   x_a_c   = tdMesh->x_a_c;
 
+  cout << "TDSolve: " << tdSetup->prob_id << std::endl;
+
   dtn     = tdSetup->dTinit;
   dtn_old = tdSetup->dTinit;
   tsol    = tdSetup->Tinit;
@@ -145,7 +147,8 @@ void TDSolve::setupLinSolve(
 }
 
 void TDSolve::average_sol(const DType coef_1, const int fr_1,
-    const DType coef_2, const int fr_2, const int to) {
+    const DType coef_2, const int fr_2, const int to, 
+    const DType shift_dt_to) {
   *data_g[to] = coef_1 * (*data_g[fr_1]) + coef_2 * (*data_g[fr_2]);
   *data_h[to] = coef_1 * (*data_h[fr_1]) + coef_2 * (*data_h[fr_2]);
   *data_n[to] = coef_1 * (*data_n[fr_1]) + coef_2 * (*data_n[fr_2]);
@@ -161,7 +164,7 @@ void TDSolve::average_sol(const DType coef_1, const int fr_1,
   data_r[to]  = coef_1 * data_r[fr_1]    + coef_2 * data_r[fr_2];
 
   if ( tdSetup->re_vel ) // Do not use this option for FVM_Mod
-    this->update_vel(to);
+    this->update_vel(to, shift_dt_to);
   else
     *data_v[to] = coef_1 * (*data_v[fr_1]) + coef_2 * (*data_v[fr_2]);
 

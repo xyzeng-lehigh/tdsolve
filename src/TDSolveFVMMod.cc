@@ -8,6 +8,8 @@ using namespace std;
 TDSolveFVMMod::TDSolveFVMMod(TDInput* tdInput_ptr) :
   TDSolveFVM(tdInput_ptr) {
 
+  cout << "TDSolveFVMMod: " << tdSetup->prob_id << std::endl;
+
   alloc_array_full( lim_g, Nx, 2 );
   alloc_array_full( lim_h, Nx, 2 );
   alloc_array_full( lim_n, Nx, 2 ); // M
@@ -76,11 +78,26 @@ void TDSolveFVMMod::set_ic(void) {
   upscale_var( *data_h[0], *data_h[0], x_c, Nx, data_r[0]);
   upscale_var( *data_n[0], *data_n[0], x_c, Nx, data_r[0]);
 
+  calc_total_diff_model(0);
+
   *data_u[0] = 0.0;
-  int u_pow = tdSetup->init_u_pow;
-  if ( u_pow != 0 )
-    for ( int i = 1; i <= Nx; i++ )
-      (*data_u[0])[i] = -std::pow(i*dx,u_pow);
+  switch ( tdSetup->prob_id ) {
+    case -1:
+      {
+        DType u_pow = tdSetup->init_u_par;
+        if ( u_pow > 0 )
+          for ( int i = 1; i <= Nx; i++ )
+            (*data_u[0])[i] = -std::pow(i*dx,u_pow);
+      }
+      break;
+    case -2:
+      {
+        DType v_par = tdSetup->init_u_par;
+        for ( int i = 1; i <= Nx; i++ )
+          (*data_u[0])[i] = - x_c[i] * data_r[0] * v_par / tdCoef->n_bc;
+      }
+      break;
+  }
 
   // Set all the right hand sides to zero:
   tdCoef->lambda  = 0.0;
@@ -90,7 +107,7 @@ void TDSolveFVMMod::set_ic(void) {
   tdCoef->omega   = 0.0;
   tdSetup->logistic = 0;
 
-  this->update_vel( 0 );
+  this->update_vel( 0, 0.0 );
 
   FILE* ot_file = fopen( tdInput->radiusFile, "w" );
   fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\t%10.20f\n", 
@@ -102,12 +119,28 @@ void TDSolveFVMMod::set_ic(void) {
 
 void TDSolveFVMMod::print_custom_vel_u( FILE* ot_file, const int nt ){
   fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\t%10.20f\n", tsol, data_r[nt], (*data_v[nt])[Nx], -(*data_u[0])[Nx] );
+  return;
 }
 
-void TDSolveFVMMod::update_sol(const int fr, const int to, const int shift_dt) {
+void TDSolveFVMMod::update_rad_consistent(const int fr, const int to) {
+  DType dr = (*data_v[fr])[Nx];
+  if (tdSetup->dr_opt == 1)
+    dr = dr * ( 1.0 + 0.5 * dtn * dr / data_r[fr] );
+  if (tdSetup->dr_opt == 2)
+    dr = dr/(1.0-0.25*dx*dx);
+  data_r[to] = data_r[fr]*data_r[fr] + 2.0*dtn*data_r[fr]*dr;
+  data_r[to] = sqrt(data_r[to]);
+  return;
+}
+
+void TDSolveFVMMod::update_sol(const int fr, const int to,
+    const DType shift_dt_fr, const DType shift_dt_to) {
 
   // Use data_v[fr], which is computed in previous iteration
-  update_rad( fr, to );
+  if ( tdSetup->r_opt == 0 )
+    update_rad( fr, to );
+  if ( tdSetup->r_opt == 1 )
+    update_rad_consistent( fr, to );
 
   // The fluxes are already computed in previous iteration
   update_cells_common( fr, to );
@@ -115,7 +148,11 @@ void TDSolveFVMMod::update_sol(const int fr, const int to, const int shift_dt) {
   if ( tdSetup->prob_id == 1 ) // OPN
     update_cells_opn_add( fr, to );
 
-  // Chemicals
+  // Simple model
+  if ( tdSetup->prob_id < 0 )
+    calc_total_diff_model( to );
+
+  // Chemicals -- prob_id should be non-negative
   switch ( tdSetup->prob_id ) {
     case 0: // PDGF
       switch ( tdSetup->schem ) {
@@ -138,19 +175,19 @@ void TDSolveFVMMod::update_sol(const int fr, const int to, const int shift_dt) {
           // Update A
           update_chem_upw_be( fr, to );
           // Update P1 and P2
-          update_chem_opn_upw_be( tsol+shift_dt*dtn, fr, to, tdCoef->D_1, tdCoef->alpha_1, 
+          update_chem_opn_upw_be( tsol+shift_dt_fr*dtn, fr, to, tdCoef->D_1, tdCoef->alpha_1, 
               tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1, tdCoef->treatP1, tdCoef->treatP1BC );
-          update_chem_opn_upw_be( tsol+shift_dt*dtn, fr, to, tdCoef->D_2, 
+          update_chem_opn_upw_be( tsol+shift_dt_fr*dtn, fr, to, tdCoef->D_2, 
               tdCoef->alpha_2, tdCoef->beta_2, tdCoef->gamma_2, data_g, data_p2 );
           break;
         case 1: // Explicit second-order muscl for advection and implicit cd for diffusion
           // Update A
           update_chem_muscl_imex( fr, to ); 
           // Update P1 and P2
-          update_chem_opn_muscl_imex( tsol+shift_dt*dtn, fr, to, tdCoef->D_1, tdCoef->alpha_1, 
+          update_chem_opn_muscl_imex( tsol+shift_dt_fr*dtn, fr, to, tdCoef->D_1, tdCoef->alpha_1, 
               tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1, flux_p1, slope_p1, 
               tdCoef->treatP1, tdCoef->treatP1BC );
-          update_chem_opn_muscl_imex( tsol+shift_dt*dtn, fr, to, tdCoef->D_2, tdCoef->alpha_2, 
+          update_chem_opn_muscl_imex( tsol+shift_dt_fr*dtn, fr, to, tdCoef->D_2, tdCoef->alpha_2, 
               tdCoef->beta_2, tdCoef->gamma_2, data_g, data_p2, flux_p2, slope_p2 );
           break;
         default:
@@ -159,9 +196,9 @@ void TDSolveFVMMod::update_sol(const int fr, const int to, const int shift_dt) {
           // Update A
           update_chem_upw_be( fr, to );
           // Update P1 and P2
-          update_chem_opn_upw_be( tsol+shift_dt*dtn, fr, to, tdCoef->D_1, tdCoef->alpha_1, 
+          update_chem_opn_upw_be( tsol+shift_dt_fr*dtn, fr, to, tdCoef->D_1, tdCoef->alpha_1, 
               tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1, tdCoef->treatP1, tdCoef->treatP1BC );
-          update_chem_opn_upw_be( tsol+shift_dt*dtn, fr, to, tdCoef->D_2, tdCoef->alpha_2, 
+          update_chem_opn_upw_be( tsol+shift_dt_fr*dtn, fr, to, tdCoef->D_2, tdCoef->alpha_2, 
               tdCoef->beta_2, tdCoef->gamma_2, data_g, data_p2 );
           break;
       }
@@ -169,22 +206,37 @@ void TDSolveFVMMod::update_sol(const int fr, const int to, const int shift_dt) {
   }
 
   // Will also compute fluxes for the current time step
-  update_vel( to );
+  update_vel( to, shift_dt_to );
 
   return;
 }
 
-void TDSolveFVMMod::update_vel(const int nt) {
+void TDSolveFVMMod::calc_total_diff_model(const int nt) {
+  downscale_var( *data_g[nt], *data_g[nt], x_c, Nx, data_r[nt]);
+  downscale_var( *data_h[nt], *data_h[nt], x_c, Nx, data_r[nt]);
+  downscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt]);
+
+  for ( int i = 0; i < Nx; i++ )
+    (*data_a[nt])[i] = 1.0 - (*data_g[nt])[i] - (*data_h[nt])[i] - (*data_n[nt])[i];
+  
+  upscale_var( *data_g[nt], *data_g[nt], x_c, Nx, data_r[nt]);
+  upscale_var( *data_h[nt], *data_h[nt], x_c, Nx, data_r[nt]);
+  upscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt]);
+  return;
+}
+
+void TDSolveFVMMod::update_vel(const int nt, const DType shift_dt) {
 
   // Compute the velocity u using the gradient
-  compute_vel_u( nt );
+  compute_vel_u( nt, tsol+shift_dt*dtn );
 
   // The fluxes that does not need V
-  compute_cells_fluxes_u( nt );
+  compute_cells_fluxes_u( nt, tsol+shift_dt*dtn );
 
   switch ( tdSetup->prob_id ) {
     case 0:  // PDGF
     case -1: // Test
+    case -2: // Test
       update_vel_int(nt);
       break;
     case 1: // OPN
@@ -201,9 +253,18 @@ void TDSolveFVMMod::update_vel(const int nt) {
   return;
 }
 
-void TDSolveFVMMod::compute_vel_u(const int nt) {
+void TDSolveFVMMod::compute_vel_u(const int nt, const DType tsol_loc) {
   switch ( tdSetup->prob_id ) {
-    case -1: // Test, u is independent of x
+    case -1: // Test 1, u is only a function of x
+      break;
+    case -2: // Test 2, space homogeneous solutions
+      {
+        DType v_par = tdSetup->init_u_par;
+        (*data_u[nt])[0] = 0.0;
+        for ( int i = 1; i <= Nx; i++ ) {
+          (*data_u[nt])[i] = - x_c[i] * data_r[nt] * v_par / ( 1.0 - std::exp(3.0*v_par*tsol_loc) * (1.0-tdCoef->n_bc));
+        }
+      }
       break;
     case 0: // PDGF
     case 1: // OPN
@@ -226,18 +287,18 @@ void TDSolveFVMMod::compute_vel_u_chem(const int nt) {
   return;
 }
 
-void TDSolveFVMMod::compute_cells_fluxes_u(const int nt) {
+void TDSolveFVMMod::compute_cells_fluxes_u(const int nt, const DType tsol_loc) {
   switch ( tdSetup->scell ) {
     case 0: // Explicit first-order upwind
-      compute_cells_fluxes_u_upw( nt );
+      compute_cells_fluxes_u_upw( nt, tsol_loc );
       break;
     case 2: // Explicit second-order MUSCL
-      compute_cells_fluxes_u_muscl( nt );
+      compute_cells_fluxes_u_muscl( nt, tsol_loc );
       break;
     default:
       std::cout << "Warning: The flux scheme for cell not defined, "
         << "using upwind instead\n" << std::endl;
-      compute_cells_fluxes_u_upw( nt );
+      compute_cells_fluxes_u_upw( nt, tsol_loc );
       break;
   }
 
@@ -262,9 +323,15 @@ void TDSolveFVMMod::compute_cells_fluxes_v(const int nt) {
   return;
 }
 
-void TDSolveFVMMod::compute_cells_fluxes_u_upw(const int nt) {
+void TDSolveFVMMod::compute_cells_fluxes_u_upw(const int nt, const DType tsol_loc) {
 
   downscale_var(*data_n[nt],*data_n[nt],x_c,Nx,data_r[nt]);
+
+  DType n_bc = tdCoef->n_bc;
+  if (tdSetup->prob_id == -2) {
+    DType v_par = tdSetup->init_u_par;
+    n_bc = 1.0 - std::exp(-3.0*v_par*tsol_loc) * ( 1.0-n_bc );
+  }
 
   // Fluxes
   { // Left boundary
@@ -282,7 +349,7 @@ void TDSolveFVMMod::compute_cells_fluxes_u_upw(const int nt) {
     DType loc_vel_u = (*data_u[0])[Nx]/data_r[nt];
     DType loc_r = x_f[Nx]*data_r[nt];
     (*flux_n_u[0])[Nx] = loc_r * loc_r * loc_vel_u * 
-      ((loc_vel_u>=0.0) ? (*data_n[nt])[Nx-1] : tdCoef->n_bc);
+      ((loc_vel_u>=0.0) ? (*data_n[nt])[Nx-1] : n_bc);
   }
 
   upscale_var(*data_n[nt],*data_n[nt],x_c,Nx,data_r[nt]);
@@ -290,11 +357,17 @@ void TDSolveFVMMod::compute_cells_fluxes_u_upw(const int nt) {
   return;
 }
 
-void TDSolveFVMMod::compute_cells_fluxes_u_muscl(const int nt) {
+void TDSolveFVMMod::compute_cells_fluxes_u_muscl(const int nt, const DType tsol_loc) {
 
   downscale_var(*data_g[nt],*data_g[nt],x_c,Nx,data_r[nt]);
   downscale_var(*data_h[nt],*data_h[nt],x_c,Nx,data_r[nt]);
   downscale_var(*data_n[nt],*data_n[nt],x_c,Nx,data_r[nt]);
+
+  DType n_bc = tdCoef->n_bc;
+  if (tdSetup->prob_id == -2) {
+    DType v_par = tdSetup->init_u_par;
+    n_bc = 1.0 - std::exp(-3.0*v_par*tsol_loc) * ( 1.0-n_bc );
+  }
 
   // Limiters for the velocity associated with u and with v
   { // Left boundary
@@ -375,7 +448,7 @@ void TDSolveFVMMod::compute_cells_fluxes_u_muscl(const int nt) {
     DType loc_vel_u = (*data_u[0])[Nx]/data_r[nt];
     DType loc_r = x_f[Nx]*data_r[nt];
     (*flux_n_u[0])[Nx] = loc_r * loc_r * loc_vel_u * 
-      ((loc_vel_u>=0.0) ? (*data_n[nt])[Nx-1]+0.5*dx*(*slope_n[0])[Nx-1] : tdCoef->n_bc );
+      ((loc_vel_u>=0.0) ? (*data_n[nt])[Nx-1]+0.5*dx*(*slope_n[0])[Nx-1] : n_bc );
   }
 
   upscale_var(*data_g[nt],*data_g[nt],x_c,Nx,data_r[nt]);
@@ -469,7 +542,10 @@ void TDSolveFVMMod::compute_cells_fluxes_v_muscl(const int nt) {
 
 void TDSolveFVMMod::compute_cells_fluxes_r(const int nt) {
   DType dror = (*data_v[nt])[Nx]/data_r[nt];
-  dror = dror * ( 1.0 + 0.5 * dtn * dror );
+  if (tdSetup->dr_opt == 1)
+    dror = dror * ( 1.0 + 0.5 * dtn * dror );
+  if (tdSetup->dr_opt == 2)
+    dror = dror/(1.0-0.25*dx*dx);
 
   const DType sot = 7.0/12.0;
   const DType oot = 1.0/12.0;
@@ -498,21 +574,27 @@ void TDSolveFVMMod::compute_cells_fluxes_r(const int nt) {
     (*flux_h[0])[i] = sot*((*data_h[nt])[i-1]+(*data_h[nt])[i]) - oot*((*data_h[nt])[i-2]+(*data_h[nt])[i+1]);
     (*flux_n[0])[i] = sot*((*data_n[nt])[i-1]+(*data_n[nt])[i]) - oot*((*data_n[nt])[i-2]+(*data_n[nt])[i+1]);
   }
-  // Near right boundary (constant extrapolation in the primitive variables)
+  // Near right boundary (biased stencils)
   {
-    (*flux_g[0])[Nx-1] = sot*((*data_g[nt])[Nx-2]+(*data_g[nt])[Nx-1]) 
-      - oot*((*data_g[nt])[Nx-3]+rbc_coef*(*data_g[nt])[Nx-1]);
-    (*flux_h[0])[Nx-1] = sot*((*data_h[nt])[Nx-2]+(*data_h[nt])[Nx-1]) 
-      - oot*((*data_h[nt])[Nx-3]+rbc_coef*(*data_h[nt])[Nx-1]);
-    (*flux_n[0])[Nx-1] = sot*((*data_n[nt])[Nx-2]+(*data_n[nt])[Nx-1]) 
-      - oot*((*data_n[nt])[Nx-3]+rbc_coef*(*data_n[nt])[Nx-1]);
+    (*flux_g[0])[Nx-1] = oot*(3.0*(*data_g[nt])[Nx-1]+13.0*(*data_g[nt])[Nx-2]-5.0*(*data_g[nt])[Nx-3]+(*data_g[nt])[Nx-4]);
+    (*flux_h[0])[Nx-1] = oot*(3.0*(*data_h[nt])[Nx-1]+13.0*(*data_h[nt])[Nx-2]-5.0*(*data_h[nt])[Nx-3]+(*data_h[nt])[Nx-4]);
+    (*flux_n[0])[Nx-1] = oot*(3.0*(*data_n[nt])[Nx-1]+13.0*(*data_n[nt])[Nx-2]-5.0*(*data_n[nt])[Nx-3]+(*data_n[nt])[Nx-4]);
+    //(*flux_g[0])[Nx-1] = sot*((*data_g[nt])[Nx-2]+(*data_g[nt])[Nx-1]) 
+    //  - oot*((*data_g[nt])[Nx-3]+rbc_coef*(*data_g[nt])[Nx-1]);
+    //(*flux_h[0])[Nx-1] = sot*((*data_h[nt])[Nx-2]+(*data_h[nt])[Nx-1]) 
+    //  - oot*((*data_h[nt])[Nx-3]+rbc_coef*(*data_h[nt])[Nx-1]);
+    //(*flux_n[0])[Nx-1] = sot*((*data_n[nt])[Nx-2]+(*data_n[nt])[Nx-1]) 
+    //  - oot*((*data_n[nt])[Nx-3]+rbc_coef*(*data_n[nt])[Nx-1]);
 
-    (*flux_g[0])[Nx] = sot*((*data_g[nt])[Nx-1]+rbc_coef*(*data_g[nt])[Nx-1])
-      - oot*((*data_g[nt])[Nx-2]+rbc_coef_2*(*data_g[nt])[Nx-1]);
-    (*flux_h[0])[Nx] = sot*((*data_h[nt])[Nx-1]+rbc_coef*(*data_h[nt])[Nx-1])
-      - oot*((*data_h[nt])[Nx-2]+rbc_coef_2*(*data_h[nt])[Nx-1]);
-    (*flux_n[0])[Nx] = sot*((*data_n[nt])[Nx-1]+rbc_coef*(*data_n[nt])[Nx-1])
-      - oot*((*data_n[nt])[Nx-2]+rbc_coef_2*(*data_n[nt])[Nx-1]);
+    (*flux_g[0])[Nx] = oot*(25.0*(*data_g[nt])[Nx-1]-23.0*(*data_g[nt])[Nx-2]+13.0*(*data_g[nt])[Nx-3]-3.0*(*data_g[nt])[Nx-4]);
+    (*flux_h[0])[Nx] = oot*(25.0*(*data_h[nt])[Nx-1]-23.0*(*data_h[nt])[Nx-2]+13.0*(*data_h[nt])[Nx-3]-3.0*(*data_h[nt])[Nx-4]);
+    (*flux_n[0])[Nx] = oot*(25.0*(*data_n[nt])[Nx-1]-23.0*(*data_n[nt])[Nx-2]+13.0*(*data_n[nt])[Nx-3]-3.0*(*data_n[nt])[Nx-4]);
+    //(*flux_g[0])[Nx] = sot*((*data_g[nt])[Nx-1]+rbc_coef*(*data_g[nt])[Nx-1])
+    //  - oot*((*data_g[nt])[Nx-2]+rbc_coef_2*(*data_g[nt])[Nx-1]);
+    //(*flux_h[0])[Nx] = sot*((*data_h[nt])[Nx-1]+rbc_coef*(*data_h[nt])[Nx-1])
+    //  - oot*((*data_h[nt])[Nx-2]+rbc_coef_2*(*data_h[nt])[Nx-1]);
+    //(*flux_n[0])[Nx] = sot*((*data_n[nt])[Nx-1]+rbc_coef*(*data_n[nt])[Nx-1])
+    //  - oot*((*data_n[nt])[Nx-2]+rbc_coef_2*(*data_n[nt])[Nx-1]);
   }
 
   // Step two -- compute the left limiters in lim_?[0] and the right ones
@@ -547,6 +629,11 @@ void TDSolveFVMMod::compute_cells_fluxes_r(const int nt) {
 
     DType alpha1_g, alpha1_h, alpha1_n, alpha1_s;
     DType alpha2_g, alpha2_h, alpha2_n, alpha2_s;
+
+    //if ( i == Nx-4 ) {
+    //  cout << "flux_g[Nx-4]: " << (*flux_g[0])[i] << "; flux_g[Nx-3]: " << (*flux_g[0])[i+1] << "; data_g[Nx-4]: " << (*data_g[nt])[i] << std::endl;
+    //  cout << "flux_n[Nx-4]: " << (*flux_n[0])[i] << "; flux_n[Nx-3]: " << (*flux_n[0])[i+1] << "; data_n[Nx-4]: " << (*data_n[nt])[i] << std::endl;
+    //}
 
     bool zero_lim_g = false;
     bool zero_lim_h = false;
@@ -638,11 +725,17 @@ void TDSolveFVMMod::compute_cells_fluxes_r(const int nt) {
         if ( !no_lim_h ) { alpha1 = min(alpha1,alpha1_h); alpha2 = max(alpha2,alpha2_h); }
         if ( !no_lim_n ) { alpha1 = min(alpha1,alpha1_n); alpha2 = max(alpha2,alpha2_n); }
         if ( !no_lim_s ) { alpha1 = min(alpha1,alpha1_s); alpha2 = max(alpha2,alpha2_s); }
-        LimFun_PPM_INT(alpha1, alpha2, (*lim_s[0])[i], (*lim_n[1])[i]);
+        LimFun_PPM_INT(alpha1, alpha2, (*lim_s[0])[i], (*lim_s[1])[i]);
       }
     }
     else {
       if ( zero_lim_g || zero_lim_h || zero_lim_n ) {
+        //if ( i == Nx -4 ) {
+        //  cout << "Is it here? " << std::endl;
+        //  if ( zero_lim_g) cout << "Zero lim g" << std::endl;
+        //  if ( zero_lim_h) cout << "Zero lim h" << std::endl;
+        //  if ( zero_lim_n) cout << "Zero lim n" << std::endl;
+        //}
         (*lim_s[0])[i] = 0.0; (*lim_s[1])[i] = 0.0;
       }
       else {
@@ -651,10 +744,22 @@ void TDSolveFVMMod::compute_cells_fluxes_r(const int nt) {
         if ( !no_lim_g ) { alpha1 = min(alpha1,alpha1_g); alpha2 = max(alpha2,alpha2_g); }
         if ( !no_lim_h ) { alpha1 = min(alpha1,alpha1_h); alpha2 = max(alpha2,alpha2_h); }
         if ( !no_lim_n ) { alpha1 = min(alpha1,alpha1_n); alpha2 = max(alpha2,alpha2_n); }
-        LimFun_PPM_INT(alpha1, alpha2, (*lim_s[0])[i], (*lim_n[1])[i]);
+        LimFun_PPM_INT(alpha1, alpha2, (*lim_s[0])[i], (*lim_s[1])[i]);
       }
     }
   }
+  // A temporary hack
+  //(*lim_s[0])[Nx-4] = 1.0;
+  //(*lim_s[1])[Nx-4] = 1.0;
+  //std::cout << "lim_g[Nx-4]-: " << (*lim_g[0])[Nx-4] << "; lim_g[Nx-4]+: " << (*lim_g[1])[Nx-4] << std::endl;
+  //std::cout << "lim_h[Nx-4]-: " << (*lim_h[0])[Nx-4] << "; lim_h[Nx-4]+: " << (*lim_h[1])[Nx-4] << std::endl;
+  //std::cout << "lim_n[Nx-4]-: " << (*lim_n[0])[Nx-4] << "; lim_n[Nx-4]+: " << (*lim_n[1])[Nx-4] << std::endl;
+  //std::cout << "lim_s[Nx-4]-: " << (*lim_s[0])[Nx-4] << "; lim_s[Nx-4]+: " << (*lim_s[1])[Nx-4] << std::endl;
+  //std::cout << std::endl;
+  //for ( int i = Nx-3; i < Nx; i++ ) {
+  //  (*lim_s[0])[i] = 1.0;
+  //  (*lim_s[1])[i] = 1.0;
+  //}
 
   // Step 3 -- compute the fluxes
   // Left boundary
@@ -773,7 +878,10 @@ void TDSolveFVMMod::update_cells_common(const int fr, const int to) {
   DType p       = tdCoef->p;
 
   DType dror = (*data_v[fr])[Nx]/data_r[fr];
-  dror = dror * ( 1.0 + 0.5 * dtn * dror );
+  if (tdSetup->dr_opt == 1)
+    dror = dror * ( 1.0 + 0.5 * dtn * dror );
+  if (tdSetup->dr_opt == 2)
+    dror = dror/(1.0-0.25*dx*dx);
 
   // Source terms
   for ( int i = 0; i < Nx; i++ ) {
@@ -801,8 +909,7 @@ void TDSolveFVMMod::update_cells_common(const int fr, const int to) {
 DType TDSolveFVMMod::LimFun_PPM_BC(DType dval_c, DType dval_r) {
   if ( fabs(dval_c)<TOL_ZERO && fabs(dval_r)<TOL_ZERO )
     return 1.0;
-  if ( dval_c * dval_r <= 0.0 ||
-       3.0*fabs(dval_r) <= 8.0*fabs(dval_c) )
+  if ( dval_c * dval_r <= 0.0 || 3.0*fabs(dval_r) <= 8.0*fabs(dval_c) )
     return 0.0;
   else
     return min(1.0, 5.0/(fabs(dval_r)/fabs(dval_c)-1.0));

@@ -11,7 +11,7 @@
 class TDSolveFVMMod : public TDSolveFVM {
   public:
     void set_ic(void);
-    void update_sol(const int fr, const int to, const int shift_dt=0);
+    void update_sol(const int fr, const int to, const DType shift_dt_fr=0.0, const DType shift_dt_to=1.0);
 
     TDSolveFVMMod(TDInput* tdInput_ptr);
     ~TDSolveFVMMod(void);
@@ -35,17 +35,19 @@ class TDSolveFVMMod : public TDSolveFVM {
 
     HVEC** data_u;   // U = velocity due to chemical gradient
 
-    void update_vel(const int nt);
+    void calc_total_diff_model(const int nt);
+    void update_vel(const int nt, const DType shift_dt=0.0);
     void print_custom_vel_u( FILE*, const int nt );
+    void update_rad_consistent(const int fr, const int to);
 
   private:
     // Original model
-    void compute_vel_u(const int nt);
+    void compute_vel_u(const int nt, const DType tsol_loc);
     void compute_vel_u_chem(const int nt);
 
-    void compute_cells_fluxes_u(const int nt);
-    void compute_cells_fluxes_u_upw(const int nt);
-    void compute_cells_fluxes_u_muscl(const int nt);
+    void compute_cells_fluxes_u(const int nt, const DType tsol_loc);
+    void compute_cells_fluxes_u_upw(const int nt, const DType tsol_loc);
+    void compute_cells_fluxes_u_muscl(const int nt, const DType tsol_loc);
     void compute_cells_fluxes_v(const int nt);
     void compute_cells_fluxes_v_upw(const int nt);
     void compute_cells_fluxes_v_muscl(const int nt);

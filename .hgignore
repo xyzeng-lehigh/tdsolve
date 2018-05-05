@@ -10,3 +10,4 @@ TumorDynRun
 *.log
 *.aux
 build/**
+debug/**
