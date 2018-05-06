@@ -9,8 +9,6 @@ using namespace std;
 TDSolveFVM::TDSolveFVM(TDInput* tdInput_ptr) : 
   TDSolve(tdInput_ptr) {
 
-  cout << "TDSolveFVM: " << tdSetup->prob_id << std::endl;
-
   alloc_array_full( data_g, Nx, 3 );
   alloc_array_full( data_h, Nx, 3 );
   alloc_array_full( data_n, Nx, 3 ); // M
@@ -53,7 +51,7 @@ TDSolveFVM::TDSolveFVM(TDInput* tdInput_ptr) :
   FILE* ot_file = fopen( tdInput->outputFile, "w" );
   if ( tdSetup->prob_id < 0 ) // This is only relevant for FVMMod
     fprintf( ot_file, "Time, time step size, num. point / x_c, G, H, N, 1-G-H-N /newline x_f, V\n");
-  if ( tdSetup->prob_id = 0 )
+  if ( tdSetup->prob_id == 0 )
     fprintf( ot_file, "Time, time step size, num. point / x_c, G, H, N, A /newline x_f, V\n");
   if ( tdSetup->prob_id == 1 )
     fprintf( ot_file, "Time, time step size, num. point / x_c, G, H, M, A, P1, P2 /newline x_f, V\n");

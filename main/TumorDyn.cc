@@ -27,8 +27,6 @@ int main(int argc, char** argv) {
   TDInput tdInput;
   tdInput.setInputFile((const char*)inputFile);
   tdInput.parse();
-  //std::cout << "Prob ID HERE? " << tdInput.tdSetup.prob_id << std::endl;
-  //std::cout << "Prob ID HERE? " << tdInput.tdSetup.prob_id << std::endl;
 
   TDSolve* tdSolve;
   switch ( tdInput.tdSetup.frame ) {
@@ -41,9 +39,7 @@ int main(int argc, char** argv) {
     case 2:
       if ( tdInput.tdSetup.re_vel )
         cout << "Warning: Need to turn-off recompute_vel for modified FVM." << std::endl;
-      //std::cout << "Prob ID HERE? " << tdInput.tdSetup.prob_id << std::endl;
       tdSolve = new TDSolveFVMMod(&tdInput);
-      //std::cout << "Prob ID HERE? " << tdInput.tdSetup.prob_id << std::endl;
       break;
     default:
       tdSolve = new TDSolveFVM(&tdInput);

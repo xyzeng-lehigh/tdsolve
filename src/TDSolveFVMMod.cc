@@ -8,8 +8,6 @@ using namespace std;
 TDSolveFVMMod::TDSolveFVMMod(TDInput* tdInput_ptr) :
   TDSolveFVM(tdInput_ptr) {
 
-  cout << "TDSolveFVMMod: " << tdSetup->prob_id << std::endl;
-
   alloc_array_full( lim_g, Nx, 2 );
   alloc_array_full( lim_h, Nx, 2 );
   alloc_array_full( lim_n, Nx, 2 ); // M
@@ -94,7 +92,7 @@ void TDSolveFVMMod::set_ic(void) {
       {
         DType v_par = tdSetup->init_u_par;
         for ( int i = 1; i <= Nx; i++ )
-          (*data_u[0])[i] = - x_c[i] * data_r[0] * v_par / tdCoef->n_bc;
+          (*data_u[0])[i] = - x_f[i] * data_r[0] * v_par / tdCoef->n_bc;
       }
       break;
   }
@@ -260,9 +258,9 @@ void TDSolveFVMMod::compute_vel_u(const int nt, const DType tsol_loc) {
     case -2: // Test 2, space homogeneous solutions
       {
         DType v_par = tdSetup->init_u_par;
-        (*data_u[nt])[0] = 0.0;
+        (*data_u[0])[0] = 0.0;
         for ( int i = 1; i <= Nx; i++ ) {
-          (*data_u[nt])[i] = - x_c[i] * data_r[nt] * v_par / ( 1.0 - std::exp(3.0*v_par*tsol_loc) * (1.0-tdCoef->n_bc));
+          (*data_u[0])[i] = - x_f[i] * data_r[nt] * v_par / ( 1.0 - std::exp(-3.0*v_par*tsol_loc) * (1.0-tdCoef->n_bc));
         }
       }
       break;

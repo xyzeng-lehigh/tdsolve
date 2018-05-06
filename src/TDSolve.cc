@@ -19,8 +19,6 @@ TDSolve::TDSolve(TDInput* tdInput_ptr) {
   x_a_f   = tdMesh->x_a_f;
   x_a_c   = tdMesh->x_a_c;
 
-  cout << "TDSolve: " << tdSetup->prob_id << std::endl;
-
   dtn     = tdSetup->dTinit;
   dtn_old = tdSetup->dTinit;
   tsol    = tdSetup->Tinit;

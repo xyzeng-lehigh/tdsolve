@@ -284,20 +284,8 @@ void TDInput::parse(void) {
       tdSetup.logistic = atoi(value);
     else if (strcmp(name,"bc_lim")==0)
       tdSetup.bc_lim = (atoi(value)!=0);
-    else if (strcmp(name,"prob_id")==0) {
+    else if (strcmp(name,"prob_id")==0) 
       tdSetup.prob_id = atoi(value);
-      cout << "prob_id: " << tdSetup.prob_id << std::endl;
-      cout << "prob_id: " << tdSetup.prob_id << std::endl;
-      cout << "prob_id: " << tdSetup.prob_id << std::endl;
-      cout << "prob_id: " << tdSetup.prob_id << std::endl;
-      cout << "prob_id: " << tdSetup.prob_id << std::endl;
-      cout << "prob_id: " << tdSetup.prob_id << std::endl;
-      cout << "prob_id: " << tdSetup.prob_id << std::endl;
-      cout << "prob_id: " << tdSetup.prob_id << std::endl;
-      cout << "prob_id: " << tdSetup.prob_id << std::endl;
-      cout << "prob_id: " << tdSetup.prob_id << std::endl;
-      cout << "prob_id: " << tdSetup.prob_id << std::endl;
-    }
     else if (strcmp(name,"init_u_par")==0)
       tdSetup.init_u_par = atof(value);
     else if (strcmp(name,"lsysType")==0)
