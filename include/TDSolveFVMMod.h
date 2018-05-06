@@ -11,6 +11,7 @@
 class TDSolveFVMMod : public TDSolveFVM {
   public:
     void set_ic(void);
+    void calc_dt(const int nt);
     void update_sol(const int fr, const int to, const DType shift_dt_fr=0.0, const DType shift_dt_to=1.0);
 
     TDSolveFVMMod(TDInput* tdInput_ptr);
@@ -54,6 +55,12 @@ class TDSolveFVMMod : public TDSolveFVM {
     void compute_cells_fluxes_r(const int nt);
     void update_cells_common(const int fr, const int to);
     void update_vel_int(const int nt);
+
+    // Classical FVM
+    void compute_cells_fluxes_orig(const int nt, const DType tsol_loc);
+    void compute_cells_fluxes_orig_upw(const int nt, const DType tsol_loc);
+    void compute_cells_fluxes_orig_muscl(const int nt, const DType tsol_loc);
+    void update_vel_int_orig(const int nt);
 
     // OPN model
     void update_vel_int_opn(const int nt);
