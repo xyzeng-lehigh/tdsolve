@@ -66,7 +66,13 @@ TDInput::TDInput(void) {
   tdSetup.vel    = 0;
   tdSetup.lbc    = 0;
   tdSetup.rbc    = 0;
-  tdSetup.tmeth  = 1;
+  tdSetup.tmeth  = 1;     // 0 - forward Euler
+                          // 1 - RK2
+  tdSetup.vCoup  = false; // The next two options are relevant
+                          // if vCoup == true
+  tdSetup.vIter  = -1;    // -1  -- iterate until converge
+                          // >=0 -- up to tIter iterations
+  tdSetup.vTol   = 1e-6;  // Iteration tolerance for tIter=-1
   tdSetup.Tinit  = 0.0;
   tdSetup.Tterm  = 1.0;
   tdSetup.Rterm  = 6.0;
@@ -254,6 +260,12 @@ void TDInput::parse(void) {
       tdSetup.rbc = atoi(value); // 0 -- hom. Neumann; 1 -- ODE bc.
     else if (strcmp(name,"time_method")==0)
       tdSetup.tmeth = atoi(value);
+    else if (strcmp(name,"vel_couple")==0)
+      tdSetup.vCoup = (atoi(value)!=0);
+    else if (strcmp(name,"vel_iter")==0)
+      tdSetup.vIter = atoi(value);
+    else if (strcmp(name,"vel_iter_tol")==0)
+      tdSetup.vTol = atof(value);
     else if (strcmp(name,"Tinit")==0)
       tdSetup.Tinit = atof(value);
     else if (strcmp(name,"Tterm")==0)

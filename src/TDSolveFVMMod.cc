@@ -127,11 +127,7 @@ void TDSolveFVMMod::calc_dt(const int nt) {
     reach_term_now = true;
 
   DType dtn_trial = DTYPE_MAX;
-  DType dr = (*data_v[nt])[Nx];
-  if (tdSetup->dr_opt == 1)
-    dr = dr * ( 1.0 + 0.5 * dtn * dr / data_r[nt] );
-  if (tdSetup->dr_opt == 2)
-    dr = dr/(1.0-0.25*dx*dx);
+  DType dr = rprime;
 
   if ( tdSetup->prob_id < 0 && tdSetup->scell < 0 ) {
     for ( int i = 0; i < Nx+1; i++ ) {
@@ -185,25 +181,23 @@ void TDSolveFVMMod::print_custom_vel_u( FILE* ot_file, const int nt ){
   return;
 }
 
-void TDSolveFVMMod::update_rad_consistent(const int fr, const int to) {
-  DType dr = (*data_v[fr])[Nx];
-  if (tdSetup->dr_opt == 1)
-    dr = dr * ( 1.0 + 0.5 * dtn * dr / data_r[fr] );
-  if (tdSetup->dr_opt == 2)
-    dr = dr/(1.0-0.25*dx*dx);
-  data_r[to] = data_r[fr]*data_r[fr] + 2.0*dtn*data_r[fr]*dr;
-  data_r[to] = sqrt(data_r[to]);
-  return;
-}
-
 void TDSolveFVMMod::update_sol(const int fr, const int to,
     const DType shift_dt_fr, const DType shift_dt_to) {
 
+  if ( tdSetup->vCoup ) {
+    // In the sub-iteration, always use v_fr to compute fluxes
+    *data_v[to] = *data_v[fr]; 
+    int   cur_iter = 0;
+    int   max_iter = tdSetup->vIter;
+    DType max_tol  = tdSetup->vTol;
+    while ( max_iter < 0 || cur_iter < max_iter ) {
+      update_rad( fr, to );
+    }
+    return;
+  }
+
   // Use data_v[fr], which is computed in previous iteration
-  if ( tdSetup->r_opt == 0 )
-    update_rad( fr, to );
-  if ( tdSetup->r_opt == 1 )
-    update_rad_consistent( fr, to );
+  update_rad( fr, to );
 
   // The fluxes are already computed in previous iteration
   update_cells_common( fr, to );
@@ -610,11 +604,7 @@ void TDSolveFVMMod::compute_cells_fluxes_v_muscl(const int nt) {
 }
 
 void TDSolveFVMMod::compute_cells_fluxes_r(const int nt) {
-  DType dror = (*data_v[nt])[Nx]/data_r[nt];
-  if (tdSetup->dr_opt == 1)
-    dror = dror * ( 1.0 + 0.5 * dtn * dror );
-  if (tdSetup->dr_opt == 2)
-    dror = dror/(1.0-0.25*dx*dx);
+  DType dror = rprime/data_r[nt];
 
   const DType sot = 7.0/12.0;
   const DType oot = 1.0/12.0;
@@ -1087,11 +1077,7 @@ void TDSolveFVMMod::update_cells_common(const int fr, const int to) {
   DType mu_coef = tdCoef->mu_coef;
   DType p       = tdCoef->p;
 
-  DType dror = (*data_v[fr])[Nx]/data_r[fr];
-  if (tdSetup->dr_opt == 1)
-    dror = dror * ( 1.0 + 0.5 * dtn * dror );
-  if (tdSetup->dr_opt == 2)
-    dror = dror/(1.0-0.25*dx*dx);
+  DType dror = rprime/data_r[fr];
 
   // Source terms
   for ( int i = 0; i < Nx; i++ ) {

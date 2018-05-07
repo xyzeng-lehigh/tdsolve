@@ -50,6 +50,7 @@ class TDSolve {
     HVEC** data_a;  // A = concentration of chemotatic attractants by glimoa cells
     HVEC** data_v;  // V = veocity field within the tumor boundary
     DType  data_r[3];
+    DType  rprime;  // R'
 
     // OPN model
     HVEC** data_p1; // concentration of osteopontin secreted by immunue cells
