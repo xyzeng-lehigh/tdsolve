@@ -43,6 +43,10 @@ class TDSolve {
       return !reach_term_now;
     }
 
+    // offset_dt is the difference between the target tsol and the current tsol
+    virtual void update_vel(const int fr, const int to, const DType offset_dt=0.0, const bool last_iter=false) = 0;
+    void update_rad(const int fr, const int to);
+
   protected:
     HVEC** data_g;  // G = number density of glimoa cells
     HVEC** data_h;  // H = number density of necrotic cells
@@ -108,9 +112,10 @@ class TDSolve {
     int iter;
 
     void setupLinSolve( LinMat*&, LinMat*&, LinVec*&, LinVec*&, LinVec*&, LinSolve*&, int );
-    // offset_dt is the difference between the target tsol and the current tsol
-    virtual void update_vel(const int nt, const DType offset_dt=0.0) = 0;
-    void update_rad(const int fr, const int to);
+
+    void upscale_var(HVEC&, HVEC&, DType*&, int, DType, int scal_pow=2);
+    void downscale_var(HVEC&, HVEC&, DType*&, int, DType, int scal_pow=2);
+
 };
 
 #endif

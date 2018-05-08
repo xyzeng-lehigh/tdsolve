@@ -289,7 +289,7 @@ void TDInput::parse(void) {
     else if (strcmp(name,"dr_option")==0)
       tdSetup.dr_opt = atoi(value);
     else if (strcmp(name,"r_option")==0)
-      tdSetup.dr_opt = atoi(value);
+      tdSetup.r_opt = atoi(value);
     else if (strcmp(name,"lim_sync_tot")==0)
       tdSetup.slim_tot = (atoi(value)!=0);
     else if (strcmp(name,"logistic")==0)

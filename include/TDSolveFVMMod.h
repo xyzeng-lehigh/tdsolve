@@ -13,6 +13,7 @@ class TDSolveFVMMod : public TDSolveFVM {
     void set_ic(void);
     void calc_dt(const int nt);
     void update_sol(const int fr, const int to, const DType shift_dt_fr=0.0, const DType shift_dt_to=1.0);
+    void update_vel(const int fr, const int to, const DType shift_dt=0.0, const bool last_iter=false);
 
     TDSolveFVMMod(TDInput* tdInput_ptr);
     ~TDSolveFVMMod(void);
@@ -37,9 +38,7 @@ class TDSolveFVMMod : public TDSolveFVM {
     HVEC** data_u;   // U = velocity due to chemical gradient
 
     void calc_total_diff_model(const int nt);
-    void update_vel(const int nt, const DType shift_dt=0.0);
     void print_custom_vel_u( FILE*, const int nt );
-    void update_rad_consistent(const int fr, const int to);
 
   private:
     // Original model

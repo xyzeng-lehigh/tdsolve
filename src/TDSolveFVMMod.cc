@@ -105,12 +105,7 @@ void TDSolveFVMMod::set_ic(void) {
   tdCoef->omega   = 0.0;
   tdSetup->logistic = 0;
 
-  this->update_vel( 0, 0.0 );
-
-  FILE* ot_file = fopen( tdInput->radiusFile, "w" );
-  fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\t%10.20f\n", 
-      tsol, data_r[0], (*data_v[0])[Nx], -(*data_u[0])[Nx] );
-  fclose(ot_file);
+  this->update_vel( 0, 1, 0.0 );
 
   return;
 }
@@ -184,6 +179,8 @@ void TDSolveFVMMod::print_custom_vel_u( FILE* ot_file, const int nt ){
 void TDSolveFVMMod::update_sol(const int fr, const int to,
     const DType shift_dt_fr, const DType shift_dt_to) {
 
+  // At this point dtn and tsol are known
+
   if ( tdSetup->vCoup ) {
     // In the sub-iteration, always use v_fr to compute fluxes
     *data_v[to] = *data_v[fr]; 
@@ -197,7 +194,11 @@ void TDSolveFVMMod::update_sol(const int fr, const int to,
   }
 
   // Use data_v[fr], which is computed in previous iteration
-  update_rad( fr, to );
+  //update_rad( fr, to );
+
+  // Will also compute fluxes for the current time step
+  // and update_rad
+  update_vel( fr, to, shift_dt_fr );
 
   // The fluxes are already computed in previous iteration
   update_cells_common( fr, to );
@@ -262,9 +263,6 @@ void TDSolveFVMMod::update_sol(const int fr, const int to,
       break;
   }
 
-  // Will also compute fluxes for the current time step
-  update_vel( to, shift_dt_to );
-
   return;
 }
 
@@ -282,35 +280,44 @@ void TDSolveFVMMod::calc_total_diff_model(const int nt) {
   return;
 }
 
-void TDSolveFVMMod::update_vel(const int nt, const DType shift_dt) {
+void TDSolveFVMMod::update_vel(const int fr, const int to, const DType shift_dt, const bool last_iter) {
 
   // Compute the velocity u using the gradient
-  compute_vel_u( nt, tsol+shift_dt*dtn );
+  compute_vel_u( fr, tsol+shift_dt*dtn );
 
   if ( tdSetup->scell >= 0 ) { // Segregated fluxes
     // The fluxes that does not need V
-    compute_cells_fluxes_u( nt, tsol+shift_dt*dtn );
+    compute_cells_fluxes_u( fr, tsol+shift_dt*dtn );
 
     switch ( tdSetup->prob_id ) {
       case 0:  // PDGF
       case -1: // Test
       case -2: // Test
-        update_vel_int(nt);
+        update_vel_int(fr);
         break;
       case 1: // OPN
-        update_vel_int_opn(nt);
+        update_vel_int_opn(fr);
         break;
     }
-
-    // The fluxes that need V
-    compute_cells_fluxes_v( nt );
-
-    // The fluxes associated with R'
-    compute_cells_fluxes_r( nt );
   }
   else { // Original fluxes
-    compute_cells_fluxes_orig( nt, tsol+shift_dt*dtn );
-    update_vel_int_orig( nt );
+    update_vel_int_orig( fr );
+  }
+
+  if ( last_iter ) return;
+
+  // Collocation between fr and to should be dtn
+  update_rad( fr, to );
+
+  if ( tdSetup->scell >= 0 ) { // Segregated fluxes
+    // The fluxes that need V
+    compute_cells_fluxes_v( fr );
+
+    // The fluxes associated with R'
+    compute_cells_fluxes_r( fr );
+  }
+  else {
+    compute_cells_fluxes_orig( fr, tsol+shift_dt*dtn );
   }
 
   return;
@@ -885,7 +892,7 @@ void TDSolveFVMMod::compute_cells_fluxes_orig(const int nt, const DType tsol_loc
 
 void TDSolveFVMMod::compute_cells_fluxes_orig_upw(const int nt, const DType tsol_loc) {
 
-  DType dror = (*data_v[nt])[Nx]/data_r[nt];
+  DType dror = rprime/data_r[nt];
 
   DType n_bc = tdCoef->n_bc;
   if (tdSetup->prob_id == -2) {
@@ -923,7 +930,7 @@ void TDSolveFVMMod::compute_cells_fluxes_orig_upw(const int nt, const DType tsol
 
 void TDSolveFVMMod::compute_cells_fluxes_orig_muscl(const int nt, const DType tsol_loc) {
 
-  DType dror = (*data_v[nt])[Nx]/data_r[nt];
+  DType dror = rprime/data_r[nt];
 
   DType n_bc = tdCoef->n_bc;
   if (tdSetup->prob_id == -2) {

@@ -50,11 +50,11 @@ TDSolveFVM::TDSolveFVM(TDInput* tdInput_ptr) :
 
   FILE* ot_file = fopen( tdInput->outputFile, "w" );
   if ( tdSetup->prob_id < 0 ) // This is only relevant for FVMMod
-    fprintf( ot_file, "Time, time step size, num. point / x_c, G, H, N, 1-G-H-N /newline x_f, V\n");
+    fprintf( ot_file, "Time, time step size, radius, num. point / x_c, G, H, N, 1-G-H-N /newline x_f, V\n");
   if ( tdSetup->prob_id == 0 )
-    fprintf( ot_file, "Time, time step size, num. point / x_c, G, H, N, A /newline x_f, V\n");
+    fprintf( ot_file, "Time, time step size, radius, num. point / x_c, G, H, N, A /newline x_f, V\n");
   if ( tdSetup->prob_id == 1 )
-    fprintf( ot_file, "Time, time step size, num. point / x_c, G, H, M, A, P1, P2 /newline x_f, V\n");
+    fprintf( ot_file, "Time, time step size, radius, num. point / x_c, G, H, M, A, P1, P2 /newline x_f, V\n");
   fclose(ot_file);
 }
 
@@ -154,7 +154,7 @@ void TDSolveFVM::set_ic(void) {
     (*data_p2[0]) = 0.0;
   }
 
-  this->update_vel(0, 0.0);
+  this->update_vel(0, 0, 0.0);
 
   N_dir[0] = 0;
   for ( int i = 1; i < Nx+1; i++ )
@@ -183,26 +183,6 @@ void TDSolveFVM::copy_data(const int nt_fr, const int nt_to) {
   }
 
   data_r[nt_to]  =  data_r[nt_fr];
-  return;
-}
-
-void TDSolveFVM::upscale_var(
-    HVEC& data_fr, HVEC& data_to, DType*& x_ptr, 
-    int Nsize, DType radius, int scal_pow) {
-  for ( int i = 0; i < Nsize; i++ ) {
-    DType loc_r = x_ptr[i] * radius;
-    data_to[i] = data_fr[i] * pow(loc_r, scal_pow);
-  }
-  return;
-}
-
-void TDSolveFVM::downscale_var(
-    HVEC& data_fr, HVEC& data_to, DType*& x_ptr, 
-    int Nsize, DType radius, int scal_pow) {
-  for ( int i = 0; i < Nsize; i++ ) {
-    DType loc_r = x_ptr[i] * radius;
-    data_to[i] = data_fr[i] / pow(loc_r, scal_pow);
-  }
   return;
 }
 
@@ -296,7 +276,7 @@ void TDSolveFVM::output_pdgf(const int nt) {
   }
   //if ( !reach_term_now && iter % tdSetup->freq != 0 ) return;
   ot_file = fopen( tdInput->outputFile, "a" );
-  fprintf( ot_file, "%10.20f\t%10.20f\t%d\t%d\n", tsol, dtn, Nx, Nx+1 );
+  fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\t%d\t%d\n", tsol, dtn, data_r[nt], Nx, Nx+1 );
 
   downscale_var( *data_g[nt], *data_g[nt], x_c, Nx, data_r[nt] );
   downscale_var( *data_h[nt], *data_h[nt], x_c, Nx, data_r[nt] );
@@ -337,7 +317,7 @@ void TDSolveFVM::output_opn(const int nt) {
   }
   //if ( !reach_term_now && iter % tdSetup->freq != 0 ) return;
   ot_file = fopen( tdInput->outputFile, "a" );
-  fprintf( ot_file, "%10.20f\t%10.20f\t%d\t%d\n", tsol, dtn, Nx, Nx+1 );
+  fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\t%d\t%d\n", tsol, dtn, data_r[nt], Nx, Nx+1 );
 
   downscale_var( *data_g[nt], *data_g[nt], x_c, Nx, data_r[nt] );
   downscale_var( *data_h[nt], *data_h[nt], x_c, Nx, data_r[nt] );
@@ -359,7 +339,7 @@ void TDSolveFVM::output_opn(const int nt) {
   return;
 }
 
-void TDSolveFVM::update_vel(const int nt, const DType shift_dt) {
+void TDSolveFVM::update_vel(const int nt, const int nt_dummy, const DType shift_dt, const bool last_iter) {
 
   switch ( tdSetup->prob_id ) {
     case 0:
@@ -585,7 +565,7 @@ void TDSolveFVM::update_sol(const int fr, const int to,
       break;
   }
 
-  update_vel( to, shift_dt_to );
+  update_vel( to, 0, shift_dt_to );
   return;
 }
 

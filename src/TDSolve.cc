@@ -147,6 +147,18 @@ void TDSolve::setupLinSolve(
 void TDSolve::average_sol(const DType coef_1, const int fr_1,
     const DType coef_2, const int fr_2, const int to, 
     const DType shift_dt_to) {
+  
+  if ( tdSetup->frame == 2 && tdSetup->scell >= 0 )
+  {
+    downscale_var( *data_g[fr_1], *data_g[fr_1], x_c, Nx, data_r[fr_1] );
+    downscale_var( *data_h[fr_1], *data_h[fr_1], x_c, Nx, data_r[fr_1] );
+    downscale_var( *data_n[fr_1], *data_n[fr_1], x_c, Nx, data_r[fr_1] );
+
+    downscale_var( *data_g[fr_2], *data_g[fr_2], x_c, Nx, data_r[fr_2] );
+    downscale_var( *data_h[fr_2], *data_h[fr_2], x_c, Nx, data_r[fr_2] );
+    downscale_var( *data_n[fr_2], *data_n[fr_2], x_c, Nx, data_r[fr_2] );
+  }
+
   *data_g[to] = coef_1 * (*data_g[fr_1]) + coef_2 * (*data_g[fr_2]);
   *data_h[to] = coef_1 * (*data_h[fr_1]) + coef_2 * (*data_h[fr_2]);
   *data_n[to] = coef_1 * (*data_n[fr_1]) + coef_2 * (*data_n[fr_2]);
@@ -161,8 +173,23 @@ void TDSolve::average_sol(const DType coef_1, const int fr_1,
 
   data_r[to]  = coef_1 * data_r[fr_1]    + coef_2 * data_r[fr_2];
 
+  if ( tdSetup->frame == 2 && tdSetup->scell >= 0 )
+  {
+    upscale_var( *data_g[fr_1], *data_g[fr_1], x_c, Nx, data_r[fr_1] );
+    upscale_var( *data_h[fr_1], *data_h[fr_1], x_c, Nx, data_r[fr_1] );
+    upscale_var( *data_n[fr_1], *data_n[fr_1], x_c, Nx, data_r[fr_1] );
+
+    upscale_var( *data_g[fr_2], *data_g[fr_2], x_c, Nx, data_r[fr_2] );
+    upscale_var( *data_h[fr_2], *data_h[fr_2], x_c, Nx, data_r[fr_2] );
+    upscale_var( *data_n[fr_2], *data_n[fr_2], x_c, Nx, data_r[fr_2] );
+
+    upscale_var( *data_g[to], *data_g[to], x_c, Nx, data_r[to] );
+    upscale_var( *data_h[to], *data_h[to], x_c, Nx, data_r[to] );
+    upscale_var( *data_n[to], *data_n[to], x_c, Nx, data_r[to] );
+  }
+
   if ( tdSetup->re_vel ) // Do not use this option for FVM_Mod
-    this->update_vel(to, shift_dt_to);
+    this->update_vel(to, 0, shift_dt_to, true);
   else
     *data_v[to] = coef_1 * (*data_v[fr_1]) + coef_2 * (*data_v[fr_2]);
 
@@ -171,7 +198,7 @@ void TDSolve::average_sol(const DType coef_1, const int fr_1,
 
 void TDSolve::diagnostic(const int nt) {
   fprintf( stdout, "Iter %3d: Time %6.8f; Time step %6.8f; Radius %6.8f; Front-velocity %6.8f.\n",
-      iter, tsol, dtn, data_r[nt], (*data_v[nt])[Nx] );
+      iter, tsol, dtn, data_r[nt], rprime );
   return;
 }
 
@@ -195,6 +222,26 @@ void TDSolve::update_rad(const int fr, const int to) {
 
     if ( tdSetup->r_opt == 1 )
       data_r[to] = std::sqrt( data_r[fr]*data_r[fr] + 2.0*dtn*data_r[fr]*rprime );
+  }
+  return;
+}
+
+void TDSolve::upscale_var(
+    HVEC& data_fr, HVEC& data_to, DType*& x_ptr, 
+    int Nsize, DType radius, int scal_pow) {
+  for ( int i = 0; i < Nsize; i++ ) {
+    DType loc_r = x_ptr[i] * radius;
+    data_to[i] = data_fr[i] * pow(loc_r, scal_pow);
+  }
+  return;
+}
+
+void TDSolve::downscale_var(
+    HVEC& data_fr, HVEC& data_to, DType*& x_ptr, 
+    int Nsize, DType radius, int scal_pow) {
+  for ( int i = 0; i < Nsize; i++ ) {
+    DType loc_r = x_ptr[i] * radius;
+    data_to[i] = data_fr[i] / pow(loc_r, scal_pow);
   }
   return;
 }

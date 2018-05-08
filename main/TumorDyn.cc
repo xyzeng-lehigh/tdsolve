@@ -49,7 +49,6 @@ int main(int argc, char** argv) {
   tdSolve->setup();
   tdSolve->set_ic();
   tdSolve->calc_dt(0);
-  tdSolve->output(0);
   tdSolve->diagnostic(0);
 
   while ( tdSolve->nextIter() ) {
@@ -58,12 +57,13 @@ int main(int argc, char** argv) {
       tdSolve->update_sol(1,2,1.0,2.0);
       tdSolve->average_sol(0.5,0,0.5,2,1);
     }
+    tdSolve->output(0); // This is the solution before updating
     tdSolve->copy_data(1,0);
     tdSolve->calc_dt(0);
     tdSolve->diagnostic(0);
-    tdSolve->output(0);
   }
 
+  tdSolve->update_vel(0,1,0.0,true);
   tdSolve->output(0);
 
   return 1;

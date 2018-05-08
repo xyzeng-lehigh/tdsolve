@@ -15,6 +15,8 @@ class TDSolveFVM : public TDSolve {
     void output(const int nt);
     void update_sol(const int fr, const int to, const DType shift_dt_fr=0.0, const DType shift_dt_to=1.0);
     void copy_data(const int fr, const int to);
+    // Needs to update whenever a or n is modified
+    void update_vel(const int fr, const int to, const DType shift_dt=0.0, const bool last_iter=false);
 
     TDSolveFVM(TDInput* tdInput_ptr);
     ~TDSolveFVM(void);
@@ -34,12 +36,6 @@ class TDSolveFVM : public TDSolve {
     HVEC** slope_p1;
     HVEC** flux_p2;
     HVEC** slope_p2;
-
-    // Needs to update whenever a or n is modified
-    void update_vel(const int nt, const DType shift_dt=0.0);
-
-    void upscale_var(HVEC&, HVEC&, DType*&, int, DType, int scal_pow=2);
-    void downscale_var(HVEC&, HVEC&, DType*&, int, DType, int scal_pow=2);
 
     // Various output function
     void output_pdgf(const int nt);
