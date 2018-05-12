@@ -822,7 +822,7 @@ void TDSolveFVM::update_cells_upw_be(const int fr, const int to) {
   }
 
 
-  // First data_h
+  // Second data_h
   rhs->reset( 0.0 );
   mat->reset( 0.0 );
   sol->reset( 0.0 );
@@ -915,7 +915,7 @@ void TDSolveFVM::update_cells_upw_be(const int fr, const int to) {
   }
 
 
-  // First data_n
+  // Last data_n
   rhs->reset( 0.0 );
   mat->reset( 0.0 );
   sol->reset( 0.0 );

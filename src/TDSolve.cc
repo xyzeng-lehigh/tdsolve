@@ -202,8 +202,9 @@ void TDSolve::diagnostic(const int nt) {
   return;
 }
 
-void TDSolve::update_rad(const int fr, const int to) {
-  rprime     = (*data_v[fr])[Nx];           // dr_opt == 0
+void TDSolve::update_rad(const int fr, const int to, const int v_nt) {
+  int vnt = (v_nt>=0) ? v_nt : fr;
+  rprime     = (*data_v[vnt])[Nx];           // dr_opt == 0
   data_r[to] = data_r[fr] + dtn * rprime;   //  r_opt == 0
   if ( tdSetup->vCoup ) {
     if ( tdSetup->dr_opt == 1 )
@@ -212,7 +213,7 @@ void TDSolve::update_rad(const int fr, const int to) {
       rprime = rprime / ( 1.0 - 0.25 * dx * dx );
 
     if ( tdSetup->r_opt == 1 )
-      data_r[to] = std::sqrt( data_r[fr]*data_r[fr] + 4.0*dtn*dtn*rprime*rprime ) + dtn*rprime;
+      data_r[to] = std::sqrt( data_r[fr]*data_r[fr] + dtn*dtn*rprime*rprime ) + dtn*rprime;
   }
   else {
     if ( tdSetup->dr_opt == 1 )

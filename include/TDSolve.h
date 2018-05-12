@@ -45,7 +45,7 @@ class TDSolve {
 
     // offset_dt is the difference between the target tsol and the current tsol
     virtual void update_vel(const int fr, const int to, const DType offset_dt=0.0, const bool last_iter=false) = 0;
-    void update_rad(const int fr, const int to);
+    void update_rad(const int fr, const int to, const int v_nt=-1);
 
   protected:
     HVEC** data_g;  // G = number density of glimoa cells

@@ -15,6 +15,7 @@ class TDSolveFVMMod : public TDSolveFVM {
     void update_sol(const int fr, const int to, const DType shift_dt_fr=0.0, const DType shift_dt_to=1.0);
     void update_vel(const int fr, const int to, const DType shift_dt=0.0, const bool last_iter=false);
 
+
     TDSolveFVMMod(TDInput* tdInput_ptr);
     ~TDSolveFVMMod(void);
 
@@ -36,6 +37,7 @@ class TDSolveFVMMod : public TDSolveFVM {
     HVEC** flux_n_u; // or M
 
     HVEC** data_u;   // U = velocity due to chemical gradient
+    HVEC** vel_tmp;  // Temporary storage for velocities
 
     void calc_total_diff_model(const int nt);
     void print_custom_vel_u( FILE*, const int nt );
@@ -51,9 +53,18 @@ class TDSolveFVMMod : public TDSolveFVM {
     void compute_cells_fluxes_v(const int nt);
     void compute_cells_fluxes_v_upw(const int nt);
     void compute_cells_fluxes_v_muscl(const int nt);
+    void compute_flux_r_ppm_lims(const int nt);
     void compute_cells_fluxes_r(const int nt);
     void update_cells_common(const int fr, const int to);
     void update_vel_int(const int nt);
+
+    // implicit methods
+    void update_cells_orig_imp_upw(const int fr, const int to, const DType tsol_loc);
+    void update_cells_orig_imp_muscl(const int fr, const int to, const DType tsol_loc);
+    void update_mat_upw_v(const int nt, HVEC**& vel, const int v_nt, const bool rbc=false);
+    void update_mat_ppm_r(const int nt);
+    void update_cells_imp_upw(const int fr, const int to, const DType tsol_loc);
+    void update_cells_imp_muscl(const int fr, const int to, const DType tsol_loc);
 
     // Classical FVM
     void compute_cells_fluxes_orig(const int nt, const DType tsol_loc);
@@ -63,6 +74,9 @@ class TDSolveFVMMod : public TDSolveFVM {
 
     // OPN model
     void update_vel_int_opn(const int nt);
+
+    // Other functions
+    DType calc_n_bc( const DType tsol_loc );
 
     // The minmod limiter
     DType LimFun_Minmod(DType dval_l, DType dval_r) {
