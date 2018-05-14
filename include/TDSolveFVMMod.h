@@ -79,6 +79,16 @@ class TDSolveFVMMod : public TDSolveFVM {
     // Update chems
     void update_chem_imp( const int fr, const int to, const DType shift_dt_fr=0.0, const DType shift_dt_to=1.0 );
 
+    void compute_flux_chem_muscl_lims(const int nt, HVEC**& data, HVEC**& lim, const int N_loc, const DType* xc_loc, const DType* xf_loc, const int rbc=0, const DType bc_val=0.0);
+    void update_mat_chem_muscl_r(const int nt, LinMat*& mat_loc, HVEC**& lim, const int N_loc, const DType* xc_loc, const DType* xf_loc, const int rbc=0);
+    void update_mat_chem_diff(const int nt, LinMat*& mat_loc, const int N_loc, const DType* xc_loc, const DType* xf_loc, const DType diff_coef, const int rbc = 0);
+    void update_chem_muscl_be(const int fr, const int to);
+    void update_chem_opn_muscl_be(const DType tsol_loc, const int fr, const int to, 
+                                const DType coef_D, const DType coef_alpha, 
+                                const DType coef_beta, const DType coef_gamma, 
+                                HVEC**& data_source, HVEC**& data_P, HVEC**& flux_P, HVEC**& slope_P, 
+                                const bool treatment=false, const bool treatBC=false);
+
     // OPN model
     void update_vel_int_opn(const int nt);
 
