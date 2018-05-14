@@ -222,6 +222,7 @@ void TDSolveFVMMod::update_sol(const int fr, const int to,
       }
 
       // Then need to work on the chems
+      update_chem_imp( fr, to, shift_dt_fr, shift_dt_to );
 
       *vel_tmp[0] = *data_v[to];
       update_vel( to, 0, 1.0, true ); // Update data_v[to] no updating on radius
@@ -253,58 +254,7 @@ void TDSolveFVMMod::update_sol(const int fr, const int to,
   if ( tdSetup->prob_id < 0 )
     calc_total_diff_model( to );
 
-  // Chemicals -- prob_id should be non-negative
-  switch ( tdSetup->prob_id ) {
-    case 0: // PDGF
-      switch ( tdSetup->schem ) {
-        case 0: // Implicit first-order upwind for advection and cd for diffusion
-          update_chem_upw_be( fr, to );
-          break;
-        case 1: // Explicit second-order muscl for advection and implicit cd for diffusion
-          update_chem_muscl_imex( fr, to );
-          break;
-        default:
-          std::cout << "Warning: The spatial scheme for chem not defined, "
-            << "using upw/backward on the primitive equation instead\n" << std::endl;
-          update_chem_upw_be( fr, to );
-          break;
-      }
-      break;
-    case 1: // OPN
-      switch ( tdSetup->schem ) {
-        case 0: // Implicit first-order upwind for advection and cd for diffusion
-          // Update A
-          update_chem_upw_be( fr, to );
-          // Update P1 and P2
-          update_chem_opn_upw_be( tsol+shift_dt_fr*dtn, fr, to, tdCoef->D_1, tdCoef->alpha_1, 
-              tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1, tdCoef->treatP1, tdCoef->treatP1BC );
-          update_chem_opn_upw_be( tsol+shift_dt_fr*dtn, fr, to, tdCoef->D_2, 
-              tdCoef->alpha_2, tdCoef->beta_2, tdCoef->gamma_2, data_g, data_p2 );
-          break;
-        case 1: // Explicit second-order muscl for advection and implicit cd for diffusion
-          // Update A
-          update_chem_muscl_imex( fr, to ); 
-          // Update P1 and P2
-          update_chem_opn_muscl_imex( tsol+shift_dt_fr*dtn, fr, to, tdCoef->D_1, tdCoef->alpha_1, 
-              tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1, flux_p1, slope_p1, 
-              tdCoef->treatP1, tdCoef->treatP1BC );
-          update_chem_opn_muscl_imex( tsol+shift_dt_fr*dtn, fr, to, tdCoef->D_2, tdCoef->alpha_2, 
-              tdCoef->beta_2, tdCoef->gamma_2, data_g, data_p2, flux_p2, slope_p2 );
-          break;
-        default:
-          std::cout << "Warning: The spatial scheme for chem not defined, "
-            << "using upw/backward on the primitive equation instead\n" << std::endl;
-          // Update A
-          update_chem_upw_be( fr, to );
-          // Update P1 and P2
-          update_chem_opn_upw_be( tsol+shift_dt_fr*dtn, fr, to, tdCoef->D_1, tdCoef->alpha_1, 
-              tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1, tdCoef->treatP1, tdCoef->treatP1BC );
-          update_chem_opn_upw_be( tsol+shift_dt_fr*dtn, fr, to, tdCoef->D_2, tdCoef->alpha_2, 
-              tdCoef->beta_2, tdCoef->gamma_2, data_g, data_p2 );
-          break;
-      }
-      break;
-  }
+  update_chem_imp( fr, to, shift_dt_fr, shift_dt_to );
 
   return;
 }
@@ -2223,6 +2173,63 @@ void TDSolveFVMMod::update_vel_int(const int nt) {
   for ( int i = 1; i < Nx+1; i++ )
     (*data_v[nt])[i] = ((*data_v[nt])[i] - (*flux_n_u[0])[i]/data_r[nt])/x_f[i]/x_f[i];
 
+  return;
+}
+
+void TDSolveFVMMod::update_chem_imp( const int fr, const int to, 
+    const DType shift_dt_fr, const DType shift_dt_to ) {
+  // Chemicals -- prob_id should be non-negative
+  switch ( tdSetup->prob_id ) {
+    case 0: // PDGF
+      switch ( tdSetup->schem ) {
+        case 0: // Implicit first-order upwind for advection and cd for diffusion
+          update_chem_upw_be( fr, to );
+          break;
+        case 1: // Explicit second-order muscl for advection and implicit cd for diffusion
+          update_chem_muscl_imex( fr, to );
+          break;
+        default:
+          std::cout << "Warning: The spatial scheme for chem not defined, "
+            << "using upw/backward on the primitive equation instead\n" << std::endl;
+          update_chem_upw_be( fr, to );
+          break;
+      }
+      break;
+    case 1: // OPN
+      switch ( tdSetup->schem ) {
+        case 0: // Implicit first-order upwind for advection and cd for diffusion
+          // Update A
+          update_chem_upw_be( fr, to );
+          // Update P1 and P2
+          update_chem_opn_upw_be( tsol+shift_dt_fr*dtn, fr, to, tdCoef->D_1, tdCoef->alpha_1, 
+              tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1, tdCoef->treatP1, tdCoef->treatP1BC );
+          update_chem_opn_upw_be( tsol+shift_dt_fr*dtn, fr, to, tdCoef->D_2, 
+              tdCoef->alpha_2, tdCoef->beta_2, tdCoef->gamma_2, data_g, data_p2 );
+          break;
+        case 1: // Explicit second-order muscl for advection and implicit cd for diffusion
+          // Update A
+          update_chem_muscl_imex( fr, to ); 
+          // Update P1 and P2
+          update_chem_opn_muscl_imex( tsol+shift_dt_fr*dtn, fr, to, tdCoef->D_1, tdCoef->alpha_1, 
+              tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1, flux_p1, slope_p1, 
+              tdCoef->treatP1, tdCoef->treatP1BC );
+          update_chem_opn_muscl_imex( tsol+shift_dt_fr*dtn, fr, to, tdCoef->D_2, tdCoef->alpha_2, 
+              tdCoef->beta_2, tdCoef->gamma_2, data_g, data_p2, flux_p2, slope_p2 );
+          break;
+        default:
+          std::cout << "Warning: The spatial scheme for chem not defined, "
+            << "using upw/backward on the primitive equation instead\n" << std::endl;
+          // Update A
+          update_chem_upw_be( fr, to );
+          // Update P1 and P2
+          update_chem_opn_upw_be( tsol+shift_dt_fr*dtn, fr, to, tdCoef->D_1, tdCoef->alpha_1, 
+              tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1, tdCoef->treatP1, tdCoef->treatP1BC );
+          update_chem_opn_upw_be( tsol+shift_dt_fr*dtn, fr, to, tdCoef->D_2, tdCoef->alpha_2, 
+              tdCoef->beta_2, tdCoef->gamma_2, data_g, data_p2 );
+          break;
+      }
+      break;
+  }
   return;
 }
 

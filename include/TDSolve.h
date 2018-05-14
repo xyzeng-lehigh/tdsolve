@@ -47,6 +47,8 @@ class TDSolve {
     virtual void update_vel(const int fr, const int to, const DType offset_dt=0.0, const bool last_iter=false) = 0;
     void update_rad(const int fr, const int to, const int v_nt=-1);
 
+    void scale_dtn(const DType scale) { dtn *= scale; }
+
   protected:
     HVEC** data_g;  // G = number density of glimoa cells
     HVEC** data_h;  // H = number density of necrotic cells

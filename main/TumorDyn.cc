@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <cstring>
 #include <ctime>
+#include <cmath>
 
 #include "Data_Type.h"
 #include "Comput_Choices.h"
@@ -52,10 +53,28 @@ int main(int argc, char** argv) {
   tdSolve->diagnostic(0);
 
   while ( tdSolve->nextIter() ) {
-    tdSolve->update_sol(0,1);
-    if ( tdInput.tdSetup.tmeth == 1 ) {
-      tdSolve->update_sol(1,2,1.0,2.0);
-      tdSolve->average_sol(0.5,0,0.5,2,1);
+    switch ( tdInput.tdSetup.tmeth ) {
+      case 0: // First-order
+        tdSolve->update_sol(0,1); // BE or FE
+        break;
+      case 1: // Second-order
+        if ( tdInput.tdSetup.vCoup == 0 ) { // TVD RK2
+          tdSolve->update_sol(0,1);
+          tdSolve->update_sol(1,2,1.0,2.0);
+          tdSolve->average_sol(0.5,0,0.5,2,1);
+        }
+        else { // DIRK2
+          DType alpha = 1.0-0.5*std::sqrt(2.0);
+          tdSolve->scale_dtn( alpha );
+          tdSolve->update_sol(0,1);
+          tdSolve->average_sol(2.0-1.0/alpha,0,1.0/alpha-1.0,1,2);
+          tdSolve->update_sol(2,1,1.0/alpha-1.0,1.0/alpha);
+          tdSolve->scale_dtn( 1.0/alpha );
+        }
+        break;
+      default: // First-order
+        tdSolve->update_sol(0,1);
+        break;
     }
     tdSolve->output(0); // This is the solution before updating
     tdSolve->copy_data(1,0);

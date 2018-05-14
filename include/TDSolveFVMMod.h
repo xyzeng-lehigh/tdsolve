@@ -76,6 +76,9 @@ class TDSolveFVMMod : public TDSolveFVM {
     void compute_cells_fluxes_orig_muscl(const int nt, const DType tsol_loc);
     void update_vel_int_orig(const int nt);
 
+    // Update chems
+    void update_chem_imp( const int fr, const int to, const DType shift_dt_fr=0.0, const DType shift_dt_to=1.0 );
+
     // OPN model
     void update_vel_int_opn(const int nt);
 
