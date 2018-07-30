@@ -13,7 +13,7 @@ class TDSolveFVM : public TDSolve {
     void set_ic(void);
     void calc_dt(const int nt);
     void output(const int nt);
-    void update_sol(const int fr, const int to, const DType shift_dt_fr=0.0, const DType shift_dt_to=1.0);
+    bool update_sol(const int fr, const int to, const DType shift_dt_fr=0.0, const DType shift_dt_to=1.0);
     void copy_data(const int fr, const int to);
     // Needs to update whenever a or n is modified
     void update_vel(const int fr, const int to, const DType shift_dt=0.0, const bool last_iter=false);

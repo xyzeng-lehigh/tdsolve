@@ -70,7 +70,7 @@ TDInput::TDInput(void) {
                           // 1 - RK2
   tdSetup.vCoup  = false; // The next two options are relevant
                           // if vCoup == true
-  tdSetup.vIter  = -1;    // -1  -- iterate until converge
+  tdSetup.vIter  = 100;   // -1  -- iterate until converge
                           // >=0 -- up to tIter iterations
   tdSetup.vTol   = 1e-6;  // Iteration tolerance for tIter=-1
   tdSetup.Tinit  = 0.0;
@@ -93,8 +93,8 @@ TDInput::TDInput(void) {
   tdSetup.bc_lim   = true;
   tdSetup.prob_id  = 0;  // 0, default, single chemotaxis
                          // 1, OPN
-  tdSetup.init_u_par = 1.0; // prob_id = -1: u = - eta^init_u_par
-                            // prob_id = -2: v = r init_u_par
+  tdSetup.init_u_par = 1.0; 
+  tdSetup.diagn_vcoup = true;
 
   tdLin.Type      = LSYS_TYPE_DIR;
   tdLin.Print     = true;
@@ -300,6 +300,8 @@ void TDInput::parse(void) {
       tdSetup.prob_id = atoi(value);
     else if (strcmp(name,"init_u_par")==0)
       tdSetup.init_u_par = atof(value);
+    else if (strcmp(name,"diagnostic_vcoup")==0)
+      tdSetup.diagn_vcoup = (atoi(value)!=0);
     else if (strcmp(name,"lsysType")==0)
       if (strcmp(value,"DIR")==0)
         tdLin.Type = LSYS_TYPE_DIR;

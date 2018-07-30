@@ -32,7 +32,9 @@ class TDSolve {
     //   tsol + shift_dt_fr * dtn
     // to
     //   tsol + shift_dt_to * dtn
-    virtual void update_sol(const int fr, const int to, const DType shift_dt_fr=0.0, const DType shift_dt_to=1.0) = 0;
+    // Return value is true if the update is accepted
+    // o.w., false is returned, and typically dt is reduced
+    virtual bool update_sol(const int fr, const int to, const DType shift_dt_fr=0.0, const DType shift_dt_to=1.0) = 0;
     // tsol + shift_dt_to * dtn is the targeted time collocation for the averaged solution
     void average_sol(const DType coef_1, const int nt_1, 
                      const DType coef_2, const int nt_2, const int to, const DType shift_dt_to=1.0);
@@ -48,6 +50,7 @@ class TDSolve {
     void update_rad(const int fr, const int to, const int v_nt=-1);
 
     void scale_dtn(const DType scale) { dtn *= scale; }
+    void reduce_dtn(const DType scale);
 
   protected:
     HVEC** data_g;  // G = number density of glimoa cells

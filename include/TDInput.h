@@ -88,6 +88,7 @@ struct TDSetup {
   bool  re_vel;
   int   dr_opt, r_opt;
   bool  slim_tot;
+  bool  diagn_vcoup;
 
   int   logistic;
   bool  bc_lim;

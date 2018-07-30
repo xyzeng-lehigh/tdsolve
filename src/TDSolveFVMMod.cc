@@ -100,6 +100,20 @@ void TDSolveFVMMod::set_ic(void) {
           (*data_u[0])[i] = - x_f[i] * data_r[0] * v_par / tdCoef->n_bc;
       }
       break;
+    case -3:
+      {
+        DType v_par = tdSetup->init_u_par;
+        for ( int i = 1; i <= Nx; i++ )
+          (*data_u[0])[i] =  - v_par * std::sin( 0.5 * PI * x_f[i] ) / tdCoef->n_bc;
+      }
+      break;
+    case -4:
+      {
+        DType v_par = tdSetup->init_u_par;
+        for ( int i = 1; i <= Nx; i++ )
+          (*data_u[0])[i] = v_par * std::sin( 4.0 * x_f[i] * data_r[0] );
+      }
+      break;
   }
 
   // Set all the right hand sides to zero:
@@ -129,7 +143,7 @@ void TDSolveFVMMod::calc_dt(const int nt) {
   DType dtn_trial = DTYPE_MAX;
   DType dr = rprime;
 
-  if ( tdSetup->prob_id < 0 && tdSetup->scell < 0 ) {
+  if ( tdSetup->scell < 0 ) {
     for ( int i = 0; i < Nx+1; i++ ) {
       DType loc_vel = (*data_v[nt])[i]/data_r[nt];
       DType m_vel = x_f[i]*dr/data_r[nt];
@@ -143,7 +157,7 @@ void TDSolveFVMMod::calc_dt(const int nt) {
       DType loc_vel = (*data_v[nt])[i]/data_r[nt];
       DType m_vel = x_f[i]*dr/data_r[nt];
       DType u_vel = (*data_u[0])[i]/data_r[nt];
-      DType v_max = max(max( fabs(loc_vel), fabs(m_vel) ), fabs(u_vel));
+      DType v_max = fabs( loc_vel ) + fabs( m_vel ) + fabs( u_vel );
       dtn_trial = min( dtn_trial, tdSetup->cfl * dx / v_max );
     }
   }
@@ -181,7 +195,7 @@ void TDSolveFVMMod::print_custom_vel_u( FILE* ot_file, const int nt ){
   return;
 }
 
-void TDSolveFVMMod::update_sol(const int fr, const int to,
+bool TDSolveFVMMod::update_sol(const int fr, const int to,
     const DType shift_dt_fr, const DType shift_dt_to) {
 
   // At this point dtn and tsol are known
@@ -232,7 +246,7 @@ void TDSolveFVMMod::update_sol(const int fr, const int to,
       update_chem_imp( fr, to, shift_dt_fr, shift_dt_to );
 
       *vel_tmp[0] = *data_v[to];
-      update_vel( to, 0, 1.0, true ); // Update data_v[to] no updating on radius
+      update_vel( to, 0, shift_dt_to, true ); // Update data_v[to] no updating on radius
       update_rad( fr, to, to );           // Update the radius data_r[to] and rprime
       *vel_tmp[0] -= *data_v[to];
       cur_res = (*vel_tmp[0]).norm(-1);
@@ -241,10 +255,17 @@ void TDSolveFVMMod::update_sol(const int fr, const int to,
 
       cur_iter++;
     }
-    cout << "Coupling iteration: " << cur_iter << "; Residue: " << cur_res << std::endl;
+
+    if ( cur_iter == max_iter && cur_res > max_tol ) {
+      cout << "Coupling iteration: " << cur_iter << "; Residue: " << cur_res << "; Will reduce dt." << std::endl;
+      return false;
+    }
+
+    if ( tdSetup->diagn_vcoup )
+      cout << "Coupling iteration: " << cur_iter << "; Residue: " << cur_res << std::endl;
     if ( tdSetup->prob_id < 0 )
       calc_total_diff_model( to );
-    return;
+    return true;
   }
 
   // Will also compute fluxes for the current time step
@@ -263,7 +284,7 @@ void TDSolveFVMMod::update_sol(const int fr, const int to,
 
   update_chem_imp( fr, to, shift_dt_fr, shift_dt_to );
 
-  return;
+  return true;
 }
 
 void TDSolveFVMMod::calc_total_diff_model(const int nt) {
@@ -293,6 +314,8 @@ void TDSolveFVMMod::update_vel(const int fr, const int to, const DType shift_dt,
       case 0:  // PDGF
       case -1: // Test
       case -2: // Test
+      case -3: // Test
+      case -4: // Test
         update_vel_int(fr);
         break;
       case 1: // OPN
@@ -331,9 +354,24 @@ void TDSolveFVMMod::compute_vel_u(const int nt, const DType tsol_loc) {
       {
         DType v_par = tdSetup->init_u_par;
         (*data_u[0])[0] = 0.0;
-        for ( int i = 1; i <= Nx; i++ ) {
+        for ( int i = 1; i <= Nx; i++ )
           (*data_u[0])[i] = - x_f[i] * data_r[nt] * v_par / ( 1.0 - std::exp(-3.0*v_par*tsol_loc) * (1.0-tdCoef->n_bc));
-        }
+      }
+      break;
+    case -3: // Test 3, linear growth
+      {
+        DType v_par = tdSetup->init_u_par;
+        (*data_u[0])[0] = 0.0;
+        for ( int i = 1; i <= Nx; i++ )
+          (*data_u[0])[i] = -  v_par * std::sin( 0.5 * PI * x_f[i] ) / tdCoef->n_bc;
+      }
+      break;
+    case -4: // Test 4, non-monotone radius change
+      {
+        DType v_par = tdSetup->init_u_par;
+        (*data_u[0])[0] = 0.0;
+        for ( int i = 1; i <= Nx; i++ )
+          (*data_u[0])[i] = v_par * std::sin( 4.0 * x_f[i] * data_r[nt] * ( 1.0 + tsol_loc ) );
       }
       break;
     case 0: // PDGF

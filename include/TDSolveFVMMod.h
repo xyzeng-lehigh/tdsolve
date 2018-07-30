@@ -12,7 +12,7 @@ class TDSolveFVMMod : public TDSolveFVM {
   public:
     void set_ic(void);
     void calc_dt(const int nt);
-    void update_sol(const int fr, const int to, const DType shift_dt_fr=0.0, const DType shift_dt_to=1.0);
+    bool update_sol(const int fr, const int to, const DType shift_dt_fr=0.0, const DType shift_dt_to=1.0);
     void update_vel(const int fr, const int to, const DType shift_dt=0.0, const bool last_iter=false);
 
 

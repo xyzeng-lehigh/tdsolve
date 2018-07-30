@@ -227,6 +227,13 @@ void TDSolve::update_rad(const int fr, const int to, const int v_nt) {
   return;
 }
 
+void TDSolve::reduce_dtn(const DType scale) {
+  scale_dtn( scale );
+  dtn_old = dtn;
+  reach_term_next = false;
+  reach_output_next = false;
+}
+
 void TDSolve::upscale_var(
     HVEC& data_fr, HVEC& data_to, DType*& x_ptr, 
     int Nsize, DType radius, int scal_pow) {

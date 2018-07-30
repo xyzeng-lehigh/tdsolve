@@ -78,7 +78,7 @@ void TDSolveFDM::copy_data(const int nt_fr, const int nt_to) {
   return;
 }
 
-void TDSolveFDM::update_sol(const int fr, const int to, 
+bool TDSolveFDM::update_sol(const int fr, const int to, 
     const DType shift_dt_fr, const DType shift_dt_to) {
 
   update_rad( fr, to );
@@ -115,7 +115,7 @@ void TDSolveFDM::update_sol(const int fr, const int to,
   }
 
   update_vel( to, 0, shift_dt_to );
-  return;
+  return true;
 }
 
 void TDSolveFDM::update_vel(const int nt, const int nt_dummy, const DType shift_dt, const bool last_iter) {

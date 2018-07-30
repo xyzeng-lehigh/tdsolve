@@ -243,6 +243,8 @@ void TDSolveFVM::output(const int nt) {
     case 0:
     case -1: // Test
     case -2: // Test
+    case -3: // Test
+    case -4: // Test
       output_pdgf( nt );
       break;
     case 1:
@@ -483,7 +485,7 @@ void TDSolveFVM::update_vel_int_mod(const int nt) {
   return;
 }
 
-void TDSolveFVM::update_sol(const int fr, const int to, 
+bool TDSolveFVM::update_sol(const int fr, const int to, 
     const DType shift_dt_fr, const DType shift_dt_to) {
 
   update_rad( fr, to );
@@ -566,7 +568,7 @@ void TDSolveFVM::update_sol(const int fr, const int to,
   }
 
   update_vel( to, 0, shift_dt_to );
-  return;
+  return true;
 }
 
 void TDSolveFVM::update_cells_upw(const int fr, const int to) {

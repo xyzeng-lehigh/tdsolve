@@ -55,7 +55,19 @@ int main(int argc, char** argv) {
   while ( tdSolve->nextIter() ) {
     switch ( tdInput.tdSetup.tmeth ) {
       case 0: // First-order
-        tdSolve->update_sol(0,1); // BE or FE
+        {
+          bool vcoup_conv;
+          while (1) {
+            vcoup_conv = tdSolve->update_sol(0,1); // BE or FE
+            if ( !vcoup_conv ) {
+              tdSolve->reduce_dtn( 0.5 );
+              tdSolve->diagnostic(0);
+              continue;
+            }
+            else
+              break;
+          }
+        }
         break;
       case 1: // Second-order
         if ( tdInput.tdSetup.vCoup == 0 ) { // TVD RK2
@@ -64,12 +76,30 @@ int main(int argc, char** argv) {
           tdSolve->average_sol(0.5,0,0.5,2,1);
         }
         else { // DIRK2
-          DType alpha = 1.0-0.5*std::sqrt(2.0);
-          tdSolve->scale_dtn( alpha );
-          tdSolve->update_sol(0,1);
-          tdSolve->average_sol(2.0-1.0/alpha,0,1.0/alpha-1.0,1,2);
-          tdSolve->update_sol(2,1,1.0/alpha-1.0,1.0/alpha);
-          tdSolve->scale_dtn( 1.0/alpha );
+          bool vcoup_conv;
+          while (1) {
+            DType alpha = 1.0-0.5*std::sqrt(2.0);
+            tdSolve->scale_dtn( alpha );
+            vcoup_conv = tdSolve->update_sol(0,1);
+            if ( !vcoup_conv ) {
+              tdSolve->scale_dtn( 1.0/alpha );
+              tdSolve->reduce_dtn( 0.5 );
+              tdSolve->diagnostic(0);
+              continue;
+            }
+            tdSolve->average_sol(2.0-1.0/alpha,0,1.0/alpha-1.0,1,2);
+            vcoup_conv = tdSolve->update_sol(2,1,1.0/alpha-1.0,1.0/alpha);
+            if ( !vcoup_conv ) {
+              tdSolve->scale_dtn( 1.0/alpha );
+              tdSolve->reduce_dtn( 0.5 );
+              tdSolve->diagnostic(0);
+              continue;
+            }
+            else {
+              tdSolve->scale_dtn( 1.0/alpha );
+              break;
+            }
+          }
         }
         break;
       default: // First-order
