@@ -2321,6 +2321,10 @@ void TDSolveFVMMod::compute_flux_chem_muscl_lims(const int nt, HVEC**& data, HVE
     DType data_loc_l = (*data[nt])[N_loc-2]*xc2_l*r2nt;
     DType data_loc_c = (*data[nt])[N_loc-1]*xc2_c*r2nt;
     DType data_loc_r = ((*data[nt])[N_loc-1]-dx*data_r[nt]*bc_val)*xc2_r*r2nt;
+    // XYZ -- not finished?
+  }
+  else { // Dirichlet b.c., simply set limiter to zero
+    (*lim[0])[N_loc-1] = 0.0;
   }
 
   return;
@@ -2374,21 +2378,21 @@ void TDSolveFVMMod::update_mat_chem_muscl_r(const int nt, LinMat*& mat_loc, HVEC
     DType lim_r = (*lim[0])[i];
 
     if ( loc_v >= 0.0 ) {
-      coef_v_l  = (dtn/dx) * xc2_l  * r2nt * ( 1.0 - 0.5*lim_l );
-      coef_v_r  = (dtn/dx) * xc2_r  * r2nt * ( 0.5*lim_l );
+      coef_v_l  = (dtn/dx) * xc2_l  * r2nt * loc_v * ( 1.0 - 0.5*lim_l );
+      coef_v_r  = (dtn/dx) * xc2_r  * r2nt * loc_v * ( 0.5*lim_l );
     }
     else {
-      coef_v_r  = (dtn/dx) * xc2_r  * r2nt * ( 1.0 + 0.5*lim_r );
-      coef_v_rr = (dtn/dx) * xc2_rr * r2nt * ( - 0.5*lim_r );
+      coef_v_r  = (dtn/dx) * xc2_r  * r2nt * loc_v * ( 1.0 + 0.5*lim_r );
+      coef_v_rr = (dtn/dx) * xc2_rr * r2nt * loc_v * ( - 0.5*lim_r );
     }
 
     elem = mat_loc->get(i-1,i-1); elem += coef_v_l  / xc2_l / r2nt; mat_loc->set(i-1,i-1,elem);
     elem = mat_loc->get(i-1,i);   elem += coef_v_r  / xc2_l / r2nt; mat_loc->set(i-1,i,  elem);
     elem = mat_loc->get(i-1,i+1); elem += coef_v_rr / xc2_l / r2nt; mat_loc->set(i-1,i+1,elem);
 
-    elem = mat_loc->get(i,i-1); elem += coef_v_l  / xc2_r / r2nt; mat_loc->set(i,i-1,elem);
-    elem = mat_loc->get(i,i);   elem += coef_v_r  / xc2_r / r2nt; mat_loc->set(i,i,  elem);
-    elem = mat_loc->get(i,i+1); elem += coef_v_rr / xc2_r / r2nt; mat_loc->set(i,i+1,elem);
+    elem = mat_loc->get(i,i-1); elem -= coef_v_l  / xc2_r / r2nt; mat_loc->set(i,i-1,elem);
+    elem = mat_loc->get(i,i);   elem -= coef_v_r  / xc2_r / r2nt; mat_loc->set(i,i,  elem);
+    elem = mat_loc->get(i,i+1); elem -= coef_v_rr / xc2_r / r2nt; mat_loc->set(i,i+1,elem);
   }
   // Right boundary
   {
