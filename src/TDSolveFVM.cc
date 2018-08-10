@@ -154,17 +154,21 @@ void TDSolveFVM::set_ic(void) {
     (*data_p2[0]) = 0.0;
   }
 
-  this->update_vel(0, 0, 0.0);
+  this->update_vel(0, 1, 0.0);
 
   N_dir[0] = 0;
   for ( int i = 1; i < Nx+1; i++ )
     N_dir[i] = i-1;
 
-  FILE* ot_file = fopen( tdInput->radiusFile, "w" );
-  fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\t%10.20f\n", 
-      tsol, data_r[0], (*data_v[0])[Nx], 
-      -((*data_a[0])[Nx]-(*data_a[0])[Nx-1])/dx/data_r[0]);
-  fclose(ot_file);
+  if ( tdSetup->frame == 1 )
+  {
+    rprime = (*data_v[0])[Nx];
+    //FILE* ot_file = fopen( tdInput->radiusFile, "w" );
+    //fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\t%10.20f\n", 
+    //    tsol, data_r[0], (*data_v[0])[Nx], 
+    //    -((*data_a[0])[Nx]-(*data_a[0])[Nx-1])/dx/data_r[0]);
+    //fclose(ot_file);
+  }
 
   return;
 }
@@ -488,6 +492,7 @@ void TDSolveFVM::update_vel_int_mod(const int nt) {
 bool TDSolveFVM::update_sol(const int fr, const int to, 
     const DType shift_dt_fr, const DType shift_dt_to) {
 
+  update_vel( fr, 0, shift_dt_fr );
   update_rad( fr, to );
 
   // Both original and OPN
@@ -1079,11 +1084,7 @@ void TDSolveFVM::update_cells_muscl(const int fr, const int to) {
   { // Right boundary
     (*slope_g[0])[Nx-1] = 0.0;
     (*slope_h[0])[Nx-1] = 0.0;
-    if ( tdSetup->bc_lim )
-      (*slope_n[0])[Nx-1] = Alg_LimSlope_Minmod( (*data_n[fr])[Nx-1], (*data_n[fr])[Nx-2], 
-          tdCoef->n_bc * (x_f[Nx]+0.5*dx) * (x_f[Nx]+0.5*dx) * data_r[fr] * data_r[fr] , dx );
-    else
-      (*slope_n[0])[Nx-1] = 0.0; 
+    (*slope_n[0])[Nx-1] = 0.0; 
   }
 
   // Fluxes

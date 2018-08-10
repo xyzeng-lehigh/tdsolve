@@ -85,13 +85,11 @@ struct TDSetup {
   int   freq;
   int   maxit;
   DType dTinit, dTgrow;
-  bool  re_vel;
   int   dr_opt, r_opt;
   bool  slim_tot;
   bool  diagn_vcoup;
 
   int   logistic;
-  bool  bc_lim;
 
   int   prob_id;
 

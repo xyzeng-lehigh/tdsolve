@@ -141,7 +141,9 @@ void TDSolveFVMMod::calc_dt(const int nt) {
     reach_term_now = true;
 
   DType dtn_trial = DTYPE_MAX;
-  DType dr = rprime;
+  DType dr = (*data_v[nt])[Nx]; // A predictor
+
+  compute_vel_u( nt, tsol );
 
   if ( tdSetup->scell < 0 ) {
     for ( int i = 0; i < Nx+1; i++ ) {
@@ -149,6 +151,7 @@ void TDSolveFVMMod::calc_dt(const int nt) {
       DType m_vel = x_f[i]*dr/data_r[nt];
       DType u_vel = (*data_u[0])[i]/data_r[nt];
       DType v_max = max( fabs(loc_vel-m_vel), fabs(loc_vel-m_vel+u_vel) );
+      v_max = max( fabs(m_vel), v_max );
       dtn_trial = min( dtn_trial, tdSetup->cfl * dx / v_max );
     }
   }
@@ -283,6 +286,8 @@ bool TDSolveFVMMod::update_sol(const int fr, const int to,
     calc_total_diff_model( to );
 
   update_chem_imp( fr, to, shift_dt_fr, shift_dt_to );
+  
+  update_vel( to, 0, shift_dt_to, true ); // Update data_v[to] no updating on radius
 
   return true;
 }
@@ -2651,7 +2656,7 @@ void TDSolveFVMMod::update_vel_int_orig(const int nt) {
   // Remove the advection part due to chemical gradient
   for ( int i = 1; i < Nx; i++ )
     (*data_v[nt])[i] = ((*data_v[nt])[i] - 0.5*x_f[i]*x_f[i]*(*data_u[0])[i]*((*data_n[nt])[i-1]+(*data_n[nt])[i]))/x_f[i]/x_f[i];
-  (*data_v[nt])[Nx] = ((*data_v[nt])[Nx] - x_f[Nx]*x_f[Nx]*(*data_u[0])[Nx]*(*data_n[nt])[Nx-1])/x_f[Nx]/x_f[Nx];
+  (*data_v[nt])[Nx] = ((*data_v[nt])[Nx] - 0.5*x_f[Nx]*x_f[Nx]*(*data_u[0])[Nx]*((*data_n[nt])[Nx-1]+tdCoef->n_bc))/x_f[Nx]/x_f[Nx];
 
   upscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt] );
 

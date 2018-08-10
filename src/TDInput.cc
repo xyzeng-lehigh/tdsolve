@@ -70,7 +70,7 @@ TDInput::TDInput(void) {
                           // 1 - RK2
   tdSetup.vCoup  = false; // The next two options are relevant
                           // if vCoup == true
-  tdSetup.vIter  = 100;   // -1  -- iterate until converge
+  tdSetup.vIter  = 10;    // -1  -- iterate until converge
                           // >=0 -- up to tIter iterations
   tdSetup.vTol   = 1e-6;  // Iteration tolerance for tIter=-1
   tdSetup.Tinit  = 0.0;
@@ -82,7 +82,6 @@ TDInput::TDInput(void) {
   tdSetup.maxit  = INT_MAX;
   tdSetup.dTinit = 1e-10;
   tdSetup.dTgrow = 1.2;
-  tdSetup.re_vel = true;
   tdSetup.dr_opt = 0; // 0, default, dr = V
                       // 1, dx independent, dR = V(1+0.5*dt*V/R)
                       // 2, dx dependent, dR = (1/1-dx^2/4)V
@@ -90,7 +89,6 @@ TDInput::TDInput(void) {
                       // 1, consistent, R_{n+1}^2 = R_n^2 + 2*dt*R_n*dR
   tdSetup.slim_tot = false;
   tdSetup.logistic = 0;
-  tdSetup.bc_lim   = true;
   tdSetup.prob_id  = 0;  // 0, default, single chemotaxis
                          // 1, OPN
   tdSetup.init_u_par = 1.0; 
@@ -284,8 +282,6 @@ void TDInput::parse(void) {
       tdSetup.dTinit = atof(value);
     else if (strcmp(name,"dt_growth")==0)
       tdSetup.dTgrow = atof(value);
-    else if (strcmp(name,"recompute_vel")==0)
-      tdSetup.re_vel = (atoi(value)!=0);
     else if (strcmp(name,"dr_option")==0)
       tdSetup.dr_opt = atoi(value);
     else if (strcmp(name,"r_option")==0)
@@ -294,8 +290,6 @@ void TDInput::parse(void) {
       tdSetup.slim_tot = (atoi(value)!=0);
     else if (strcmp(name,"logistic")==0)
       tdSetup.logistic = atoi(value);
-    else if (strcmp(name,"bc_lim")==0)
-      tdSetup.bc_lim = (atoi(value)!=0);
     else if (strcmp(name,"prob_id")==0) 
       tdSetup.prob_id = atoi(value);
     else if (strcmp(name,"init_u_par")==0)
@@ -362,6 +356,10 @@ void TDInput::parse(void) {
       strcpy(outputFile,(const char*)value);
     else if (strcmp(name,"radiusDataFile")==0)
       strcpy(radiusFile,(const char*)value);
+    else if (strcmp(name,"recompute_vel")==0 ||
+             strcmp(name,"bc_lim") == 0 ) {
+      // Obsolete options, just to get rid of the warning below
+    }
     else {
       fprintf(stderr,"Warning: the following line in the input file %s is not recogonized:\n",inputFile);
       fprintf(stderr,"         %s\n",file_line_s.c_str());

@@ -171,7 +171,7 @@ void TDSolve::average_sol(const DType coef_1, const int fr_1,
     *data_p2[to] = coef_1 * (*data_p2[fr_1]) + coef_2 * (*data_p2[fr_2]);
   }
 
-  data_r[to]  = coef_1 * data_r[fr_1]    + coef_2 * data_r[fr_2];
+  data_r[to]  = coef_1 * data_r[fr_1] + coef_2 * data_r[fr_2];
 
   if ( tdSetup->frame == 2 && tdSetup->scell >= 0 )
   {
@@ -188,10 +188,7 @@ void TDSolve::average_sol(const DType coef_1, const int fr_1,
     upscale_var( *data_n[to], *data_n[to], x_c, Nx, data_r[to] );
   }
 
-  if ( tdSetup->re_vel ) // Do not use this option for FVM_Mod
-    this->update_vel(to, 0, shift_dt_to, true);
-  else
-    *data_v[to] = coef_1 * (*data_v[fr_1]) + coef_2 * (*data_v[fr_2]);
+  *data_v[to] = coef_1 * (*data_v[fr_1]) + coef_2 * (*data_v[fr_2]);
 
   return;
 }

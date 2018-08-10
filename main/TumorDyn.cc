@@ -38,8 +38,6 @@ int main(int argc, char** argv) {
       tdSolve = new TDSolveFVM(&tdInput);
       break;
     case 2:
-      if ( tdInput.tdSetup.re_vel )
-        cout << "Warning: Need to turn-off recompute_vel for modified FVM." << std::endl;
       tdSolve = new TDSolveFVMMod(&tdInput);
       break;
     default:
