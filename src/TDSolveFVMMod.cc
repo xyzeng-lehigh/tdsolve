@@ -329,7 +329,14 @@ void TDSolveFVMMod::update_vel(const int fr, const int to, const DType shift_dt,
     }
   }
   else { // Original fluxes
-    update_vel_int_orig( fr );
+    switch ( tdSetup->prob_id ) {
+      case 0:  // PDGF
+        update_vel_int_orig( fr );
+        break;
+      case 1:  // OPN
+        update_vel_int_opn_orig( fr );
+        break;
+    }
   }
 
   if ( last_iter ) return;
@@ -2653,6 +2660,47 @@ void TDSolveFVMMod::update_vel_int_orig(const int nt) {
   for ( int i = 0; i < Nx; i++ ) {
     DType loc_lambda = ( q == 0.0 ) ? lambda : lambda * pow(x_c[i],q);
     (*data_v[nt])[i+1] = (*data_v[nt])[i] + dx * ( loc_lambda * (*data_g[nt])[i] - delta_h * (*data_h[nt])[i] - delta_n * (*data_n[nt])[i] ) / data_r[nt];
+  }
+
+  downscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt] );
+
+  // Remove the advection part due to chemical gradient
+  for ( int i = 1; i < Nx; i++ )
+    (*data_v[nt])[i] = ((*data_v[nt])[i] - 0.5*x_f[i]*x_f[i]*(*data_u[0])[i]*((*data_n[nt])[i-1]+(*data_n[nt])[i]))/x_f[i]/x_f[i];
+  (*data_v[nt])[Nx] = ((*data_v[nt])[Nx] - 0.5*x_f[Nx]*x_f[Nx]*(*data_u[0])[Nx]*((*data_n[nt])[Nx-1]+tdCoef->n_bc))/x_f[Nx]/x_f[Nx];
+
+  upscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt] );
+
+  return;
+}
+
+void TDSolveFVMMod::update_vel_int_opn_orig(const int nt) {
+
+  DType lambda  = tdCoef->lambda;
+  DType q       = tdCoef->q;
+  DType delta_h = tdCoef->delta_h;
+  DType delta_n = tdCoef->delta_n;
+  DType b       = tdCoef->b;
+  DType b_prime = tdCoef->b_prime;
+  DType alpha   = tdCoef->alpha;
+  DType omega   = tdCoef->omega;
+
+  (*data_v[nt])[0] = 0.0; // b.c. for velocity at x=0
+  
+  // First do the integration of
+  // x^2R[lambda(1+b'P2/(b+P2))*G-delta_h*H-delta_n*N]
+  for ( int i = 0; i < Nx; i++ ) {
+    DType loc_lambda = ( q == 0.0 ) ? lambda : lambda * pow(x_c[i],q);
+    DType loc_r = x_c[i] * data_r[nt];
+    DType logistic_term = 1.0;
+    if ( tdSetup->logistic == 1 )
+      logistic_term = ( 1.0 - (*data_g[nt])[i] / loc_r / loc_r );
+    if ( tdSetup->logistic == 2 )
+      logistic_term = max( 0.0, ( 1.0 - (*data_g[nt])[i] / loc_r / loc_r ) );
+    (*data_v[nt])[i+1] = (*data_v[nt])[i] + dx * ( 
+        loc_lambda * ( 1.0 + (b_prime*(*data_p2[nt])[i])/(b+(*data_p2[nt])[i]) ) *  (*data_g[nt])[i] * logistic_term - 
+        delta_h * (*data_h[nt])[i] - delta_n * (*data_n[nt])[i] - 
+        omega * (*data_g[nt])[i] * (*data_n[nt])[i] / loc_r / loc_r ) / data_r[nt];
   }
 
   downscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt] );
