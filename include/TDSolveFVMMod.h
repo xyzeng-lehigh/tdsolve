@@ -73,9 +73,17 @@ class TDSolveFVMMod : public TDSolveFVM {
     // Classical FVM
     void compute_cells_fluxes_orig(const int nt, const DType tsol_loc);
     void compute_cells_fluxes_orig_upw(const int nt, const DType tsol_loc);
+    void compute_cells_fluxes_orig_upw_auto_g(const int nt, const DType tsol_loc);
+    void compute_cells_fluxes_orig_upw_auto_h(const int nt, const DType tsol_loc);
+    void compute_cells_fluxes_orig_upw_auto_n(const int nt, const DType tsol_loc);
     void compute_cells_fluxes_orig_muscl(const int nt, const DType tsol_loc);
     void update_vel_int_orig(const int nt);
     void update_vel_int_opn_orig(const int nt);
+
+    void update_cells_common_auto(const int fr, const int to);
+    void update_cells_common_auto_g(const int fr, const int to);
+    void update_cells_common_auto_h(const int fr, const int to);
+    void update_cells_common_auto_n(const int fr, const int to);
 
     // Update chems
     void update_chem_imp( const int fr, const int to, const DType shift_dt_fr=0.0, const DType shift_dt_to=1.0 );

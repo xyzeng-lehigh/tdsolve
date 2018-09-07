@@ -276,7 +276,10 @@ bool TDSolveFVMMod::update_sol(const int fr, const int to,
   update_vel( fr, to, shift_dt_fr );
 
   // The fluxes are already computed in previous iteration
-  update_cells_common( fr, to );
+  if ( tdSetup->scell >= -50 ) // Non-auto-inc methods
+    update_cells_common( fr, to );
+  else
+    update_cells_common_auto( fr, to );
 
   if ( tdSetup->prob_id == 1 ) // OPN
     update_cells_opn_add( fr, to );
@@ -684,6 +687,15 @@ void TDSolveFVMMod::compute_cells_fluxes_orig(const int nt, const DType tsol_loc
     case -2: // Explicit second-order MUSCL
       compute_cells_fluxes_orig_muscl( nt, tsol_loc );
       break;
+    case -101: // Explicit first-order upwind, auto g = 1 - h - n
+      compute_cells_fluxes_orig_upw_auto_g( nt, tsol_loc );
+      break;
+    case -102: // Explicit first-order upwind, auto h = 1 - g - n
+      compute_cells_fluxes_orig_upw_auto_h( nt, tsol_loc );
+      break;
+    case -103: // Explicit first-order upwind, auto n = 1 - g - h
+      compute_cells_fluxes_orig_upw_auto_n( nt, tsol_loc );
+      break;
     default:
       std::cout << "Warning: The flux scheme for cell not defined, "
         << "using upwind instead\n" << std::endl;
@@ -723,6 +735,90 @@ void TDSolveFVMMod::compute_cells_fluxes_orig_upw(const int nt, const DType tsol
     (*flux_n[0])[Nx] = loc_vel * (
         (loc_vel>=0.0) ? (*data_n[nt])[Nx-1] : 
         n_bc * (x_f[Nx]+0.5*dx)*(x_f[Nx]+0.5*dx)*data_r[nt]*data_r[nt] );
+  }
+
+  return;
+}
+
+void TDSolveFVMMod::compute_cells_fluxes_orig_upw_auto_g(const int nt, const DType tsol_loc) {
+
+  DType dror = rprime/data_r[nt];
+
+  DType n_bc = calc_n_bc( tsol_loc );
+
+  // Fluxes
+  { // Left boundary
+    (*flux_h[0])[0] = 0.0;
+    (*flux_n[0])[0] = 0.0;
+  }
+  for ( int i = 1; i < Nx; i++ ) {
+    DType loc_vel = (*data_v[nt])[i]/data_r[nt] - x_f[i]*dror;
+    (*flux_h[0])[i] = loc_vel * (
+        (loc_vel>=0.0) ? (*data_h[nt])[i-1] : (*data_h[nt])[i] );
+    loc_vel += (*data_u[0])[i]/data_r[nt];
+    (*flux_n[0])[i] = loc_vel * (
+        (loc_vel>=0.0) ? (*data_n[nt])[i-1] : (*data_n[nt])[i] );
+  }
+  { // Right boundary
+    (*flux_h[0])[Nx] = 0.0;
+    DType loc_vel = (*data_u[0])[Nx]/data_r[nt];
+    (*flux_n[0])[Nx] = loc_vel * (
+        (loc_vel>=0.0) ? (*data_n[nt])[Nx-1] : 
+        n_bc * (x_f[Nx]+0.5*dx)*(x_f[Nx]+0.5*dx)*data_r[nt]*data_r[nt] );
+  }
+
+  return;
+}
+
+void TDSolveFVMMod::compute_cells_fluxes_orig_upw_auto_h(const int nt, const DType tsol_loc) {
+
+  DType dror = rprime/data_r[nt];
+
+  DType n_bc = calc_n_bc( tsol_loc );
+
+  // Fluxes
+  { // Left boundary
+    (*flux_g[0])[0] = 0.0;
+    (*flux_n[0])[0] = 0.0;
+  }
+  for ( int i = 1; i < Nx; i++ ) {
+    DType loc_vel = (*data_v[nt])[i]/data_r[nt] - x_f[i]*dror;
+    (*flux_g[0])[i] = loc_vel * (
+        (loc_vel>=0.0) ? (*data_g[nt])[i-1] : (*data_g[nt])[i] );
+    loc_vel += (*data_u[0])[i]/data_r[nt];
+    (*flux_n[0])[i] = loc_vel * (
+        (loc_vel>=0.0) ? (*data_n[nt])[i-1] : (*data_n[nt])[i] );
+  }
+  { // Right boundary
+    (*flux_g[0])[Nx] = 0.0;
+    DType loc_vel = (*data_u[0])[Nx]/data_r[nt];
+    (*flux_n[0])[Nx] = loc_vel * (
+        (loc_vel>=0.0) ? (*data_n[nt])[Nx-1] : 
+        n_bc * (x_f[Nx]+0.5*dx)*(x_f[Nx]+0.5*dx)*data_r[nt]*data_r[nt] );
+  }
+
+  return;
+}
+
+void TDSolveFVMMod::compute_cells_fluxes_orig_upw_auto_n(const int nt, const DType tsol_loc) {
+
+  DType dror = rprime/data_r[nt];
+
+  // Fluxes
+  { // Left boundary
+    (*flux_g[0])[0] = 0.0;
+    (*flux_h[0])[0] = 0.0;
+  }
+  for ( int i = 1; i < Nx; i++ ) {
+    DType loc_vel = (*data_v[nt])[i]/data_r[nt] - x_f[i]*dror;
+    (*flux_g[0])[i] = loc_vel * (
+        (loc_vel>=0.0) ? (*data_g[nt])[i-1] : (*data_g[nt])[i] );
+    (*flux_h[0])[i] = loc_vel * (
+        (loc_vel>=0.0) ? (*data_h[nt])[i-1] : (*data_h[nt])[i] );
+  }
+  { // Right boundary
+    (*flux_g[0])[Nx] = 0.0;
+    (*flux_h[0])[Nx] = 0.0;
   }
 
   return;
@@ -2748,6 +2844,154 @@ void TDSolveFVMMod::update_cells_common(const int fr, const int to) {
     (*data_h[to])[i] -= ( (*flux_h[0])[i+1] - (*flux_h[0])[i] ) * (dtn/dx);
     (*data_n[to])[i] -= ( (*flux_n[0])[i+1] - (*flux_n[0])[i] ) * (dtn/dx);
   }
+
+  return;
+}
+
+void TDSolveFVMMod::update_cells_common_auto(const int fr, const int to) {
+  switch ( tdSetup->scell ) {
+    case -101: // Explicit first-order upwind, auto g = 1 - h - n
+      update_cells_common_auto_g( fr, to );
+      break;
+    case -102: // Explicit first-order upwind, auto h = 1 - g - n
+      update_cells_common_auto_h( fr, to );
+      break;
+    case -103: // Explicit first-order upwind, auto n = 1 - g - h
+      update_cells_common_auto_n( fr, to );
+      break;
+    default:
+      update_cells_common( fr, to );
+      break;
+  }
+  return;
+}
+
+void TDSolveFVMMod::update_cells_common_auto_g(const int fr, const int to) {
+  DType lambda  = tdCoef->lambda;
+  DType q       = tdCoef->q;
+  DType delta_h = tdCoef->delta_h;
+  DType delta_n = tdCoef->delta_n;
+
+  // mu = mu(mu_coef-mu_slp*x^p)
+  DType mu      = tdCoef->mu;
+  DType mu_slp  = tdCoef->mu_slp;
+  DType mu_coef = tdCoef->mu_coef;
+  DType p       = tdCoef->p;
+
+  DType dror = rprime/data_r[fr];
+
+  // Source terms
+  for ( int i = 0; i < Nx; i++ ) {
+    DType loc_lambda = ( q == 0.0 ) ? lambda : lambda * pow(x_c[i],q);
+    DType loc_mu = ( p == 0.0 ) ? mu * ( mu_coef - mu_slp ) : mu * ( mu_coef - mu_slp * pow(x_c[i],p) ); 
+    (*data_h[to])[i] = (*data_h[fr])[i] + dtn * (
+        loc_mu * (*data_g[fr])[i] - delta_h * (*data_h[fr])[i]
+        - dror * (*data_h[fr])[i] );
+    (*data_n[to])[i] = (*data_n[fr])[i] + dtn * (
+        - delta_n * (*data_n[fr])[i] - dror * (*data_n[fr])[i] );
+  }
+
+  for ( int i = 0; i < Nx; i++ ) {
+    (*data_h[to])[i] -= ( (*flux_h[0])[i+1] - (*flux_h[0])[i] ) * (dtn/dx);
+    (*data_n[to])[i] -= ( (*flux_n[0])[i+1] - (*flux_n[0])[i] ) * (dtn/dx);
+  }
+
+  downscale_var( *data_h[to], *data_h[to], x_c, Nx, data_r[to] );
+  downscale_var( *data_n[to], *data_n[to], x_c, Nx, data_r[to] );
+
+  for ( int i = 0; i < Nx; i++ )
+    (*data_g[to])[i] = 1.0 - (*data_h[to])[i] - (*data_n[to])[i];
+
+  upscale_var( *data_g[to], *data_g[to], x_c, Nx, data_r[to]);
+  upscale_var( *data_h[to], *data_h[to], x_c, Nx, data_r[to]);
+  upscale_var( *data_n[to], *data_n[to], x_c, Nx, data_r[to]);
+
+  return;
+}
+
+void TDSolveFVMMod::update_cells_common_auto_h(const int fr, const int to) {
+  DType lambda  = tdCoef->lambda;
+  DType q       = tdCoef->q;
+  DType delta_h = tdCoef->delta_h;
+  DType delta_n = tdCoef->delta_n;
+
+  // mu = mu(mu_coef-mu_slp*x^p)
+  DType mu      = tdCoef->mu;
+  DType mu_slp  = tdCoef->mu_slp;
+  DType mu_coef = tdCoef->mu_coef;
+  DType p       = tdCoef->p;
+
+  DType dror = rprime/data_r[fr];
+
+  // Source terms
+  for ( int i = 0; i < Nx; i++ ) {
+    DType loc_lambda = ( q == 0.0 ) ? lambda : lambda * pow(x_c[i],q);
+    DType loc_mu = ( p == 0.0 ) ? mu * ( mu_coef - mu_slp ) : mu * ( mu_coef - mu_slp * pow(x_c[i],p) ); 
+    (*data_g[to])[i] = (*data_g[fr])[i] + dtn * (
+        loc_lambda * (*data_g[fr])[i] - loc_mu * (*data_g[fr])[i]
+        - dror * (*data_g[fr])[i] );
+    (*data_n[to])[i] = (*data_n[fr])[i] + dtn * (
+        - delta_n * (*data_n[fr])[i] - dror * (*data_n[fr])[i] );
+  }
+
+  for ( int i = 0; i < Nx; i++ ) {
+    (*data_g[to])[i] -= ( (*flux_g[0])[i+1] - (*flux_g[0])[i] ) * (dtn/dx);
+    (*data_n[to])[i] -= ( (*flux_n[0])[i+1] - (*flux_n[0])[i] ) * (dtn/dx);
+  }
+
+  downscale_var( *data_g[to], *data_g[to], x_c, Nx, data_r[to] );
+  downscale_var( *data_n[to], *data_n[to], x_c, Nx, data_r[to] );
+
+  for ( int i = 0; i < Nx; i++ )
+    (*data_h[to])[i] = 1.0 - (*data_g[to])[i] - (*data_n[to])[i];
+
+  upscale_var( *data_g[to], *data_g[to], x_c, Nx, data_r[to]);
+  upscale_var( *data_h[to], *data_h[to], x_c, Nx, data_r[to]);
+  upscale_var( *data_n[to], *data_n[to], x_c, Nx, data_r[to]);
+
+  return;
+}
+
+void TDSolveFVMMod::update_cells_common_auto_n(const int fr, const int to) {
+  DType lambda  = tdCoef->lambda;
+  DType q       = tdCoef->q;
+  DType delta_h = tdCoef->delta_h;
+  DType delta_n = tdCoef->delta_n;
+
+  // mu = mu(mu_coef-mu_slp*x^p)
+  DType mu      = tdCoef->mu;
+  DType mu_slp  = tdCoef->mu_slp;
+  DType mu_coef = tdCoef->mu_coef;
+  DType p       = tdCoef->p;
+
+  DType dror = rprime/data_r[fr];
+
+  // Source terms
+  for ( int i = 0; i < Nx; i++ ) {
+    DType loc_lambda = ( q == 0.0 ) ? lambda : lambda * pow(x_c[i],q);
+    DType loc_mu = ( p == 0.0 ) ? mu * ( mu_coef - mu_slp ) : mu * ( mu_coef - mu_slp * pow(x_c[i],p) ); 
+    (*data_g[to])[i] = (*data_g[fr])[i] + dtn * (
+        loc_lambda * (*data_g[fr])[i] - loc_mu * (*data_g[fr])[i]
+        - dror * (*data_g[fr])[i] );
+    (*data_h[to])[i] = (*data_h[fr])[i] + dtn * (
+        loc_mu * (*data_g[fr])[i] - delta_h * (*data_h[fr])[i]
+        - dror * (*data_h[fr])[i] );
+  }
+
+  for ( int i = 0; i < Nx; i++ ) {
+    (*data_g[to])[i] -= ( (*flux_g[0])[i+1] - (*flux_g[0])[i] ) * (dtn/dx);
+    (*data_h[to])[i] -= ( (*flux_h[0])[i+1] - (*flux_h[0])[i] ) * (dtn/dx);
+  }
+
+  downscale_var( *data_g[to], *data_g[to], x_c, Nx, data_r[to] );
+  downscale_var( *data_h[to], *data_h[to], x_c, Nx, data_r[to] );
+
+  for ( int i = 0; i < Nx; i++ )
+    (*data_n[to])[i] = 1.0 - (*data_g[to])[i] - (*data_h[to])[i];
+
+  upscale_var( *data_g[to], *data_g[to], x_c, Nx, data_r[to]);
+  upscale_var( *data_h[to], *data_h[to], x_c, Nx, data_r[to]);
+  upscale_var( *data_n[to], *data_n[to], x_c, Nx, data_r[to]);
 
   return;
 }
