@@ -91,8 +91,9 @@ TDInput::TDInput(void) {
   tdSetup.logistic = 0;
   tdSetup.prob_id  = 0;  // 0, default, single chemotaxis
                          // 1, OPN
-  tdSetup.init_u_par = 1.0; 
+  tdSetup.init_u_par  = 1.0; 
   tdSetup.diagn_vcoup = true;
+  tdSetup.silence     = false; // Turn off all outputs (on-screen or file)
 
   tdLin.Type      = LSYS_TYPE_DIR;
   tdLin.Print     = true;
@@ -108,11 +109,55 @@ TDInput::TDInput(void) {
   strcpy(delims_nospace,"=:");
   strcpy(outputFile,"sol.dat");
   strcpy(radiusFile,"rad.dat");
+
+  setup_parameters();
+  setup_options();
+  setup_toggles();
+}
+
+TDInput::TDInput(const TDInput& tdInput) {
+  strcpy(inputFile,      tdInput.inputFile);
+  strcpy(delims,         tdInput.delims);
+  strcpy(delims_nospace, tdInput.delims_nospace);
+  strcpy(outputFile,     tdInput.outputFile);
+  strcpy(radiusFile,     tdInput.radiusFile);
+
+  tdCoef  = tdInput.tdCoef;
+  tdSetup = tdInput.tdSetup;
+  tdLin   = tdLin;
+
+  tdMesh.x_l  = tdInput.tdMesh.x_l;
+  tdMesh.x_r  = tdInput.tdMesh.x_r;
+  tdMesh.dx   = tdInput.tdMesh.dx;
+  tdMesh.Nx   = tdInput.tdMesh.Nx;
+  tdMesh.Na_m = tdInput.tdMesh.Na_m;
+  tdMesh.Na   = tdInput.tdMesh.Na;
+
+  int Nx = tdMesh.Nx;
+  int Na = tdMesh.Na;
+
+  tdMesh.x_f = new DType[Nx+1];
+  for ( int i = 0; i < Nx+1; i++ )
+    tdMesh.x_f[i] = tdInput.tdMesh.x_f[i];
+
+  tdMesh.x_c = new DType[Nx];
+  for ( int i = 0; i < Nx; i++ )
+    tdMesh.x_c[i] = tdInput.tdMesh.x_c[i];
+
+  tdMesh.x_a_f = new DType[Na+1];
+  for ( int i = 0; i < Na+1; i++ )
+    tdMesh.x_a_f[i] = tdInput.tdMesh.x_a_f[i];
+
+  tdMesh.x_a_c = new DType[Na];
+  for ( int i = 0; i < Na; i++ )
+    tdMesh.x_a_c[i] = tdInput.tdMesh.x_a_c[i];
 }
 
 TDInput::~TDInput(void) {
   erase_array( tdMesh.x_f );
   erase_array( tdMesh.x_c );
+  erase_array( tdMesh.x_a_c );
+  erase_array( tdMesh.x_a_f );
 }
 
 void TDInput::setInputFile(const char* file_in) {
@@ -124,7 +169,7 @@ void TDInput::setInputFile(const char* file_in) {
   return;
 }
 
-void TDInput::parse(void) {
+void TDInput::parse_old(void) {
   ifstream fin;
   string file_line_s;
   fin.open(inputFile);
@@ -296,6 +341,8 @@ void TDInput::parse(void) {
       tdSetup.init_u_par = atof(value);
     else if (strcmp(name,"diagnostic_vcoup")==0)
       tdSetup.diagn_vcoup = (atoi(value)!=0);
+    else if (strcmp(name,"silence")==0)
+      tdSetup.silence = (atoi(value)!=0);
     else if (strcmp(name,"lsysType")==0)
       if (strcmp(value,"DIR")==0)
         tdLin.Type = LSYS_TYPE_DIR;
@@ -390,5 +437,289 @@ void TDInput::parse(void) {
 
   fin.close();
   return;
+}
+
+void TDInput::setup_parameters(void) {
+  tdParameters.clear();
+  tdParameters["lambda"]          = &tdCoef.lambda;
+  tdParameters["mu"]              = &tdCoef.mu;
+  tdParameters["delta"]           = &tdCoef.delta_h;
+  tdParameters["delta_h"]         = &tdCoef.delta_h;
+  tdParameters["delta_1"]         = &tdCoef.delta_h;
+  tdParameters["alpha"]           = &tdCoef.alpha;
+  tdParameters["theta"]           = &tdCoef.theta;
+  tdParameters["sigma"]           = &tdCoef.sigma;
+  tdParameters["delta_n"]         = &tdCoef.delta_n;
+  tdParameters["delta_2"]         = &tdCoef.delta_n;
+  tdParameters["rho"]             = &tdCoef.delta_n;
+  tdParameters["D"]               = &tdCoef.D;
+  tdParameters["D_3"]             = &tdCoef.D;
+  tdParameters["m"]               = &tdCoef.alpha_a;
+  tdParameters["alpha_a"]         = &tdCoef.alpha_a;
+  tdParameters["alpha_3"]         = &tdCoef.alpha_a;
+  tdParameters["beta"]            = &tdCoef.beta_a;
+  tdParameters["beta_a"]          = &tdCoef.beta_a;
+  tdParameters["beta_3"]          = &tdCoef.beta_a;
+  tdParameters["gamma"]           = &tdCoef.gamma_a;
+  tdParameters["gamma_a"]         = &tdCoef.gamma_a;
+  tdParameters["gamma_3"]         = &tdCoef.gamma_a;
+  tdParameters["n_bc"]            = &tdCoef.n_bc;
+  tdParameters["r_0"]             = &tdCoef.R_0;
+  tdParameters["mu_slope"]        = &tdCoef.mu_slp;
+  tdParameters["a"]               = &tdCoef.a;
+  tdParameters["b"]               = &tdCoef.b;
+  tdParameters["a_prime"]         = &tdCoef.a_prime;
+  tdParameters["b_prime"]         = &tdCoef.b_prime;
+  tdParameters["D_1"]             = &tdCoef.D_1;
+  tdParameters["D_2"]             = &tdCoef.D_2;
+  tdParameters["alpha_1"]         = &tdCoef.alpha_1;
+  tdParameters["alpha_2"]         = &tdCoef.alpha_2;
+  tdParameters["beta_1"]          = &tdCoef.beta_1;
+  tdParameters["beta_2"]          = &tdCoef.beta_2;
+  tdParameters["gamma_1"]         = &tdCoef.gamma_1;
+  tdParameters["gamma_2"]         = &tdCoef.gamma_2;
+  tdParameters["q"]               = &tdCoef.q;
+  tdParameters["p"]               = &tdCoef.p;
+  tdParameters["mu_coef"]         = &tdCoef.mu_coef;
+  tdParameters["omega"]           = &tdCoef.omega;
+  tdParameters["treatment_P1_T"]  = &tdCoef.treatP1_T;
+  tdParameters["treatment_P1_h"]  = &tdCoef.treatP1_h;
+  tdParameters["treatment_P1_bc"] = &tdCoef.treatP1_bc;
+  tdParameters["x_l"]             = &tdMesh.x_l;
+  tdParameters["x_r"]             = &tdMesh.x_r;
+  tdParameters["cfl"]             = &tdSetup.cfl;
+  tdParameters["vel_iter_tol"]    = &tdSetup.vTol;
+  tdParameters["Tinit"]           = &tdSetup.Tinit;
+  tdParameters["Tterm"]           = &tdSetup.Tterm;
+  tdParameters["Rterm"]           = &tdSetup.Rterm;
+  tdParameters["Rdead"]           = &tdSetup.Rdead;
+  tdParameters["Tfreq"]           = &tdSetup.Tfreq;
+  tdParameters["dt_init"]         = &tdSetup.dTinit;
+  tdParameters["dt_growth"]       = &tdSetup.dTgrow;
+  tdParameters["init_u_par"]      = &tdSetup.init_u_par;
+  tdParameters["lsysTargetRes"]   = &tdLin.TargetRes;
+
+  return;
+}
+
+void TDInput::setup_options(void) {
+  tdOptions.clear();
+  tdOptions["Nx"]            = &tdMesh.Nx;
+  tdOptions["A_Multiplier"]  = &tdMesh.Na_m;
+  tdOptions["framework"]     = &tdSetup.frame;
+  tdOptions["ic"]            = &tdSetup.ic;
+  tdOptions["space_cell"]    = &tdSetup.scell;
+  tdOptions["space_chem"]    = &tdSetup.schem;
+  tdOptions["vel"]           = &tdSetup.vel;
+  tdOptions["lbc"]           = &tdSetup.lbc;
+  tdOptions["rbc"]           = &tdSetup.rbc;
+  tdOptions["time_method"]   = &tdSetup.tmeth;
+  tdOptions["vel_iter"]      = &tdSetup.vIter;
+  tdOptions["frequency"]     = &tdSetup.freq;
+  tdOptions["max_iter"]      = &tdSetup.maxit;
+  tdOptions["dr_option"]     = &tdSetup.dr_opt;
+  tdOptions["r_option"]      = &tdSetup.r_opt;
+  tdOptions["logistic"]      = &tdSetup.logistic;
+  tdOptions["prob_id"]       = &tdSetup.prob_id;
+  tdOptions["lsysPrecPar"]   = &tdLin.PrecPar;
+  tdOptions["lsysMaxIter"]   = &tdLin.MaxIter;
+  tdOptions["lsysKrylovCap"] = &tdLin.KrylovCap;
+
+  return;
+}
+
+void TDInput::setup_toggles(void) {
+  tdToggles.clear();
+  tdToggles["use_treatment_P1"]   = &tdCoef.treatP1;
+  tdToggles["use_treatmentBC_P1"] = &tdCoef.treatP1BC;
+  tdToggles["vel_couple"]         = &tdSetup.vCoup;
+  tdToggles["lim_sync_tot"]       = &tdSetup.slim_tot;
+  tdToggles["diagnostic_vcoup"]   = &tdSetup.diagn_vcoup;
+  tdToggles["slience"]            = &tdSetup.silence;
+  tdToggles["lsysPrint"]          = &tdLin.Print;
+  return;
+}
+
+void TDInput::parse(void) {
+  ifstream fin;
+  string file_line_s;
+  fin.open(inputFile);
+  char* name;
+  char* value;
+
+  while (getline(fin,file_line_s)) {
+    // This ignore a short line
+    if (file_line_s.length()<2)
+      continue;
+    // This indicates the comment lines
+    if ((file_line_s[0]=='/')&&(file_line_s[1]=='/'))
+      continue;
+    // This ignore a non-comment line with no separation tokens
+    if (file_line_s.find_first_of((const char*)delims_nospace)==string::npos)
+      continue;
+    name  = strtok((char*)file_line_s.c_str(),delims);
+    value = strtok(NULL,delims);
+    if ((name==NULL)||(value==NULL)) {
+      fprintf(stderr,"Warning: the following line in the input file %s is not recogonized:\n",inputFile);
+      fprintf(stderr,"         %s\n",file_line_s.c_str());
+      continue;
+    }
+
+    std::map<std::string, DType*>::iterator it_par = tdParameters.find(name);
+    std::map<std::string, int*>::iterator   it_opt = tdOptions.find(name);
+    std::map<std::string, bool*>::iterator  it_tog = tdToggles.find(name);
+
+    if ( it_par != tdParameters.end() ) 
+      *(it_par->second) = atof(value);
+    else if ( it_opt != tdOptions.end() )
+      *(it_opt->second) = atoi(value);
+    else if ( it_tog != tdToggles.end() )
+      *(it_tog->second) = (atoi(value)!=0);
+    else if (strcmp(name,"treatment_P1_t0")==0)
+      tdCoef.treatP1_t0.push_back( atof(value) );
+    else if (strcmp(name,"lsysType")==0)
+      if (strcmp(value,"DIR")==0)
+        tdLin.Type = LSYS_TYPE_DIR;
+      else if (strcmp(value,"ITER")==0)
+        tdLin.Type = LSYS_TYPE_ITER;
+      else if (strcmp(value,"KRYLOV")==0)
+        tdLin.Type = LSYS_TYPE_KRYLOV;
+      else
+        tdLin.Type = LSYS_TYPE_DIR;
+    else if (strcmp(name,"lsysIter")==0)
+      if (strcmp(value,"Jacobi")==0)
+        tdLin.Iter = LSYS_ITER_JAC;
+      else if (strcmp(value,"GaussSeidel")==0)
+        tdLin.Iter = LSYS_ITER_GS;
+      else if (strcmp(value,"BackGaussSeidel")==0)
+        tdLin.Iter = LSYS_ITER_BGS;
+      else if (strcmp(value,"SOR")==0)
+        tdLin.Iter = LSYS_ITER_SOR;
+      else if (strcmp(value,"BSOR")==0)
+        tdLin.Iter = LSYS_ITER_BSOR;
+      else
+        tdLin.Iter = LSYS_ITER_JAC;
+    else if (strcmp(name,"lsysKrylov")==0)
+      if (strcmp(value,"CG")==0)
+        tdLin.Krylov = LSYS_KRYLOV_CG;
+      else if (strcmp(value,"GMRES")==0)
+        tdLin.Krylov = LSYS_KRYLOV_GMRES;
+      else if (strcmp(value,"LANCZOS")==0)
+        tdLin.Krylov = LSYS_KRYLOV_LANCZOS;
+      else if (strcmp(value,"QMR")==0)
+        tdLin.Krylov = LSYS_KRYLOV_QMR;
+      else
+        tdLin.Krylov = LSYS_KRYLOV_GMRES;
+    else if (strcmp(name,"lsysPrec")==0)
+      if (strcmp(value,"OFF")==0)
+        tdLin.Prec = LSYS_PREC_OFF;
+      else if (strcmp(value,"External")==0)
+        tdLin.Prec = LSYS_PREC_LINK;
+      else if (strcmp(value,"Eye")==0)
+        tdLin.Prec = LSYS_PREC_EYE;
+      else if (strcmp(value,"ILU")==0)
+        tdLin.Prec = LSYS_PREC_ILU;
+      else if (strcmp(value,"BILU")==0)
+        tdLin.Prec = LSYS_PREC_BILU;
+      else
+        tdLin.Prec = LSYS_PREC_OFF;
+    else if (strcmp(name,"outputDataFile")==0)
+      strcpy(outputFile,(const char*)value);
+    else if (strcmp(name,"radiusDataFile")==0)
+      strcpy(radiusFile,(const char*)value);
+    else if (strcmp(name,"recompute_vel")==0 ||
+             strcmp(name,"bc_lim") == 0 ) {
+      // Obsolete options, just to get rid of the warning below
+    }
+    else {
+      fprintf(stderr,"Warning: the following line in the input file %s is not recogonized:\n",inputFile);
+      fprintf(stderr,"         %s\n",file_line_s.c_str());
+      continue;
+    }
+  }
+
+  if ( tdCoef.treatP1_t0.size() > 0 )
+    std::sort( tdCoef.treatP1_t0.begin(), tdCoef.treatP1_t0.end() );
+
+  tdMesh.dx = (tdMesh.x_r-tdMesh.x_l)/(1.0*tdMesh.Nx);
+  alloc_array_full( tdMesh.x_f, tdMesh.Nx+1 );
+  alloc_array_full( tdMesh.x_c, tdMesh.Nx   );
+
+  tdMesh.Na = tdMesh.Nx * tdMesh.Na_m;
+  alloc_array_full( tdMesh.x_a_f, tdMesh.Na + 1 );
+  alloc_array_full( tdMesh.x_a_c, tdMesh.Na );
+
+  for ( int i = 0; i < tdMesh.Nx+1; i++ )
+    tdMesh.x_f[i] = tdMesh.x_l + i * tdMesh.dx;
+  for ( int i = 0; i < tdMesh.Nx; i++ )
+    tdMesh.x_c[i] = tdMesh.x_l + (i+0.5) * tdMesh.dx;
+
+  for ( int i = 0; i < tdMesh.Na+1; i++ )
+    tdMesh.x_a_f[i] = tdMesh.x_l + i * tdMesh.dx;
+  for ( int i = 0; i < tdMesh.Na; i++ )
+    tdMesh.x_a_c[i] = tdMesh.x_l + (i+0.5) * tdMesh.dx;
+
+  fin.close();
+  return;
+}
+
+bool TDInput::set_parameter(std::string name, DType value) {
+  std::map<std::string, DType*>::iterator it = tdParameters.find(name);
+  if ( it == tdParameters.end() )
+    return false;
+  else {
+    *(it->second) = value;
+    return true;
+  }
+}
+
+bool TDInput::get_parameter(std::string name, DType& value) {
+  std::map<std::string, DType*>::iterator it = tdParameters.find(name);
+  if ( it == tdParameters.end() )
+    return false;
+  else {
+    value = *(it->second);
+    return true;
+  }
+}
+
+bool TDInput::set_option(std::string name, int value) {
+  std::map<std::string, int*>::iterator it = tdOptions.find(name);
+  if ( it == tdOptions.end() )
+    return false;
+  else {
+    *(it->second) = value;
+    return true;
+  }
+}
+
+bool TDInput::get_option(std::string name, int& value) {
+  std::map<std::string, int*>::iterator it = tdOptions.find(name);
+  if ( it == tdOptions.end() )
+    return false;
+  else {
+    value = *(it->second);
+    return true;
+  }
+}
+
+bool TDInput::set_toggle(std::string name, bool value) {
+  std::map<std::string, bool*>::iterator it = tdToggles.find(name);
+  if ( it == tdToggles.end() )
+    return false;
+  else {
+    *(it->second) = value;
+    return true;
+  }
+}
+
+bool TDInput::get_toggle(std::string name, bool& value) {
+  std::map<std::string, bool*>::iterator it = tdToggles.find(name);
+  if ( it == tdToggles.end() )
+    return false;
+  else {
+    value = *(it->second);
+    return true;
+  }
 }
 

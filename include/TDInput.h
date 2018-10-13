@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstring>
 #include <vector>
+#include <map>
 #include "Data_Type.h"
 #include "Comput_Choices.h"
 
@@ -88,9 +89,9 @@ struct TDSetup {
   int   dr_opt, r_opt;
   bool  slim_tot;
   bool  diagn_vcoup;
+  bool  silence;
 
   int   logistic;
-
   int   prob_id;
 
   // Test cases
@@ -122,11 +123,29 @@ class TDInput {
     TDSetup tdSetup;
     TDLin   tdLin;
 
+    std::map<std::string, DType*> tdParameters;
+    std::map<std::string, int*>   tdOptions;
+    std::map<std::string, bool*>  tdToggles;
+
+    bool set_parameter(std::string, DType);
+    bool set_option(std::string, int);
+    bool set_toggle(std::string, bool);
+    bool get_parameter(std::string, DType&);
+    bool get_option(std::string, int&);
+    bool get_toggle(std::string, bool&);
+
+  private:
+    void setup_parameters(void);
+    void setup_options(void);
+    void setup_toggles(void);
+
   public:
     TDInput(void);
+    TDInput(const TDInput&);
     ~TDInput(void);
     
     void  setInputFile(const char*);
+    void  parse_old(void);
     void  parse(void);
 };
 

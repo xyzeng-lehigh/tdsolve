@@ -194,6 +194,7 @@ void TDSolveFVMMod::calc_dt(const int nt) {
 }
 
 void TDSolveFVMMod::print_custom_vel_u( FILE* ot_file, const int nt ){
+  if ( tdSetup->silence ) return;
   fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\t%10.20f\n", tsol, data_r[nt], (*data_v[nt])[Nx], -(*data_u[0])[Nx] );
   return;
 }

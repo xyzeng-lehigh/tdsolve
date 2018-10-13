@@ -16,9 +16,11 @@ TDSolveFDM::TDSolveFDM(TDInput* tdInput_ptr) :
   
   alloc_array_full( data_a,  Na+1, 3 );
 
-  FILE* ot_file = fopen( tdInput->outputFile, "w" );
-  fprintf( ot_file, "Time, time step size, num. point / x, G, H, N, A, V\n");
-  fclose(ot_file);
+  if ( !(tdSetup->silence) ) {
+    FILE* ot_file = fopen( tdInput->outputFile, "w" );
+    fprintf( ot_file, "Time, time step size, num. point / x, G, H, N, A, V\n");
+    fclose(ot_file);
+  }
 }
 
 TDSolveFDM::~TDSolveFDM(void) {
@@ -58,9 +60,11 @@ void TDSolveFDM::set_ic(void) {
 
   update_vel(0,0,0.0);
 
-  FILE* ot_file = fopen( tdInput->radiusFile, "w" );
-  fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\n", tsol, data_r[0], (*data_v[0])[Nx]);
-  fclose(ot_file);
+  if ( !(tdSetup->silence) ) {
+    FILE* ot_file = fopen( tdInput->radiusFile, "w" );
+    fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\n", tsol, data_r[0], (*data_v[0])[Nx]);
+    fclose(ot_file);
+  }
 
   return;
 }
@@ -1011,6 +1015,7 @@ void TDSolveFDM::calc_dt(const int nt) {
 }
 
 void TDSolveFDM::output(const int nt) {
+  if ( tdSetup->silence ) return;
 
   FILE* ot_file = fopen( tdInput->radiusFile, "a" );
   fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\n", tsol, data_r[nt], (*data_v[nt])[Nx] );

@@ -48,14 +48,16 @@ TDSolveFVM::TDSolveFVM(TDInput* tdInput_ptr) :
 
   alloc_array_full( N_dir, Nx+1 );
 
-  FILE* ot_file = fopen( tdInput->outputFile, "w" );
-  if ( tdSetup->prob_id < 0 ) // This is only relevant for FVMMod
-    fprintf( ot_file, "Time, time step size, radius, num. point / x_c, G, H, N, 1-G-H-N /newline x_f, V\n");
-  if ( tdSetup->prob_id == 0 )
-    fprintf( ot_file, "Time, time step size, radius, num. point / x_c, G, H, N, A /newline x_f, V\n");
-  if ( tdSetup->prob_id == 1 )
-    fprintf( ot_file, "Time, time step size, radius, num. point / x_c, G, H, M, A, P1, P2 /newline x_f, V\n");
-  fclose(ot_file);
+  if ( !(tdSetup->silence) ) {
+    FILE* ot_file = fopen( tdInput->outputFile, "w" );
+    if ( tdSetup->prob_id < 0 ) // This is only relevant for FVMMod
+      fprintf( ot_file, "Time, time step size, radius, num. point / x_c, G, H, N, 1-G-H-N /newline x_f, V\n");
+    if ( tdSetup->prob_id == 0 )
+      fprintf( ot_file, "Time, time step size, radius, num. point / x_c, G, H, N, A /newline x_f, V\n");
+    if ( tdSetup->prob_id == 1 )
+      fprintf( ot_file, "Time, time step size, radius, num. point / x_c, G, H, M, A, P1, P2 /newline x_f, V\n");
+    fclose(ot_file);
+  }
 }
 
 TDSolveFVM::~TDSolveFVM(void) {
@@ -163,11 +165,6 @@ void TDSolveFVM::set_ic(void) {
   if ( tdSetup->frame == 1 )
   {
     rprime = (*data_v[0])[Nx];
-    //FILE* ot_file = fopen( tdInput->radiusFile, "w" );
-    //fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\t%10.20f\n", 
-    //    tsol, data_r[0], (*data_v[0])[Nx], 
-    //    -((*data_a[0])[Nx]-(*data_a[0])[Nx-1])/dx/data_r[0]);
-    //fclose(ot_file);
   }
 
   return;
@@ -242,6 +239,8 @@ void TDSolveFVM::calc_dt(const int nt) {
 }
 
 void TDSolveFVM::output(const int nt) {
+  
+  if ( tdSetup->silence ) return;
 
   switch ( tdSetup->prob_id ) {
     case 0:
@@ -264,6 +263,8 @@ void TDSolveFVM::output(const int nt) {
 }
 
 void TDSolveFVM::output_pdgf(const int nt) {
+  if ( tdSetup->silence ) return;
+
   FILE* ot_file = fopen( tdInput->radiusFile, "a" );
   if ( tdSetup->frame == 2 && tdSetup->prob_id < 0 )
     this->print_custom_vel_u( ot_file, nt );
@@ -305,6 +306,8 @@ void TDSolveFVM::output_pdgf(const int nt) {
 }
 
 void TDSolveFVM::output_opn(const int nt) {
+  if ( tdSetup->silence ) return;
+
   FILE* ot_file = fopen( tdInput->radiusFile, "a" );
   if ( tdSetup->frame == 2 && tdSetup->prob_id < 0 )
     this->print_custom_vel_u( ot_file, nt );
@@ -369,6 +372,21 @@ void TDSolveFVM::update_vel(const int nt, const int nt_dummy, const DType shift_
   }
 
   return;
+}
+
+DType TDSolveFVM::get_nperc(const int nt) {
+  DType tot_g = 0.0;
+  DType tot_h = 0.0;
+  DType tot_n = 0.0;
+
+  for ( int i = 0; i < Nx; i++ ) {
+    DType r_loc = data_r[nt] * x_c[i];
+    tot_g += 4.0 * PI * r_loc * r_loc * (*data_g[nt])[i];
+    tot_h += 4.0 * PI * r_loc * r_loc * (*data_h[nt])[i];
+    tot_n += 4.0 * PI * r_loc * r_loc * (*data_n[nt])[i];
+  }
+
+  return tot_n / ( tot_g + tot_h + tot_n );
 }
 
 // OPN model -- velocity

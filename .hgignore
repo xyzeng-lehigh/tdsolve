@@ -2,6 +2,7 @@ syntax: glob
 
 *.o
 TumorDynRun
+ParAnalRun
 *.swp
 *.out
 *.toc

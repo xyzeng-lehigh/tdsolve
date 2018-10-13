@@ -1,5 +1,6 @@
 BDIR=build
 PROG=TumorDynRun
+PROGPAR=ParAnalRun
 if [ ! -d ${BDIR} ]
 then
   mkdir ${BDIR}
@@ -9,4 +10,5 @@ cd ${BDIR}
 cmake ../
 make
 cp ${PROG} ../
+cp ${PROGPAR} ../
 cd ../

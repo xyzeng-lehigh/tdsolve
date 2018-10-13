@@ -17,9 +17,11 @@ set(TDS_VERSION
 include_directories(include)
 
 # Add source files
-file(GLOB SOURCES "main/*.cc" "src/*.cc")
+file(GLOB SOURCES "main/TumorDyn.cc" "src/*.cc")
+file(GLOB PARSOURCES "main/ParAnal.cc" "src/*.cc")
 
 # Configure file that pass CMake settings to the source
 
 # Executable
 add_executable(TumorDynRun ${SOURCES})
+add_executable(ParAnalRun ${PARSOURCES})

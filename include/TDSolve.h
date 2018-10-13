@@ -19,7 +19,7 @@ class LinSolve;
 class TDSolve {
   public:
     TDSolve(TDInput* tdInput_ptr);
-    ~TDSolve(void);
+    virtual ~TDSolve(void);
 
     virtual void setup(void) = 0;
     virtual void set_ic(void) = 0;
@@ -51,6 +51,11 @@ class TDSolve {
 
     void scale_dtn(const DType scale) { dtn *= scale; }
     void reduce_dtn(const DType scale);
+
+    // Functions called by API
+    bool check_Rterm(const int nt);
+    DType get_tsol(void) {return tsol;}
+    virtual DType get_nperc(const int nt) {return 0.0;};
 
   protected:
     HVEC** data_g;  // G = number density of glimoa cells

@@ -18,6 +18,9 @@ class TDSolveFVM : public TDSolve {
     // Needs to update whenever a or n is modified
     void update_vel(const int fr, const int to, const DType shift_dt=0.0, const bool last_iter=false);
 
+    // Functions called by API
+    DType get_nperc(const int nt);
+
     TDSolveFVM(TDInput* tdInput_ptr);
     ~TDSolveFVM(void);
 

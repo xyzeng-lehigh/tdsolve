@@ -194,6 +194,7 @@ void TDSolve::average_sol(const DType coef_1, const int fr_1,
 }
 
 void TDSolve::diagnostic(const int nt) {
+  if ( tdSetup->silence ) return;
   fprintf( stdout, "Iter %3d: Time %6.8f; Time step %6.8f; Radius %6.8f; Front-velocity %6.8f.\n",
       iter, tsol, dtn, data_r[nt], rprime );
   return;
@@ -229,6 +230,10 @@ void TDSolve::reduce_dtn(const DType scale) {
   dtn_old = dtn;
   reach_term_next = false;
   reach_output_next = false;
+}
+
+bool TDSolve::check_Rterm(const int nt) {
+  return (data_r[nt] >= tdSetup->Rterm-tdSetup->vTol);
 }
 
 void TDSolve::upscale_var(
