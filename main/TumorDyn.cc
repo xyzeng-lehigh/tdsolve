@@ -44,6 +44,8 @@ int main(int argc, char** argv) {
       tdSolve = new TDSolveFVM(&tdInput);
       break;
   }
+  
+  tdSolve->alloc();
 
   tdSolve->setup();
   tdSolve->set_ic();

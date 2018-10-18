@@ -8,23 +8,23 @@ using namespace std;
 TDSolveFVMMod::TDSolveFVMMod(TDInput* tdInput_ptr) :
   TDSolveFVM(tdInput_ptr) {
 
-  alloc_array_full( lim_g, Nx, 2 );
-  alloc_array_full( lim_h, Nx, 2 );
-  alloc_array_full( lim_n, Nx, 2 ); // M
-  alloc_array_full( lim_s, Nx, 2 ); // Sync
-  alloc_array_full( lim_muscl, Nx, 1 );
+  //alloc_array_full( lim_g, Nx, 2 );
+  //alloc_array_full( lim_h, Nx, 2 );
+  //alloc_array_full( lim_n, Nx, 2 ); // M
+  //alloc_array_full( lim_s, Nx, 2 ); // Sync
+  //alloc_array_full( lim_muscl, Nx, 1 );
 
-  alloc_array_full( flux_g_v, Nx+1, 1 );
-  alloc_array_full( flux_g_r, Nx+1, 1 );
-  alloc_array_full( flux_h_v, Nx+1, 1 );
-  alloc_array_full( flux_h_r, Nx+1, 1 );
-  alloc_array_full( flux_n_v, Nx+1, 1 ); // or M
-  alloc_array_full( flux_n_r, Nx+1, 1 ); // or M
-  alloc_array_full( flux_n_u, Nx+1, 1 ); // or M
+  //alloc_array_full( flux_g_v, Nx+1, 1 );
+  //alloc_array_full( flux_g_r, Nx+1, 1 );
+  //alloc_array_full( flux_h_v, Nx+1, 1 );
+  //alloc_array_full( flux_h_r, Nx+1, 1 );
+  //alloc_array_full( flux_n_v, Nx+1, 1 ); // or M
+  //alloc_array_full( flux_n_r, Nx+1, 1 ); // or M
+  //alloc_array_full( flux_n_u, Nx+1, 1 ); // or M
 
-  alloc_array_full( data_u, Nx+1, 1 );
-  if ( tdSetup->vCoup )
-    alloc_array_full( vel_tmp, Nx+1, 1 );
+  //alloc_array_full( data_u, Nx+1, 1 );
+  //if ( tdSetup->vCoup )
+  //  alloc_array_full( vel_tmp, Nx+1, 1 );
 
 }
 
@@ -196,6 +196,31 @@ void TDSolveFVMMod::calc_dt(const int nt) {
 void TDSolveFVMMod::print_custom_vel_u( FILE* ot_file, const int nt ){
   if ( tdSetup->silence ) return;
   fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\t%10.20f\n", tsol, data_r[nt], (*data_v[nt])[Nx], -(*data_u[0])[Nx] );
+  return;
+}
+
+void TDSolveFVMMod::alloc(void) {
+
+  TDSolveFVM::alloc();
+
+  alloc_array_full( lim_g, Nx, 2 );
+  alloc_array_full( lim_h, Nx, 2 );
+  alloc_array_full( lim_n, Nx, 2 ); // M
+  alloc_array_full( lim_s, Nx, 2 ); // Sync
+  alloc_array_full( lim_muscl, Nx, 1 );
+
+  alloc_array_full( flux_g_v, Nx+1, 1 );
+  alloc_array_full( flux_g_r, Nx+1, 1 );
+  alloc_array_full( flux_h_v, Nx+1, 1 );
+  alloc_array_full( flux_h_r, Nx+1, 1 );
+  alloc_array_full( flux_n_v, Nx+1, 1 ); // or M
+  alloc_array_full( flux_n_r, Nx+1, 1 ); // or M
+  alloc_array_full( flux_n_u, Nx+1, 1 ); // or M
+
+  alloc_array_full( data_u, Nx+1, 1 );
+  if ( tdSetup->vCoup )
+    alloc_array_full( vel_tmp, Nx+1, 1 );
+
   return;
 }
 

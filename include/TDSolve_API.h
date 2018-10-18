@@ -18,6 +18,7 @@ class TDFactory {
       if (tdSolve) delete tdSolve;
     }
 
+    void alloc(void);
     bool run(void);
 
     // Pair of input parameters

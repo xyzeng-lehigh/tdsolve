@@ -38,6 +38,12 @@ TDFactory::TDFactory(TDInput tdInput_in, const char* probName_in) :
   for ( std::set<std::string>::iterator it = okeys.begin();
         it != okeys.end(); it++ )
     sols[*it] = 0.0;
+
+}
+
+void TDFactory::alloc(void) {
+  tdSolve->alloc();
+  return;
 }
 
 bool TDFactory::run(void) {

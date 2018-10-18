@@ -13,6 +13,7 @@ class TDSolveFDM : public TDSolve {
     void set_ic(void);
     void calc_dt(const int nt);
     void output(const int nt);
+    void alloc(void);
     bool update_sol(const int fr, const int to, const DType shift_dt_fr=0.0, const DType shift_dt_to=1.0);
     void copy_data(const int fr, const int to);
     // Needs to update whenever a or n is modified

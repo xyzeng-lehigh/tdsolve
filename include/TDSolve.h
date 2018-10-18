@@ -26,6 +26,7 @@ class TDSolve {
     virtual void calc_dt(const int nt) = 0;
     virtual void output(const int nt) = 0;
     void diagnostic(const int nt);
+    virtual void alloc(void) = 0;
 
     // The solver centers at tsol
     // In case of higher-order time integration, one may need to update the solutions from time collocation

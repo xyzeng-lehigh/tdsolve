@@ -35,7 +35,7 @@ char delims_var[40];
 char delims_nospace[40];
 void parse_pars(void);
 void parse_orefs(void);
-void create_factories(std::vector<TDFactory>&, const TDInput&);
+void create_factories(std::vector<TDFactory*>&, const TDInput&);
 bool increment_var_array(int*&,const int*,const int);
 void add_output( TDFactory& );
 void add_error( TDFactory& );
@@ -59,6 +59,7 @@ int main(int argc, char** argv) {
   TDInput tdInputBase;
   tdInputBase.setInputFile((const char*)inputFileBase);
   tdInputBase.parse();
+  tdInputBase.tdSetup.silence = true;
 
   // Create an array of input decks
   std::strcpy(delims_var,    " ,=\t");
@@ -66,7 +67,7 @@ int main(int argc, char** argv) {
   std::strcpy(delims_nospace,(const char*)tdInputBase.delims_nospace);
   parse_pars();
   parse_orefs();
-  std::vector<TDFactory> factories;
+  std::vector<TDFactory*> factories;
   factories.clear();
   create_factories(factories, tdInputBase);
 
@@ -74,24 +75,25 @@ int main(int argc, char** argv) {
   //         to the end of the provided data file
 #pragma omp parallel for
   for ( int n = 0; n < factories.size(); n++ ) {
-    bool valid = factories[n].run();
+    factories[n]->alloc();
+    bool valid = factories[n]->run();
 #pragma omp critical
     if ( valid )
-      add_output( factories[n] );
+      add_output( *(factories[n]) );
     else
-      add_error( factories[n] );
+      add_error( *(factories[n]) );
   }
 
-  // Step 3: Parametric study
-  FunEstimator* funEst = new FunEstimator(fitMethod,fitType);
-  funEst->setNumInput(keys.size());
-  funEst->setNumOutput(okeys.size());
-  funEst->getReferenceInput(tdInputBase,keys);
-  funEst->getReferenceOutput(o_refs,okeys);
-  funEst->readData(inputFileData);
-  funEst->run();
-  funEst->outputPar(outputFile);
-  delete funEst;
+  //  // Step 3: Parametric study
+  //  FunEstimator* funEst = new FunEstimator(fitMethod,fitType);
+  //  funEst->setNumInput(keys.size());
+  //  funEst->setNumOutput(okeys.size());
+  //  funEst->getReferenceInput(tdInputBase,keys);
+  //  funEst->getReferenceOutput(o_refs,okeys);
+  //  funEst->readData(inputFileData);
+  //  funEst->run();
+  //  funEst->outputPar(outputFile);
+  //  delete funEst;
 
   return 0;
 
@@ -156,7 +158,6 @@ void usage(void) {
   printf("Options\n");
   printf("  -d    Specify the data set file name\n");
   printf("  -i    Specify the baseline input file name\n");
-  printf("  -j    Specify the number of threads\n");
   printf("  -m    Fitting method (LS0,LS1,LS2,LS3,LS4,LS5)\n");
   printf("  -n    Problem name -- decide which solver to use and the outputs\n");
   printf("          PDGF - PDGF/Tterm, Nperc\n");
@@ -229,7 +230,7 @@ void parse_orefs(void) {
   return;
 }
 
-void create_factories(std::vector<TDFactory>& factories, const TDInput& input_base) {
+void create_factories(std::vector<TDFactory*>& factories, const TDInput& input_base) {
   int* cur_idx = new int[keys.size()];
   int* max_idx = new int[keys.size()];
 
@@ -255,12 +256,14 @@ void create_factories(std::vector<TDFactory>& factories, const TDInput& input_ba
       std::advance(it_val,cur_idx[cur_i]);
       tdInput.set_parameter(*it, *it_val);
       fac_pars[*it] = *it_val;
+      //cout << *it << " " << *it_val << "\t";
     }
+    //cout << std::endl;
 
-    TDFactory tdFactory(tdInput,probName);
-    tdFactory.pars = fac_pars;
+    TDFactory* tdFactory = new TDFactory(tdInput,probName);
+    tdFactory->pars = fac_pars;
     if ( okeys.size() != 0 )
-      okeys = tdFactory.okeys;
+      okeys = tdFactory->okeys;
     factories.push_back(tdFactory);
   }
   while ( increment_var_array(cur_idx,max_idx,keys.size()) );
