@@ -124,9 +124,7 @@ void TDSolve::setupLinSolve(
   res_in->setBlckDim(1);
   res_in->setSize(Nsize);
 
-  cout << "AAA AAA AAA AAA AAA" << std::endl;
   linSolve_in = new LinSolve;
-  cout << "AAA AAA AAA AAA BBB" << std::endl;
   linSolve_in->setBlckDim(1);
   linSolve_in->setSize(Nsize);
 

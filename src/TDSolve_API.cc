@@ -51,9 +51,7 @@ bool TDFactory::run(void) {
 
   if ( std::strcmp( probName, "PDGF" ) == 0 ) {
     DType Tterm, Nperc;
-    cout << "AAA AAA" << std::endl;
     success = run_pdgf(Tterm, Nperc);
-    cout << "AAA BBB" << std::endl;
     sols["Tterm"] = Tterm;
     sols["Nperc"] = Nperc;
   }
@@ -62,9 +60,7 @@ bool TDFactory::run(void) {
 }
 
 bool TDFactory::run_pdgf(DType& Tterm, DType& Nperc) {
-  cout << "AAA AAA AAA" << std::endl;
   tdSolve->setup();
-  cout << "AAA AAA BBB" << std::endl;
   tdSolve->set_ic();
   tdSolve->calc_dt(0);
   tdSolve->diagnostic(0);

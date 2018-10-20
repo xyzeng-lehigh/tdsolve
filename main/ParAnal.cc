@@ -75,13 +75,11 @@ int main(int argc, char** argv) {
 
   // Step 2: Run the computations in parallel and append the new results
   //         to the end of the provided data file
-//#pragma omp parallel for
+#pragma omp parallel for
   for ( int n = 0; n < factories.size(); n++ ) {
     factories[n]->alloc();
-    cout << "\t" << n << "\tAAA" << std::endl;
     bool valid = factories[n]->run();
-    cout << "\t" << n << "\tBBB" << std::endl;
-//#pragma omp critical
+#pragma omp critical
     {
       cout << " - Complete simulation of factory " << n+1 << " out of " << factories.size() 
            << ", writing results ... ";

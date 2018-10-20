@@ -7,6 +7,19 @@
  */
 
 LstSqr::LstSqr(void) {
+    sol = NULL;
+    rhs = NULL;
+    mat = NULL;
+    wgt = NULL;
+    coef_mat = NULL;
+    coef_inv = NULL;
+    coef_rhs = NULL;
+    c_mat = NULL;
+    c_rhs = NULL;
+    c_lag = NULL;
+    cstr_mat = NULL;
+    cstr_inv = NULL;
+    cstr_rhs = NULL;
     reset();
 }
 
@@ -15,30 +28,32 @@ LstSqr::~LstSqr(void) {
 }
 
 void LstSqr::clear(void) {
-    if (sol!=NULL) delete sol;
-    if (rhs!=NULL) delete rhs;
+    if (sol!=NULL) {delete sol; sol = NULL;}
+    if (rhs!=NULL) {delete rhs; rhs = NULL;}
     if (mat!=NULL) {
         for (int i=0; i<Neqns; i++)
             if (mat[i]!=NULL) delete mat[i];
         delete[] mat;
+        mat = NULL;
     }
-    if (wgt!=NULL) delete wgt;
+    if (wgt!=NULL) {delete wgt; wgt = NULL;}
 
-    if (coef_mat!=NULL) delete coef_mat;
-    if (coef_inv!=NULL) delete coef_inv;
-    if (coef_rhs!=NULL) delete coef_rhs;
+    if (coef_mat!=NULL) {delete coef_mat; coef_mat = NULL;}
+    if (coef_inv!=NULL) {delete coef_inv; coef_inv = NULL;}
+    if (coef_rhs!=NULL) {delete coef_rhs; coef_rhs = NULL;}
 
     if (c_mat!=NULL) {
         for (int i=0; i<Ncstr; i++)
             if (c_mat[i]!=NULL) delete c_mat[i];
         delete[] c_mat;
+        c_mat = NULL;
     }
-    if (c_rhs!=NULL) delete c_rhs;
-    if (c_lag!=NULL) delete c_lag;
+    if (c_rhs!=NULL) {delete c_rhs; c_rhs = NULL;}
+    if (c_lag!=NULL) {delete c_lag; c_lag = NULL;}
 
-    if (cstr_mat!=NULL) delete cstr_mat;
-    if (cstr_inv!=NULL) delete cstr_inv;
-    if (cstr_rhs!=NULL) delete cstr_rhs;
+    if (cstr_mat!=NULL) {delete cstr_mat; cstr_mat = NULL;}
+    if (cstr_inv!=NULL) {delete cstr_inv; cstr_inv = NULL;}
+    if (cstr_rhs!=NULL) {delete cstr_rhs; cstr_rhs = NULL;}
 
     return;
 }

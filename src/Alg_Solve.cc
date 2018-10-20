@@ -921,7 +921,6 @@ LinSolve::LinSolve(void) {
     lsysKrylov = LSYS_KRYLOV_GMRES;
     lsysPrec   = LSYS_PREC_OFF;
 
-    lsysType   = LSYS_TYPE_KRYLOV;
     apply_prec          = NULL;
     solve_iter_single   = NULL;
     solve_krylov_pre    = NULL;

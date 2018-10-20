@@ -96,16 +96,12 @@ TDSolveFVM::~TDSolveFVM(void) {
 
 void TDSolveFVM::setup(void) {
 
-  cout << "AAA AAA AAA AAA" << std::endl;
   setupLinSolve( mat, prc, sol, rhs, res, linSolve, Nx );
-  cout << "AAA AAA AAA BBB" << std::endl;
   setupLinSolve( mat_a, prc_a, sol_a, rhs_a, res_a, linSolve_a, Na );
-  cout << "AAA AAA AAA CCC" << std::endl;
 
   // OPN model
   if ( tdSetup->prob_id == 1 ) 
     setupLinSolve( mat_p, prc_p, sol_p, rhs_p, res_p, linSolve_p, Nx );
-  cout << "AAA AAA AAA DDD" << std::endl;
 
   return;
 }
