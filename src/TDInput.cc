@@ -116,6 +116,9 @@ TDInput::TDInput(void) {
 }
 
 TDInput::TDInput(const TDInput& tdInput) {
+  setup_parameters();
+  setup_options();
+  setup_toggles();
   strcpy(inputFile,      tdInput.inputFile);
   strcpy(delims,         tdInput.delims);
   strcpy(delims_nospace, tdInput.delims_nospace);
@@ -124,7 +127,7 @@ TDInput::TDInput(const TDInput& tdInput) {
 
   tdCoef  = tdInput.tdCoef;
   tdSetup = tdInput.tdSetup;
-  tdLin   = tdLin;
+  tdLin   = tdInput.tdLin;
 
   tdMesh.x_l  = tdInput.tdMesh.x_l;
   tdMesh.x_r  = tdInput.tdMesh.x_r;
@@ -535,7 +538,7 @@ void TDInput::setup_toggles(void) {
   tdToggles["vel_couple"]         = &tdSetup.vCoup;
   tdToggles["lim_sync_tot"]       = &tdSetup.slim_tot;
   tdToggles["diagnostic_vcoup"]   = &tdSetup.diagn_vcoup;
-  tdToggles["slience"]            = &tdSetup.silence;
+  tdToggles["silence"]            = &tdSetup.silence;
   tdToggles["lsysPrint"]          = &tdLin.Print;
   return;
 }
@@ -665,8 +668,9 @@ void TDInput::parse(void) {
 
 bool TDInput::set_parameter(std::string name, DType value) {
   std::map<std::string, DType*>::iterator it = tdParameters.find(name);
-  if ( it == tdParameters.end() )
+  if ( it == tdParameters.end() ) {
     return false;
+  }
   else {
     *(it->second) = value;
     return true;
@@ -681,6 +685,14 @@ bool TDInput::get_parameter(std::string name, DType& value) {
     value = *(it->second);
     return true;
   }
+}
+
+DType TDInput::get_parameter(std::string name) {
+  std::map<std::string, DType*>::iterator it = tdParameters.find(name);
+  if ( it == tdParameters.end() )
+    return 0.0;
+  else
+    return *(it->second);
 }
 
 bool TDInput::set_option(std::string name, int value) {
@@ -703,6 +715,14 @@ bool TDInput::get_option(std::string name, int& value) {
   }
 }
 
+int TDInput::get_option(std::string name) {
+  std::map<std::string, int*>::iterator it = tdOptions.find(name);
+  if ( it == tdOptions.end() )
+    return 0;
+  else
+    return *(it->second);
+}
+
 bool TDInput::set_toggle(std::string name, bool value) {
   std::map<std::string, bool*>::iterator it = tdToggles.find(name);
   if ( it == tdToggles.end() )
@@ -721,5 +741,37 @@ bool TDInput::get_toggle(std::string name, bool& value) {
     value = *(it->second);
     return true;
   }
+}
+
+bool TDInput::get_toggle(std::string name) {
+  std::map<std::string, bool*>::iterator it = tdToggles.find(name);
+  if ( it == tdToggles.end() )
+    return true;
+  else
+    return *(it->second);
+}
+
+void TDInput::display_parameter(void) {
+  cout << "TDInput parameters: " << std::endl;
+  for ( std::map<std::string, DType*>::iterator it = tdParameters.begin();
+        it != tdParameters.end(); it++ )
+    cout << "\t" << it->first << ": " << *(it->second) << std::endl;
+  return;
+}
+
+void TDInput::display_option(void) {
+  cout << "TDInput options: " << std::endl;
+  for ( std::map<std::string, int*>::iterator it = tdOptions.begin();
+        it != tdOptions.end(); it++ )
+    cout << "\t" << it->first << ": " << *(it->second) << std::endl;
+  return;
+}
+
+void TDInput::display_toggle(void) {
+  cout << "TDInput toggles: " << std::endl;
+  for ( std::map<std::string, bool*>::iterator it = tdToggles.begin();
+        it != tdToggles.end(); it++ )
+    cout << "\t" << it->first << ": " << ((*(it->second)) ? "True" : "False") << std::endl;
+  return;
 }
 

@@ -133,6 +133,13 @@ class TDInput {
     bool get_parameter(std::string, DType&);
     bool get_option(std::string, int&);
     bool get_toggle(std::string, bool&);
+    DType get_parameter(std::string);
+    int   get_option(std::string);
+    bool  get_toggle(std::string);
+
+    void  display_parameter(void);
+    void  display_option(void);
+    void  display_toggle(void);
 
   private:
     void setup_parameters(void);

@@ -48,6 +48,20 @@ TDSolveFVM::TDSolveFVM(TDInput* tdInput_ptr) :
 
   //alloc_array_full( N_dir, Nx+1 );
 
+  slope_g = NULL;
+  slope_h = NULL;
+  slope_n = NULL;
+  flux_g  = NULL;
+  flux_h  = NULL;
+  flux_n  = NULL;
+  flux_a  = NULL;
+  slope_a = NULL;
+  flux_p1  = NULL;
+  slope_p1 = NULL;
+  flux_p2  = NULL;
+  slope_p2 = NULL;
+  N_dir    = NULL;
+
   if ( !(tdSetup->silence) ) {
     FILE* ot_file = fopen( tdInput->outputFile, "w" );
     if ( tdSetup->prob_id < 0 ) // This is only relevant for FVMMod
@@ -82,12 +96,16 @@ TDSolveFVM::~TDSolveFVM(void) {
 
 void TDSolveFVM::setup(void) {
 
+  cout << "AAA AAA AAA AAA" << std::endl;
   setupLinSolve( mat, prc, sol, rhs, res, linSolve, Nx );
+  cout << "AAA AAA AAA BBB" << std::endl;
   setupLinSolve( mat_a, prc_a, sol_a, rhs_a, res_a, linSolve_a, Na );
+  cout << "AAA AAA AAA CCC" << std::endl;
 
   // OPN model
   if ( tdSetup->prob_id == 1 ) 
     setupLinSolve( mat_p, prc_p, sol_p, rhs_p, res_p, linSolve_p, Nx );
+  cout << "AAA AAA AAA DDD" << std::endl;
 
   return;
 }

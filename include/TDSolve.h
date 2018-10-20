@@ -58,6 +58,10 @@ class TDSolve {
     DType get_tsol(void) {return tsol;}
     virtual DType get_nperc(const int nt) {return 0.0;};
 
+    TDInput*& getTDInput(void) {
+      return tdInput;
+    }
+
   protected:
     HVEC** data_g;  // G = number density of glimoa cells
     HVEC** data_h;  // H = number density of necrotic cells

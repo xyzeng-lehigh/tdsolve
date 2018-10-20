@@ -54,6 +54,17 @@ TDSolve::TDSolve(TDInput* tdInput_ptr) {
   reach_output_next = false;
   if ( use_tfreq ) 
     t_output = tdSetup->Tfreq;
+
+  data_g = NULL;
+  data_h = NULL;
+  data_n = NULL;
+  data_a = NULL;
+  data_v = NULL;
+
+  data_p1 = NULL;
+  data_p2 = NULL;
+  data_dv = NULL;
+  data_na = NULL;
 }
 
 TDSolve::~TDSolve(void) {
@@ -113,7 +124,9 @@ void TDSolve::setupLinSolve(
   res_in->setBlckDim(1);
   res_in->setSize(Nsize);
 
+  cout << "AAA AAA AAA AAA AAA" << std::endl;
   linSolve_in = new LinSolve;
+  cout << "AAA AAA AAA AAA BBB" << std::endl;
   linSolve_in->setBlckDim(1);
   linSolve_in->setSize(Nsize);
 

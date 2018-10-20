@@ -13,7 +13,7 @@ class TDSolve;
 
 class TDFactory {
   public:
-    TDFactory(TDInput, const char*);
+    TDFactory(TDInput*, const char*);
     ~TDFactory(void) {
       if (tdSolve) delete tdSolve;
     }
@@ -28,9 +28,13 @@ class TDFactory {
     // Names of output variables
     std::set< std::string >        okeys;
 
+    TDInput*& getTDInput(void) {
+      return tdInput;
+    }
+
   private:
     char     probName[40];
-    TDInput  tdInput;
+    TDInput* tdInput;
     TDSolve* tdSolve;
 
     bool run_pdgf(DType& Tterm, DType& Nperc);

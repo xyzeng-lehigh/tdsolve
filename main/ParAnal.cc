@@ -71,17 +71,28 @@ int main(int argc, char** argv) {
   factories.clear();
   create_factories(factories, tdInputBase);
 
+  cout << "Complete creating factories, start simulations ..." << std::endl;
+
   // Step 2: Run the computations in parallel and append the new results
   //         to the end of the provided data file
-#pragma omp parallel for
+//#pragma omp parallel for
   for ( int n = 0; n < factories.size(); n++ ) {
     factories[n]->alloc();
+    cout << "\t" << n << "\tAAA" << std::endl;
     bool valid = factories[n]->run();
-#pragma omp critical
-    if ( valid )
-      add_output( *(factories[n]) );
-    else
-      add_error( *(factories[n]) );
+    cout << "\t" << n << "\tBBB" << std::endl;
+//#pragma omp critical
+    {
+      cout << " - Complete simulation of factory " << n+1 << " out of " << factories.size() 
+           << ", writing results ... ";
+      if ( valid )
+        add_output( *(factories[n]) );
+      else
+        add_error( *(factories[n]) );
+      cout << "Completed." << std::endl;
+      delete factories[n]->getTDInput();
+      delete factories[n];
+    }
   }
 
   //  // Step 3: Parametric study
@@ -231,17 +242,21 @@ void parse_orefs(void) {
 }
 
 void create_factories(std::vector<TDFactory*>& factories, const TDInput& input_base) {
+  cout << "Start creating factories ..." << std::endl;
   int* cur_idx = new int[keys.size()];
   int* max_idx = new int[keys.size()];
 
   int cur_i = 0;
+  int tot_count = 1;
   for ( std::set<std::string>::iterator it = keys.begin(); it != keys.end(); it++, cur_i++ ) {
     cur_idx[cur_i] = 0;
     max_idx[cur_i] = pars[*it].size();
+    tot_count *= pars[*it].size();
   }
 
+  int f_count = 0;
   do {
-    TDInput tdInput = input_base;
+    TDInput* tdInput = new TDInput(input_base);
     std::map< std::string, DType > fac_pars;
     fac_pars.clear();
     int cur_i = 0;
@@ -254,17 +269,26 @@ void create_factories(std::vector<TDFactory*>& factories, const TDInput& input_b
       std::set<DType>& loc_pars = it_par->second;
       std::set<DType>::iterator it_val = loc_pars.begin();
       std::advance(it_val,cur_idx[cur_i]);
-      tdInput.set_parameter(*it, *it_val);
+      tdInput->set_parameter(*it, *it_val);
       fac_pars[*it] = *it_val;
-      //cout << *it << " " << *it_val << "\t";
+      //cout << *it << " " << fac_pars[*it] << "\t";
     }
+    //cout << std::endl;
+    
+    //for ( std::set<std::string>::iterator it = keys.begin(); it != keys.end(); it++ )
+    //  cout << *it << " " << tdInput->get_parameter(*it) << "\t";
     //cout << std::endl;
 
     TDFactory* tdFactory = new TDFactory(tdInput,probName);
     tdFactory->pars = fac_pars;
-    if ( okeys.size() != 0 )
+    //tdFactory->getTDInput()->display_parameter();
+    //tdFactory->getTDInput()->display_option();
+    //tdFactory->getTDInput()->display_toggle();
+    if ( okeys.size() == 0 )
       okeys = tdFactory->okeys;
     factories.push_back(tdFactory);
+    f_count++;
+    cout << " - Complete factory creation " << f_count << " out of " << tot_count << std::endl;
   }
   while ( increment_var_array(cur_idx,max_idx,keys.size()) );
 

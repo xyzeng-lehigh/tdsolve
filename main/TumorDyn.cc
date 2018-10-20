@@ -44,6 +44,10 @@ int main(int argc, char** argv) {
       tdSolve = new TDSolveFVM(&tdInput);
       break;
   }
+
+  //tdSolve->getTDInput()->display_parameter();
+  //tdSolve->getTDInput()->display_option();
+  //tdSolve->getTDInput()->display_toggle();
   
   tdSolve->alloc();
 

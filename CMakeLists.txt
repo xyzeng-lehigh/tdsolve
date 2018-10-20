@@ -23,8 +23,8 @@ file(GLOB SOURCES "main/TumorDyn.cc" "src/*.cc")
 file(GLOB PARSOURCES "main/ParAnal.cc" "src/*.cc")
 
 # Configure file that pass CMake settings to the source
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fopenmp")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fopenmp")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
 
 # Executable
 add_executable(TumorDynRun ${SOURCES})

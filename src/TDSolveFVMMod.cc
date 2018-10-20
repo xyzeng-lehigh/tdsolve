@@ -26,6 +26,23 @@ TDSolveFVMMod::TDSolveFVMMod(TDInput* tdInput_ptr) :
   //if ( tdSetup->vCoup )
   //  alloc_array_full( vel_tmp, Nx+1, 1 );
 
+  lim_g     = NULL;
+  lim_h     = NULL;
+  lim_n     = NULL;
+  lim_s     = NULL;
+  lim_muscl = NULL;
+
+  flux_g_v  = NULL;
+  flux_g_r  = NULL;
+  flux_h_v  = NULL;
+  flux_h_r  = NULL;
+  flux_n_v  = NULL;
+  flux_n_r  = NULL;
+  flux_n_u  = NULL;
+
+  data_u    = NULL;
+  vel_tmp   = NULL;
+
 }
 
 TDSolveFVMMod::~TDSolveFVMMod(void) {
