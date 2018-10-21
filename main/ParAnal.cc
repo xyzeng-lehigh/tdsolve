@@ -22,7 +22,6 @@ char  inputFileRefs[40];
 bool  use_output_ref;
 char  outputFile[40];
 char  fitMethod[40];
-char  fitType[40];
 char  probName[40];
 char* program_name;
 
@@ -41,8 +40,9 @@ void add_output( TDFactory& );
 void add_error( TDFactory& );
 std::map< std::string, std::set<DType> > pars;
 std::set< std::string >                  keys;
-std::map< std::string, DType >           o_refs;
 std::set< std::string >                  okeys;
+std::map< std::string, DType >           o_refs;
+std::map< std::string, std::string >     o_funs;
 
 int main(int argc, char** argv) {
   printlogo();
@@ -50,8 +50,9 @@ int main(int argc, char** argv) {
 
   pars.clear();
   keys.clear();
-  o_refs.clear();
   okeys.clear();
+  o_refs.clear();
+  o_funs.clear();
 
   // Step 1: Create the input decks for all computations
   
@@ -93,16 +94,17 @@ int main(int argc, char** argv) {
     }
   }
 
-  //  // Step 3: Parametric study
-  //  FunEstimator* funEst = new FunEstimator(fitMethod,fitType);
-  //  funEst->setNumInput(keys.size());
-  //  funEst->setNumOutput(okeys.size());
-  //  funEst->getReferenceInput(tdInputBase,keys);
-  //  funEst->getReferenceOutput(o_refs,okeys);
-  //  funEst->readData(inputFileData);
-  //  funEst->run();
-  //  funEst->outputPar(outputFile);
-  //  delete funEst;
+  // Step 3: Parametric study
+  FunEstimator* funEst = new FunEstimator(fitMethod);
+  funEst->setInputKeys(keys);
+  funEst->setOutputKeys(okeys);
+  funEst->getReferenceInput(tdInputBase);
+  funEst->getReferenceOutput(o_refs);
+  funEst->getFittingMethod(o_funs);
+  funEst->readData(inputFileData);
+  funEst->run();
+  funEst->outputPar(outputFile);
+  delete funEst;
 
   return 0;
 
@@ -120,6 +122,9 @@ void printlogo(void) {
 void parse(int* argc, char** argv) {
   program_name = argv[0];
   use_output_ref = false;
+  std::strcpy(fitMethod,"LS2");
+  std::strcpy(probName,"PDGF");
+  std::strcpy(outputFile,"regression.dat");
   while ((*argc>1)&&(argv[1][0]=='-')) {
     switch (argv[1][1]) {
       case 'd':
@@ -139,9 +144,6 @@ void parse(int* argc, char** argv) {
         break;
       case 'p':
         strcpy(inputFilePar,argv[2]);
-        break;
-      case 't':
-        strcpy(fitType,argv[2]);
         break;
       case 'r':
         use_output_ref = true;
@@ -173,7 +175,6 @@ void usage(void) {
   printf("  -o    Specify the output file to store fitting information\n");
   printf("  -p    Specify the parametric input file name\n");
   printf("  -r    Specify the output reference values\n");
-  printf("  -t    Fitting type (Poly,ExpPoly)\n");
   printf("\n");
   exit(1);
 }
@@ -221,6 +222,13 @@ void parse_orefs(void) {
   char* name;
   char* value;
 
+  // Format
+  //  name = numeric.value
+  // or
+  //  name = string
+  // Here numeric.value cannot be zero, otherwise it will
+  // be interpreted as a string
+
   while (getline(fin,file_line_s)) {
     // This ignore a short line
     if (file_line_s.length()<2)
@@ -233,7 +241,11 @@ void parse_orefs(void) {
       continue;
     name  = strtok((char*)file_line_s.c_str(),delims);
     value = strtok(NULL,delims);
-    o_refs[name] = atof(value);
+    DType trial_value = atof(value);
+    if ( trial_value == 0.0 )
+      o_funs[name] = value;
+    else
+      o_refs[name] = trial_value;
   }
 
   return;
@@ -269,14 +281,8 @@ void create_factories(std::vector<TDFactory*>& factories, const TDInput& input_b
       std::advance(it_val,cur_idx[cur_i]);
       tdInput->set_parameter(*it, *it_val);
       fac_pars[*it] = *it_val;
-      //cout << *it << " " << fac_pars[*it] << "\t";
     }
-    //cout << std::endl;
     
-    //for ( std::set<std::string>::iterator it = keys.begin(); it != keys.end(); it++ )
-    //  cout << *it << " " << tdInput->get_parameter(*it) << "\t";
-    //cout << std::endl;
-
     TDFactory* tdFactory = new TDFactory(tdInput,probName);
     tdFactory->pars = fac_pars;
     //tdFactory->getTDInput()->display_parameter();

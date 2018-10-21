@@ -29,3 +29,10 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
 # Executable
 add_executable(TumorDynRun ${SOURCES})
 add_executable(ParAnalRun ${PARSOURCES})
+
+# LAPACK and BLAS
+find_package(BLAS REQUIRED)
+find_package(LAPACK REQUIRED)
+include_directories(${BLAS_INCLUDE_DIR} ${LAPACK_INCLUDE_DIR})
+target_link_libraries(ParAnalRun ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
+target_link_libraries(TumorDynRun ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})

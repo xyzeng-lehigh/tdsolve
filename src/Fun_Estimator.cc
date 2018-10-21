@@ -1,41 +1,32 @@
 #include "Fun_Estimator.h"
 #include <cmath>
 #include "TDInput.h"
+#include "HighDim_Alg.h"
 
-FunEstimator::FunEstimator(char* fitMeth, char* fitType) {
-  Ninput  = 0;
-  Noutput = 0;
+FunEstimator::FunEstimator(char* fitMeth) {
   data.clear();
-  refs.clear();
-  o_refs.clear();
+  ikeys.clear();
+  irefs.clear();
+  okeys.clear();
+  orefs.clear();
+  ofuns.clear();
+  basis.clear();
+  fcoef.clear();
 
-  if ( std::strcpy(fitMeth,"LS0")==0 )
+  if ( std::strcmp(fitMeth,"LS0")==0 )
     estimate = &FunEstimator::est_ls0;
-  else if ( std::strcpy(fitMeth,"LS1")==0 )
+  else if ( std::strcmp(fitMeth,"LS1")==0 )
     estimate = &FunEstimator::est_ls1;
-  else if ( std::strcpy(fitMeth,"LS2")==0 )
+  else if ( std::strcmp(fitMeth,"LS2")==0 )
     estimate = &FunEstimator::est_ls2;
-  else if ( std::strcpy(fitMeth,"LS3")==0 )
+  else if ( std::strcmp(fitMeth,"LS3")==0 )
     estimate = &FunEstimator::est_ls3;
-  else if ( std::strcpy(fitMeth,"LS4")==0 )
+  else if ( std::strcmp(fitMeth,"LS4")==0 )
     estimate = &FunEstimator::est_ls4;
-  else if ( std::strcpy(fitMeth,"LS5")==0 )
+  else if ( std::strcmp(fitMeth,"LS5")==0 )
     estimate = &FunEstimator::est_ls5;
   else // Default
-    estimate = &FunEstimator::est_ls0;
-
-  if ( std::strcpy(fitType,"Poly") ) {
-    preprocess = &FunEstimator::prec_none;
-    write      = &FunEstimator::write_poly;
-  }
-  else if ( std::strcpy(fitType,"ExpPOly") ) {
-    preprocess = &FunEstimator::prec_log;
-    write      = &FunEstimator::write_exp_poly;
-  }
-  else { // Default
-    preprocess = &FunEstimator::prec_none;
-    write      = &FunEstimator::write_poly;
-  }
+    estimate = &FunEstimator::est_ls2;
 }
 
 void FunEstimator::readData(const char* dataFile) {
@@ -47,20 +38,20 @@ void FunEstimator::readData(const char* dataFile) {
     std::vector<DType> loc_output;
     loc_input.clear();
     loc_output.clear();
-    for ( int i = 0; i < Ninput; i++ ) {
+    for ( std::set<std::string>::iterator it = ikeys.begin();
+          it != ikeys.end(); it++ ) {
       DType var_i;
       fscanf( iFile, "%lf\t", &var_i );
-      // Normalizing the inputs
-      loc_input.push_back( var_i/refs[i] );
+      loc_input.push_back( var_i/irefs[*it] );
     }
     fscanf( iFile, "\n" );
-    for ( int i = 0; i < Noutput; i++ ) {
+    for ( std::set<std::string>::iterator it = okeys.begin();
+          it != okeys.end(); it++ ) {
       DType var_o;
       fscanf( iFile, "%lf\t", &var_o );
-      if ( o_refs[i] == 0.0 )
-        loc_output.push_back( var_o );
-      else // Normalize the output
-        loc_output.push_back( var_o/o_refs[i] );
+      // Normalize the output 
+      // -- if no reference value provided, orefs[i] = 1.0
+      loc_output.push_back( var_o/orefs[*it] );
     }
     data.push_back( VarPair( loc_input, loc_output ) );
   }
@@ -70,47 +61,221 @@ void FunEstimator::readData(const char* dataFile) {
   return;
 }
 
-void FunEstimator::prec_log(void) {
-
-  for ( std::vector<VarPair>::iterator it = data.begin(); 
+void FunEstimator::preprocess(void) {
+  for ( std::vector<VarPair>::iterator it = data.begin();
         it != data.end(); it++ ) {
     std::vector<DType>& oVars = it->second;
-    for ( std::vector<DType>::iterator varIt = oVars.begin();
-          varIt != oVars.end(); varIt++ )
-      *varIt = std::log(*varIt);
+    unsigned cur_i = 0;
+    for ( std::set<std::string>::iterator it_key = okeys.begin();
+          it_key != okeys.end(); it_key++, cur_i++ ) {
+      switch ( ofuns[*it_key] ) {
+        case FUN_POLY:
+          // Do nothing
+          break;
+        case FUN_EXP_POLY:
+          oVars[cur_i] = std::log( oVars[cur_i] );
+          break;
+        default:
+          // Do nothing
+          break;
+      }
+    }
   }
-
   return;
 }
 
-void FunEstimator::getReferenceInput(TDInput& tdInput, std::set<std::string>& keys) {
-  refs.clear();
-  for ( std::set<std::string>::iterator it = keys.begin(); it != keys.end(); it++ ) {
+void FunEstimator::getReferenceInput(TDInput& tdInput) {
+  irefs.clear();
+  for ( std::set<std::string>::iterator it = ikeys.begin(); it != ikeys.end(); it++ ) {
     DType vref;
     if ( !(tdInput.get_parameter(*it, vref)) )
       fprintf(stderr, "Error: No reference variable %s found... Exit.\n", (*it).c_str());
-    refs.push_back(vref);
+    irefs[*it] = vref;
   }
   return;
 }
 
-void FunEstimator::getReferenceOutput(std::map<std::string,DType>& ref_vals, std::set<std::string>& okeys) {
+void FunEstimator::getReferenceOutput(std::map<std::string,DType>& ref_vals) {
   for ( std::set<std::string>::iterator it = okeys.begin(); it != okeys.end(); it++ ) {
     std::map<std::string,DType>::iterator it_ref = ref_vals.find( *it );
     if ( it_ref == ref_vals.end() )
-      o_refs.push_back( 0.0 );
+      orefs[*it] = 1.0;
     else
-      o_refs.push_back( it_ref->second );
+      orefs[*it] = it_ref->second;
   }
   return;
 }
 
-void FunEstimator::est_ls(const unsigned n) {
+void FunEstimator::getFittingMethod(std::map<std::string,std::string>& ref_funs) {
+  for ( std::set<std::string>::iterator it = okeys.begin(); it != okeys.end(); it++ ) {
+    std::map<std::string,std::string>::iterator it_ref = ref_funs.find( *it );
+    if ( it_ref == ref_funs.end() )
+      ofuns[*it] = FUN_POLY;
+    else if ( it_ref->second == "Poly" )
+      ofuns[*it] = FUN_POLY;
+    else if ( it_ref->second == "ExpPoly" )
+      ofuns[*it] = FUN_EXP_POLY;
+    else
+      ofuns[*it] = FUN_POLY;
+  }
+  return;
 }
 
-void FunEstimator::write_poly(const char* oFile) {
+void FunEstimator::est_ls(const unsigned p) {
+  setup_ls_basis(p);
+
+  unsigned Nfunc = basis.size();
+
+  HMAT mat(Nfunc);
+  HVEC** rhs = NULL;
+  alloc_array_full(rhs, Nfunc, okeys.size());
+  reset_array(rhs, okeys.size(), 0.0);
+
+  mat = 0.0;
+
+  for ( std::vector<VarPair>::iterator it = data.begin();
+        it != data.end(); it++ ) {
+    std::vector<DType> pvals = eval_poly_basis(p, it->first);
+    for ( unsigned i = 0; i < Nfunc; i++ )
+      for ( unsigned j = 0; j < Nfunc; j++ )
+        mat[i][j] += pvals[i] * pvals[j];
+    std::vector<DType>& ovals = it->second;
+    for ( unsigned i = 0; i < ovals.size(); i++ ) {
+      DType loc_oval = ovals[i];
+      for ( unsigned j = 0; j < Nfunc; j++ )
+        (*rhs[i])[j] += loc_oval * pvals[j];
+    }
+  }
+
+  char UPLO = 'L';
+  int  N    = Nfunc;
+  int  NRHS = okeys.size();
+  int  LDA  = Nfunc;
+  int  INFO;
+#ifndef FLOAT_ALG
+  double* A = new double[Nfunc*Nfunc];
+  double* B = new double[Nfunc*okeys.size()];
+  for ( unsigned i = 0; i < Nfunc; i++ )
+    for ( unsigned j = 0; j < Nfunc; j++ )
+      A[i*Nfunc+j] = mat[i][j];
+  for ( unsigned i = 0; i < okeys.size(); i++ )
+    for ( unsigned j = 0; j < Nfunc; j++ )
+      B[i*Nfunc+j] = (*rhs[i])[j];
+  dposv_(&UPLO, &N, &NRHS, A, &LDA, B, &INFO);
+  for ( unsigned i = 0; i < okeys.size(); i++ )
+    for ( unsigned j = 0; j < Nfunc; j++ )
+      (*rhs[i])[j] = B[i*Nfunc+j];
+  delete[] A;
+  delete[] B;
+#else
+  float*  A = new float[Nfunc*Nfunc];
+  float*  B = new float[Nfunc*okeys.size()];
+  for ( unsigned i = 0; i < Nfunc; i++ )
+    for ( unsigned j = 0; j < Nfunc; j++ )
+      A[i*Nfunc+j] = mat[i][j];
+  for ( unsigned i = 0; i < okeys.size(); i++ )
+    for ( unsigned j = 0; j < Nfunc; j++ )
+      B[i*Nfunc+j] = (*rhs[i])[j];
+  sposv_(&UPLO, &N, &NRHS, A, &LDA, B, &INFO);
+  for ( unsigned i = 0; i < okeys.size(); i++ )
+    for ( unsigned j = 0; j < Nfunc; j++ )
+      (*rhs[i])[j] = B[i*Nfunc+j];
+  delete[] A;
+  delete[] B;
+#endif
+
+  int cur_i = 0;
+  for ( std::set<std::string>::iterator it = okeys.begin();
+        it != okeys.end(); it++, cur_i++ ) {
+    std::vector<DType> coef;
+    coef.resize(Nfunc,0.0);
+    for ( unsigned i = 0; i < Nfunc; i++ )
+      coef[i] = (*rhs[cur_i])[i];
+    fcoef[*it] = coef;
+  }
+
+  erase_array(rhs, okeys.size());
+
+  return;
 }
 
-void FunEstimator::write_exp_poly(const char* oFile) {
+void FunEstimator::setup_ls_basis(const unsigned p) {
+  basis.clear();
+  unsigned Nfunc = 1;
+  unsigned Nvar  = ikeys.size();
+  for (unsigned i = 0; i < Nvar; i++) Nfunc *= (p+1);
+  for (unsigned n = 0; n < Nfunc; n++) {
+    PolyTerm pterm;
+    pterm.resize(Nvar,0);
+    unsigned loc_n = n;
+    for (unsigned pos = 0; pos < Nvar; pos++) {
+      pterm[pos] = loc_n % (p+1);
+      loc_n = (loc_n - pterm[pos])/(p+1);
+    }
+    basis.push_back(pterm);
+  }
+  return;
 }
 
+std::vector<DType> FunEstimator::eval_poly_basis(const unsigned p, std::vector<DType>& ivars) {
+  std::vector<DType> pvals;
+  pvals.resize(basis.size(), 0.0);
+
+  DType** pbasis = NULL;
+  alloc_array_full( pbasis, ikeys.size(), p+1 );
+  for (unsigned i = 0; i < ikeys.size(); i++ ) {
+    pbasis[i][0] = 1.0;
+    for (unsigned q = 0; q < p; q++)
+      pbasis[i][q+1] = pbasis[i][q] * ivars[i];
+  }
+
+  for (unsigned n = 0; n < basis.size(); n++ ) {
+    PolyTerm pterm = basis[n];
+    DType fval = 1.0;
+    for (unsigned i = 0; i < ikeys.size(); i++)
+      fval *= pbasis[i][pterm[i]];
+    pvals[n] = fval;
+  }
+
+  erase_array( pbasis, ikeys.size() );
+  return pvals;
+}
+
+void FunEstimator::write(const char* oFile) {
+  FILE* fp = fopen(oFile, "w");
+  write_header( fp );
+  for ( std::set<std::string>::iterator it = okeys.begin();
+        it != okeys.end(); it++ )
+    write_variable( fp, *it );
+
+  fclose( fp );
+  return;
+}
+
+void FunEstimator::write_header( FILE* fp ) {
+  fprintf(fp, "Input variables: ");
+  for ( std::set<std::string>::iterator it = ikeys.begin();
+        it != ikeys.end(); it++ )
+    fprintf(fp, "%s ", (*it).c_str());
+  fprintf(fp, "\n");
+  fprintf(fp, "Output variables: ");
+  for ( std::set<std::string>::iterator it = okeys.begin();
+        it != okeys.end(); it++ )
+    fprintf(fp, "%s ", (*it).c_str());
+  fprintf(fp, "\n\n");
+  return;
+}
+
+void FunEstimator::write_variable( FILE* fp, const std::string key ) {
+  fprintf( fp, "%s: ", key.c_str() );
+  switch ( ofuns[key] ) {
+    case FUN_POLY:
+      break;
+    case FUN_EXP_POLY:
+      break;
+    default:
+      fprintf( fp, "non-recognized fitting type.\n" );
+      return;
+  }
+  return;
+}

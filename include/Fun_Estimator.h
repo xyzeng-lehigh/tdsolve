@@ -7,37 +7,52 @@
 #include <set>
 #include <map>
 #include "Data_Type.h"
+#include "Alloc_Utils.h"
+
+#ifndef FLOAT_ALG
+extern "C" void dposv_(char *UPLO, int *N, int *NRHS, double *A, int *LDA, double *B, int *INFO);
+#else
+extern "C" void sposv_(char *UPLO, int *N, int *NRHS, float *A,  int *LDA, double *B, int *INFO);
+#endif
 
 class TDInput;
 
 class FunEstimator {
   public:
-    FunEstimator(char*, char*);
+    FunEstimator(char*);
+
+    enum FitFuns {
+      FUN_POLY = 0, FUN_EXP_POLY, FUN_NUM
+    };
 
     void readData(const char*);
 
     void run(void) {
-      (this->*preprocess)();
+      preprocess();
       (this->*estimate)(); };
 
     void outputPar(const char* ofile) {
-      (this->*write)(ofile); };
+      write(ofile); };
 
-    void setNumInput(const int N_in) {
-      Ninput = N_in;
+    void setInputKeys(const std::set<std::string> keys_in ) {
+      ikeys  = keys_in;
       return;
     }
 
-    void setNumOutput(const int N_out) {
-      Noutput = N_out;
+    void setOutputKeys(const std::set<std::string> keys_in ) {
+      okeys   = keys_in;
       return;
     }
 
-    void getReferenceInput(TDInput&, std::set<std::string>&);
-    void getReferenceOutput(std::map< std::string, DType >&, std::set<std::string>&);
+    void getReferenceInput(TDInput&);
+    void getReferenceOutput(std::map<std::string,DType>&);
+    void getFittingMethod(std::map<std::string,std::string>&);
 
   private:
-    int Ninput, Noutput;
+
+    // A vector of ikeys.size() unsigned powers
+    typedef std::vector<unsigned> PolyTerm;
+    std::vector<PolyTerm> basis;
 
     // The first one is input, the second one is output
     typedef std::pair< std::vector<DType>, std::vector<DType> > VarPair;
@@ -45,21 +60,20 @@ class FunEstimator {
 
     // Reference values for the parameters
     // Used for normalizing the inputs
-    std::vector<DType> refs;
+    std::set<std::string>        ikeys;
+    std::map<std::string, DType> irefs;
     // Reference values for the outputs, could be zero (no reference)
-    std::vector<DType> o_refs;
+    std::set<std::string>          okeys;
+    std::map<std::string, DType>   orefs;
+    std::map<std::string, FitFuns> ofuns;
+    std::map<std::string, std::vector<DType> > fcoef;
 
-    typedef void (FunEstimator::*funPrec)(void);
     typedef void (FunEstimator::*funRun)(void);
-    typedef void (FunEstimator::*funOutput)(const char*);
 
-    funPrec   preprocess;
-    funRun    estimate;
-    funOutput write;
+    funRun estimate;
 
     // Preprocessor
-    void prec_none(void) {}; // Do nothing
-    void prec_log(void);
+    void preprocess(void);
 
     // Estimation
     void est_ls(const unsigned n);
@@ -71,8 +85,15 @@ class FunEstimator {
     void est_ls5(void) {est_ls(5); return;};
 
     // Writer
-    void write_poly(const char*);
-    void write_exp_poly(const char*);
+    void write(const char*);
+
+    void write_header(FILE*);
+    void write_variable(FILE*, const std::string);
+
+    // Polynomial least squares
+    void setup_ls_basis(const unsigned p);
+    std::vector<DType> eval_poly_basis(const unsigned p, std::vector<DType>&);
+
 
 };
 
