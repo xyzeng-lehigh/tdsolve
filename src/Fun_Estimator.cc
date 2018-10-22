@@ -2,6 +2,7 @@
 #include <cmath>
 #include "TDInput.h"
 #include "HighDim_Alg.h"
+#include <iomanip>
 
 FunEstimator::FunEstimator(char* fitMeth) {
   data.clear();
@@ -13,27 +14,34 @@ FunEstimator::FunEstimator(char* fitMeth) {
   basis.clear();
   fcoef.clear();
 
-  if ( std::strcmp(fitMeth,"LS0")==0 )
-    estimate = &FunEstimator::est_ls0;
-  else if ( std::strcmp(fitMeth,"LS1")==0 )
-    estimate = &FunEstimator::est_ls1;
-  else if ( std::strcmp(fitMeth,"LS2")==0 )
-    estimate = &FunEstimator::est_ls2;
-  else if ( std::strcmp(fitMeth,"LS3")==0 )
-    estimate = &FunEstimator::est_ls3;
-  else if ( std::strcmp(fitMeth,"LS4")==0 )
-    estimate = &FunEstimator::est_ls4;
-  else if ( std::strcmp(fitMeth,"LS5")==0 )
-    estimate = &FunEstimator::est_ls5;
-  else // Default
-    estimate = &FunEstimator::est_ls2;
+  if ( std::strcmp(fitMeth,"LS0")==0 ) {
+    ls_degree = 0;
+    estimate = &FunEstimator::est_ls0;}
+  else if ( std::strcmp(fitMeth,"LS1")==0 ) {
+    ls_degree = 1;
+    estimate = &FunEstimator::est_ls1;}
+  else if ( std::strcmp(fitMeth,"LS2")==0 ) {
+    ls_degree = 2;
+    estimate = &FunEstimator::est_ls2;}
+  else if ( std::strcmp(fitMeth,"LS3")==0 ) {
+    ls_degree = 3;
+    estimate = &FunEstimator::est_ls3;}
+  else if ( std::strcmp(fitMeth,"LS4")==0 ) {
+    ls_degree = 4;
+    estimate = &FunEstimator::est_ls4;}
+  else if ( std::strcmp(fitMeth,"LS5")==0 ) {
+    ls_degree = 5;
+    estimate = &FunEstimator::est_ls5;}
+  else { // Default
+    ls_degree = 2;
+    estimate = &FunEstimator::est_ls2;}
 }
 
 void FunEstimator::readData(const char* dataFile) {
 
   FILE* iFile = fopen(dataFile, "r");
 
-  while ( feof(iFile) ) {
+  while ( !feof(iFile) ) {
     std::vector<DType> loc_input;
     std::vector<DType> loc_output;
     loc_input.clear();
@@ -54,6 +62,11 @@ void FunEstimator::readData(const char* dataFile) {
       loc_output.push_back( var_o/orefs[*it] );
     }
     data.push_back( VarPair( loc_input, loc_output ) );
+    //cout << " (";
+    //for ( unsigned i = 0; i < loc_input.size()-1; i++ ) cout << loc_input[i] << ", ";
+    //cout << loc_input[loc_input.size()-1] << ") -- (";
+    //for ( unsigned i = 0; i < loc_output.size()-1; i++ ) cout << loc_output[i] << ", ";
+    //cout << loc_output[loc_output.size()-1] << ")" << std::endl;
   }
 
   fclose(iFile);
@@ -84,13 +97,14 @@ void FunEstimator::preprocess(void) {
   return;
 }
 
-void FunEstimator::getReferenceInput(TDInput& tdInput) {
+void FunEstimator::getReferenceInput(const bool use_ref, TDInput& tdInput) {
   irefs.clear();
   for ( std::set<std::string>::iterator it = ikeys.begin(); it != ikeys.end(); it++ ) {
     DType vref;
     if ( !(tdInput.get_parameter(*it, vref)) )
       fprintf(stderr, "Error: No reference variable %s found... Exit.\n", (*it).c_str());
-    irefs[*it] = vref;
+    irefs[*it] = use_ref ? vref : 1.0;
+    //cout << " (" << *it << ") reference value: " << vref << std::endl;
   }
   return;
 }
@@ -102,6 +116,7 @@ void FunEstimator::getReferenceOutput(std::map<std::string,DType>& ref_vals) {
       orefs[*it] = 1.0;
     else
       orefs[*it] = it_ref->second;
+    //cout << " (" << *it << ") reference value: " << orefs[*it] << std::endl;
   }
   return;
 }
@@ -117,6 +132,7 @@ void FunEstimator::getFittingMethod(std::map<std::string,std::string>& ref_funs)
       ofuns[*it] = FUN_EXP_POLY;
     else
       ofuns[*it] = FUN_POLY;
+    //cout << " (" << *it << ") fitting function: " << ofuns[*it] << std::endl;
   }
   return;
 }
@@ -151,6 +167,7 @@ void FunEstimator::est_ls(const unsigned p) {
   int  N    = Nfunc;
   int  NRHS = okeys.size();
   int  LDA  = Nfunc;
+  int  LDB  = Nfunc;
   int  INFO;
 #ifndef FLOAT_ALG
   double* A = new double[Nfunc*Nfunc];
@@ -161,7 +178,7 @@ void FunEstimator::est_ls(const unsigned p) {
   for ( unsigned i = 0; i < okeys.size(); i++ )
     for ( unsigned j = 0; j < Nfunc; j++ )
       B[i*Nfunc+j] = (*rhs[i])[j];
-  dposv_(&UPLO, &N, &NRHS, A, &LDA, B, &INFO);
+  dposv_(&UPLO, &N, &NRHS, &(A[0]), &LDA, &(B[0]), &LDB, &INFO);
   for ( unsigned i = 0; i < okeys.size(); i++ )
     for ( unsigned j = 0; j < Nfunc; j++ )
       (*rhs[i])[j] = B[i*Nfunc+j];
@@ -176,7 +193,7 @@ void FunEstimator::est_ls(const unsigned p) {
   for ( unsigned i = 0; i < okeys.size(); i++ )
     for ( unsigned j = 0; j < Nfunc; j++ )
       B[i*Nfunc+j] = (*rhs[i])[j];
-  sposv_(&UPLO, &N, &NRHS, A, &LDA, B, &INFO);
+  sposv_(&UPLO, &N, &NRHS, &(A[0]), &LDA, &(B[0]), &LDB, &INFO);
   for ( unsigned i = 0; i < okeys.size(); i++ )
     for ( unsigned j = 0; j < Nfunc; j++ )
       (*rhs[i])[j] = B[i*Nfunc+j];
@@ -270,12 +287,40 @@ void FunEstimator::write_variable( FILE* fp, const std::string key ) {
   fprintf( fp, "%s: ", key.c_str() );
   switch ( ofuns[key] ) {
     case FUN_POLY:
+      fprintf( fp, "multivariate polynomial with degree %u in %u variables.\n", 
+               ls_degree, ikeys.size() );
       break;
     case FUN_EXP_POLY:
+      fprintf( fp, "exponential of multivariate polynomial with degree %u in %u variables.\n", 
+               ls_degree, ikeys.size() );
       break;
     default:
       fprintf( fp, "non-recognized fitting type.\n" );
       return;
+  }
+  switch ( ofuns[key] ) {
+    case FUN_POLY:
+    case FUN_EXP_POLY:
+      {
+        unsigned cur_i = 0;
+        std::vector<DType>& pcoef = fcoef[key];
+        for ( std::vector<PolyTerm>::iterator it = basis.begin();
+              it != basis.end(); it++, cur_i++ ) {
+          fprintf( fp, "\t[" );
+          PolyTerm pterm = *it;
+          for ( unsigned i = 0; i < pterm.size(); i++ ) {
+            if ( i != pterm.size()-1 )
+              fprintf( fp, "%u,", pterm[i] );
+            else
+              fprintf( fp, "%u]", pterm[i] );
+          }
+          fprintf( fp, ": %lf\n", pcoef[cur_i] );
+        }
+        fprintf( fp, "\n" );
+      }
+      break;
+    default:
+      break;
   }
   return;
 }

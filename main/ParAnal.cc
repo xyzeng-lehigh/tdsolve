@@ -20,6 +20,7 @@ char  inputFilePar[40];
 char  inputFileData[40];
 char  inputFileRefs[40];
 bool  use_output_ref;
+bool  use_input_ref;
 char  outputFile[40];
 char  fitMethod[40];
 char  probName[40];
@@ -72,8 +73,6 @@ int main(int argc, char** argv) {
   factories.clear();
   create_factories(factories, tdInputBase);
 
-  cout << "Complete creating factories, start simulations ..." << std::endl;
-
   // Step 2: Run the computations in parallel and append the new results
   //         to the end of the provided data file
 #pragma omp parallel for
@@ -98,7 +97,7 @@ int main(int argc, char** argv) {
   FunEstimator* funEst = new FunEstimator(fitMethod);
   funEst->setInputKeys(keys);
   funEst->setOutputKeys(okeys);
-  funEst->getReferenceInput(tdInputBase);
+  funEst->getReferenceInput(use_input_ref, tdInputBase);
   funEst->getReferenceOutput(o_refs);
   funEst->getFittingMethod(o_funs);
   funEst->readData(inputFileData);
@@ -122,6 +121,7 @@ void printlogo(void) {
 void parse(int* argc, char** argv) {
   program_name = argv[0];
   use_output_ref = false;
+  use_input_ref  = true;
   std::strcpy(fitMethod,"LS2");
   std::strcpy(probName,"PDGF");
   std::strcpy(outputFile,"regression.dat");
@@ -149,6 +149,9 @@ void parse(int* argc, char** argv) {
         use_output_ref = true;
         strcpy(inputFileRefs,argv[2]);
         break;
+      case 'R':
+        use_input_ref = ((std::atoi(argv[2])) != 0);
+        break;
       default:
         printf("Bad option %s\n",argv[1]);
         usage();
@@ -175,6 +178,7 @@ void usage(void) {
   printf("  -o    Specify the output file to store fitting information\n");
   printf("  -p    Specify the parametric input file name\n");
   printf("  -r    Specify the output reference values\n");
+  printf("  -R    Toggle of using reference value for inputs\n");
   printf("\n");
   exit(1);
 }
@@ -252,7 +256,6 @@ void parse_orefs(void) {
 }
 
 void create_factories(std::vector<TDFactory*>& factories, const TDInput& input_base) {
-  cout << "Start creating factories ..." << std::endl;
   int* cur_idx = new int[keys.size()];
   int* max_idx = new int[keys.size()];
 
@@ -263,6 +266,18 @@ void create_factories(std::vector<TDFactory*>& factories, const TDInput& input_b
     max_idx[cur_i] = pars[*it].size();
     tot_count *= pars[*it].size();
   }
+
+  if ( tot_count == 0 ) {
+    TDInput* tdInput = new TDInput(input_base);
+    TDFactory tdFactory(tdInput,probName);
+    okeys = tdFactory.okeys;
+    delete tdInput;
+    delete[] cur_idx;
+    delete[] max_idx;
+    return;
+  }
+
+  cout << "Start creating factories ..." << std::endl;
 
   int f_count = 0;
   do {
@@ -295,6 +310,8 @@ void create_factories(std::vector<TDFactory*>& factories, const TDInput& input_b
     cout << " - Complete factory creation " << f_count << " out of " << tot_count << std::endl;
   }
   while ( increment_var_array(cur_idx,max_idx,keys.size()) );
+
+  cout << "Complete creating factories, start simulations ..." << std::endl;
 
   delete[] cur_idx;
   delete[] max_idx;

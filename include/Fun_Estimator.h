@@ -10,9 +10,9 @@
 #include "Alloc_Utils.h"
 
 #ifndef FLOAT_ALG
-extern "C" void dposv_(char *UPLO, int *N, int *NRHS, double *A, int *LDA, double *B, int *INFO);
+extern "C" void dposv_(char *UPLO, int *N, int *NRHS, double *A, int *LDA, double *B, int *LDB, int *INFO);
 #else
-extern "C" void sposv_(char *UPLO, int *N, int *NRHS, float *A,  int *LDA, double *B, int *INFO);
+extern "C" void sposv_(char *UPLO, int *N, int *NRHS, float *A,  int *LDA, double *B, int *LDB, int *INFO);
 #endif
 
 class TDInput;
@@ -29,22 +29,31 @@ class FunEstimator {
 
     void run(void) {
       preprocess();
-      (this->*estimate)(); };
+      (this->*estimate)(); 
+    };
 
     void outputPar(const char* ofile) {
       write(ofile); };
 
     void setInputKeys(const std::set<std::string> keys_in ) {
       ikeys  = keys_in;
+      //for ( std::set<std::string>::iterator it = ikeys.begin();
+      //      it != ikeys.end(); it++ )
+      //  cout << " (" << *it << ") ";
+      //cout << std::endl;
       return;
     }
 
     void setOutputKeys(const std::set<std::string> keys_in ) {
       okeys   = keys_in;
+      //for ( std::set<std::string>::iterator it = okeys.begin();
+      //      it != okeys.end(); it++ )
+      //  cout << " (" << *it << ") ";
+      //cout << std::endl;
       return;
     }
 
-    void getReferenceInput(TDInput&);
+    void getReferenceInput(const bool,TDInput&);
     void getReferenceOutput(std::map<std::string,DType>&);
     void getFittingMethod(std::map<std::string,std::string>&);
 
@@ -76,6 +85,7 @@ class FunEstimator {
     void preprocess(void);
 
     // Estimation
+    unsigned ls_degree;
     void est_ls(const unsigned n);
     void est_ls0(void) {est_ls(0); return;};
     void est_ls1(void) {est_ls(1); return;};
