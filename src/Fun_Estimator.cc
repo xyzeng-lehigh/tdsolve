@@ -3,6 +3,7 @@
 #include "TDInput.h"
 #include "HighDim_Alg.h"
 #include <iomanip>
+#include <fstream>
 
 FunEstimator::FunEstimator(char* fitMeth) {
   data.clear();
@@ -39,37 +40,59 @@ FunEstimator::FunEstimator(char* fitMeth) {
 
 void FunEstimator::readData(const char* dataFile) {
 
-  FILE* iFile = fopen(dataFile, "r");
+  std::ifstream fin;
+  std::string file_line_s;
+  fin.open(dataFile);
+  char* word;
+  char  delims[40];
+  std::strcpy(delims, " \t");
 
-  while ( !feof(iFile) ) {
+  while (getline(fin,file_line_s)) {
     std::vector<DType> loc_input;
     std::vector<DType> loc_output;
     loc_input.clear();
     loc_output.clear();
+
+    bool line_start = false;
     for ( std::set<std::string>::iterator it = ikeys.begin();
           it != ikeys.end(); it++ ) {
       DType var_i;
-      fscanf( iFile, "%lf\t", &var_i );
+      if ( !line_start ) {
+        word = strtok((char*)file_line_s.c_str(),delims);
+        line_start = true;
+      }
+      else
+        word = strtok(NULL,delims);
+      var_i = std::atof(word);
       loc_input.push_back( var_i/irefs[*it] );
     }
-    fscanf( iFile, "\n" );
+
+    getline(fin,file_line_s);
+    line_start = false;
     for ( std::set<std::string>::iterator it = okeys.begin();
           it != okeys.end(); it++ ) {
       DType var_o;
-      fscanf( iFile, "%lf\t", &var_o );
-      // Normalize the output 
-      // -- if no reference value provided, orefs[i] = 1.0
+      if ( !line_start ) {
+        word = strtok((char*)file_line_s.c_str(),delims);
+        if ( word[0] == 'U' ) {
+          word = strtok(NULL,delims);
+          break;
+        }
+        else
+          var_o = std::atof(word);
+        line_start = true;
+      }
+      else {
+        word = strtok(NULL,delims);
+        var_o = std::atof(word);
+      }
       loc_output.push_back( var_o/orefs[*it] );
     }
-    data.push_back( VarPair( loc_input, loc_output ) );
-    //cout << " (";
-    //for ( unsigned i = 0; i < loc_input.size()-1; i++ ) cout << loc_input[i] << ", ";
-    //cout << loc_input[loc_input.size()-1] << ") -- (";
-    //for ( unsigned i = 0; i < loc_output.size()-1; i++ ) cout << loc_output[i] << ", ";
-    //cout << loc_output[loc_output.size()-1] << ")" << std::endl;
+    if ( loc_output.size() != 0 )
+      data.push_back( VarPair( loc_input, loc_output ) );
   }
 
-  fclose(iFile);
+  fin.close();
 
   return;
 }

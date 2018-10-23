@@ -214,6 +214,8 @@ void parse_pars(void) {
       cur_var.insert( atof(value) );
   }
 
+  fin.close();
+
   return;
 }
 
@@ -251,6 +253,8 @@ void parse_orefs(void) {
     else
       o_refs[name] = trial_value;
   }
+
+  fin.close();
 
   return;
 }
