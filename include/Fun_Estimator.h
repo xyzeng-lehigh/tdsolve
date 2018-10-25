@@ -86,6 +86,7 @@ class FunEstimator {
 
     // Estimation
     unsigned ls_degree;
+    bool     poly_tensor;
     void est_ls(const unsigned n);
     void est_ls0(void) {est_ls(0); return;};
     void est_ls1(void) {est_ls(1); return;};

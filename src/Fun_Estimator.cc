@@ -15,25 +15,38 @@ FunEstimator::FunEstimator(char* fitMeth) {
   basis.clear();
   fcoef.clear();
 
-  if ( std::strcmp(fitMeth,"LS0")==0 ) {
+  if ( std::strcmp(fitMeth,"LS0D")==0 ||
+       std::strcmp(fitMeth,"LS0T")==0 ) {
+    poly_tensor = (fitMeth[3] == 'T');
     ls_degree = 0;
     estimate = &FunEstimator::est_ls0;}
-  else if ( std::strcmp(fitMeth,"LS1")==0 ) {
+  else if ( std::strcmp(fitMeth,"LS1D")==0 ||
+            std::strcmp(fitMeth,"LS1T")==0 ) {
+    poly_tensor = (fitMeth[3] == 'T');
     ls_degree = 1;
     estimate = &FunEstimator::est_ls1;}
-  else if ( std::strcmp(fitMeth,"LS2")==0 ) {
+  else if ( std::strcmp(fitMeth,"LS2D")==0 || 
+            std::strcmp(fitMeth,"LS2T")==0 ) {
+    poly_tensor = (fitMeth[3] == 'T');
     ls_degree = 2;
     estimate = &FunEstimator::est_ls2;}
-  else if ( std::strcmp(fitMeth,"LS3")==0 ) {
+  else if ( std::strcmp(fitMeth,"LS3D")==0 ||
+            std::strcmp(fitMeth,"LS3T")==0 ) {
+    poly_tensor = (fitMeth[3] == 'T');
     ls_degree = 3;
     estimate = &FunEstimator::est_ls3;}
-  else if ( std::strcmp(fitMeth,"LS4")==0 ) {
+  else if ( std::strcmp(fitMeth,"LS4D")==0 ||
+            std::strcmp(fitMeth,"LS4T")==0 ) {
+    poly_tensor = (fitMeth[3] == 'T');
     ls_degree = 4;
     estimate = &FunEstimator::est_ls4;}
-  else if ( std::strcmp(fitMeth,"LS5")==0 ) {
+  else if ( std::strcmp(fitMeth,"LS5D")==0 ||
+            std::strcmp(fitMeth,"LS5T")==0 ) {
+    poly_tensor = (fitMeth[3] == 'T');
     ls_degree = 5;
     estimate = &FunEstimator::est_ls5;}
   else { // Default
+    poly_tensor = false;
     ls_degree = 2;
     estimate = &FunEstimator::est_ls2;}
 }
@@ -248,11 +261,16 @@ void FunEstimator::setup_ls_basis(const unsigned p) {
     PolyTerm pterm;
     pterm.resize(Nvar,0);
     unsigned loc_n = n;
+    unsigned tot_deg = 0;
     for (unsigned pos = 0; pos < Nvar; pos++) {
       pterm[pos] = loc_n % (p+1);
       loc_n = (loc_n - pterm[pos])/(p+1);
+      tot_deg += pterm[pos];
     }
-    basis.push_back(pterm);
+    if ( !poly_tensor && tot_deg > p )
+      Nfunc -= 1;
+    else
+      basis.push_back(pterm);
   }
   return;
 }

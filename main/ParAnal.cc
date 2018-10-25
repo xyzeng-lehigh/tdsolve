@@ -172,7 +172,8 @@ void usage(void) {
   printf("Options\n");
   printf("  -d    Specify the data set file name\n");
   printf("  -i    Specify the baseline input file name\n");
-  printf("  -m    Fitting method (LS0,LS1,LS2,LS3,LS4,LS5)\n");
+  printf("  -m    Fitting method (LS0D,LS1D,LS2D,LS3D,LS4D,LS5D) - degree of poly\n");
+  printf("                       (LS0T,LS1T,LS2T,LS3T,LS4T,LS5T) - degree in each var\n");
   printf("  -n    Problem name -- decide which solver to use and the outputs\n");
   printf("          PDGF - PDGF/Tterm, Nperc\n");
   printf("  -o    Specify the output file to store fitting information\n");
