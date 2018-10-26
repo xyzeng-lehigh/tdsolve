@@ -14,6 +14,7 @@ FunEstimator::FunEstimator(char* fitMeth) {
   ofuns.clear();
   basis.clear();
   fcoef.clear();
+  residuals.clear();
 
   if ( std::strcmp(fitMeth,"LS0D")==0 ||
        std::strcmp(fitMeth,"LS0T")==0 ) {
@@ -247,6 +248,29 @@ void FunEstimator::est_ls(const unsigned p) {
     fcoef[*it] = coef;
   }
 
+  for ( std::set<std::string>::iterator it = okeys.begin();
+        it != okeys.end(); it++ ) 
+    residuals[*it] = 0.0;
+
+  for ( std::vector<VarPair>::iterator it = data.begin();
+        it != data.end(); it++ ) {
+    std::vector<DType>  pvals = eval_poly_basis(p, it->first);
+    std::vector<DType>& ovals = it->second;
+    int cur_i = 0;
+    for ( std::set<std::string>::iterator oit = okeys.begin();
+          oit != okeys.end(); oit++, cur_i++ ) {
+      std::vector<DType>& coef = fcoef[*oit];
+      DType loc_err = ovals[cur_i];
+      for ( unsigned i = 0; i < Nfunc; i++ )
+        loc_err -= coef[i] * pvals[i];
+      residuals[*oit] += loc_err * loc_err;
+    }
+  }
+
+  for ( std::set<std::string>::iterator it = okeys.begin();
+        it != okeys.end(); it++ )
+    residuals[*it] = std::sqrt( residuals[*it]/(1.0*data.size()) );
+
   erase_array(rhs, okeys.size());
 
   return;
@@ -314,12 +338,12 @@ void FunEstimator::write_header( FILE* fp ) {
   fprintf(fp, "Input variables: ");
   for ( std::set<std::string>::iterator it = ikeys.begin();
         it != ikeys.end(); it++ )
-    fprintf(fp, "%s ", (*it).c_str());
+    fprintf(fp, "%s(%lf) ", (*it).c_str(), irefs[*it]);
   fprintf(fp, "\n");
   fprintf(fp, "Output variables: ");
   for ( std::set<std::string>::iterator it = okeys.begin();
         it != okeys.end(); it++ )
-    fprintf(fp, "%s ", (*it).c_str());
+    fprintf(fp, "%s(%lf) ", (*it).c_str(), orefs[*it]);
   fprintf(fp, "\n\n");
   return;
 }
@@ -363,5 +387,6 @@ void FunEstimator::write_variable( FILE* fp, const std::string key ) {
     default:
       break;
   }
+  fprintf( fp, "Residual: %lf\n\n", residuals[key] );
   return;
 }

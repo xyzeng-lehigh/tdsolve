@@ -76,6 +76,7 @@ class FunEstimator {
     std::map<std::string, DType>   orefs;
     std::map<std::string, FitFuns> ofuns;
     std::map<std::string, std::vector<DType> > fcoef;
+    std::map<std::string, DType>   residuals;
 
     typedef void (FunEstimator::*funRun)(void);
 
