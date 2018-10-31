@@ -19,6 +19,7 @@ char  inputFileBase[40];
 char  inputFilePar[40];
 char  inputFileData[40];
 char  inputFileRefs[40];
+bool  perform_fitting;
 bool  use_output_ref;
 bool  use_input_ref;
 char  outputFile[40];
@@ -93,6 +94,8 @@ int main(int argc, char** argv) {
     }
   }
 
+  if ( !perform_fitting ) return 0;
+
   // Step 3: Parametric study
   FunEstimator* funEst = new FunEstimator(fitMethod);
   funEst->setInputKeys(keys);
@@ -120,11 +123,12 @@ void printlogo(void) {
 
 void parse(int* argc, char** argv) {
   program_name = argv[0];
+  perform_fitting = false;
   use_output_ref = false;
   use_input_ref  = true;
   std::strcpy(fitMethod,"LS2");
   std::strcpy(probName,"PDGF");
-  std::strcpy(outputFile,"regression.dat");
+  std::strcpy(inputFileData,"regression.dat");
   while ((*argc>1)&&(argv[1][0]=='-')) {
     switch (argv[1][1]) {
       case 'd':
@@ -140,6 +144,7 @@ void parse(int* argc, char** argv) {
         strcpy(probName,argv[2]);
         break;
       case 'o':
+        perform_fitting = true;
         strcpy(outputFile,argv[2]);
         break;
       case 'p':
