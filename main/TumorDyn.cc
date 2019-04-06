@@ -58,7 +58,7 @@ int main(int argc, char** argv) {
 
   while ( tdSolve->nextIter() ) {
     switch ( tdInput.tdSetup.tmeth ) {
-      case 0: // First-order
+      case 0: // First-order segregated
         {
           bool vcoup_conv;
           while (1) {
@@ -73,7 +73,7 @@ int main(int argc, char** argv) {
           }
         }
         break;
-      case 1: // Second-order
+      case 1: // Second-order segregated
         if ( tdInput.tdSetup.vCoup == 0 ) { // TVD RK2
           tdSolve->update_sol(0,1);
           tdSolve->update_sol(1,2,1.0,2.0);
