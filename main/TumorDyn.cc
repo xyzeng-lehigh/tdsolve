@@ -183,6 +183,8 @@ int main(int argc, char** argv) {
 
             // Use S_1 as temporary storage for F(S_2)
             tdSolve->compute_rhs(2,1);
+            // Need to study carefully how to handle the weights in averaging!
+            tdSolve->average_sol();
           }
 
         }
