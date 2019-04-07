@@ -11,7 +11,7 @@ NP=1
 case ${OSTYPE//[0-9.]/} in
   darwin)
     cmake -DCMAKE_C_COMPILER=$HOME/bin/gcc -DCMAKE_CXX_COMPILER=$HOME/bin/g++ ../
-    NP=3
+    NP=2
     ;;
   linux-gnu)
     cmake ../

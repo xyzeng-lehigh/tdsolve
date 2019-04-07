@@ -63,7 +63,7 @@ class TDSolveFVM : public TDSolve {
     virtual void update_cells_upw(const int fr, const int to);
     virtual void update_cells_muscl(const int fr, const int to);
     // OPN model
-    virtual void update_cells_opn_add(const int fr, const int to); 
+    virtual void update_cells_opn_add(const int fr, const int to, const bool only_res = false ); 
 
     // Treatment for OPN model
     DType calc_treatment(const DType tsol_loc);

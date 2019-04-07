@@ -16,6 +16,7 @@ class TDSolveFVMMod : public TDSolveFVM {
     bool update_sol(const int fr, const int to, const DType shift_dt_fr=0.0, const DType shift_dt_to=1.0);
     void update_vel(const int fr, const int to, const DType shift_dt=0.0, const bool last_iter=false);
 
+    void compute_rhs(const int fr, const int to, const DType shift_dt_fr=0.0);
 
     TDSolveFVMMod(TDInput* tdInput_ptr);
     ~TDSolveFVMMod(void);
@@ -58,7 +59,7 @@ class TDSolveFVMMod : public TDSolveFVM {
     void compute_flux_muscl_lims(const int nt);
     void compute_flux_r_ppm_lims(const int nt);
     void compute_cells_fluxes_r(const int nt);
-    void update_cells_common(const int fr, const int to);
+    void update_cells_common(const int fr, const int to, bool only_res = false);
     void update_vel_int(const int nt);
 
     // implicit methods
@@ -98,6 +99,11 @@ class TDSolveFVMMod : public TDSolveFVM {
                                 const DType coef_beta, const DType coef_gamma, 
                                 HVEC**& data_source, HVEC**& data_P, HVEC**& flux_P, HVEC**& slope_P, 
                                 const bool treatment=false, const bool treatBC=false);
+
+    // Right hand sides
+    void update_chem_rhs( const int fr, const int to, const DType shift_dtr=0.0 );
+    void update_chem_upw_rhs( const int fr, const int to );
+    void update_chem_muscl_rhs( const int fr, const int to );
 
     // OPN model
     void update_vel_int_opn(const int nt);

@@ -333,9 +333,18 @@ bool TDSolveFVMMod::update_sol(const int fr, const int to,
 
   update_chem_imp( fr, to, shift_dt_fr, shift_dt_to );
   
-  update_vel( to, 0, shift_dt_to, true ); // Update data_v[to] no updating on radius
+  update_vel( to, to, shift_dt_to, true ); // Update data_v[to] no updating on radius
 
   return true;
+}
+
+void TDSolveFVMMod::compute_rhs(const int fr, const int to, const DType shift_dt ) {
+  update_vel( fr, fr, shift_dt ); // No update on radius
+  update_cells_common( fr, to, true );
+  if ( tdSetup->prob_id == 1 ) // OPN
+    update_cells_opn_add( fr, to, true );
+  update_chem_rhs( fr, to, shift_dt );
+  return;
 }
 
 void TDSolveFVMMod::calc_total_diff_model(const int nt) {
@@ -388,7 +397,8 @@ void TDSolveFVMMod::update_vel(const int fr, const int to, const DType shift_dt,
   if ( last_iter ) return;
 
   // Collocation between fr and to should be dtn
-  update_rad( fr, to );
+  if ( fr != to )
+    update_rad( fr, to );
 
   if ( tdSetup->scell >= 0 ) { // Segregated fluxes
     // The fluxes that need V
@@ -2854,7 +2864,8 @@ void TDSolveFVMMod::update_vel_int_opn_orig(const int nt) {
   return;
 }
 
-void TDSolveFVMMod::update_cells_common(const int fr, const int to) {
+void TDSolveFVMMod::update_cells_common(const int fr, const int to, 
+    const bool only_res ) {
   DType lambda  = tdCoef->lambda;
   DType q       = tdCoef->q;
   DType delta_h = tdCoef->delta_h;
@@ -2868,24 +2879,27 @@ void TDSolveFVMMod::update_cells_common(const int fr, const int to) {
 
   DType dror = rprime/data_r[fr];
 
+  DType coef_time  = only_res ? 0.0 : 1.0;
+  DType coef_space = only_res ? 1.0 : dtn;
+
   // Source terms
   for ( int i = 0; i < Nx; i++ ) {
     DType loc_lambda = ( q == 0.0 ) ? lambda : lambda * pow(x_c[i],q);
     DType loc_mu = ( p == 0.0 ) ? mu * ( mu_coef - mu_slp ) : mu * ( mu_coef - mu_slp * pow(x_c[i],p) ); 
-    (*data_g[to])[i] = (*data_g[fr])[i] + dtn * (
+    (*data_g[to])[i] = coef_time * (*data_g[fr])[i] + coef_space * (
         loc_lambda * (*data_g[fr])[i] - loc_mu * (*data_g[fr])[i]
         - dror * (*data_g[fr])[i] );
-    (*data_h[to])[i] = (*data_h[fr])[i] + dtn * (
+    (*data_h[to])[i] = coef_time * (*data_h[fr])[i] + coef_space * (
         loc_mu * (*data_g[fr])[i] - delta_h * (*data_h[fr])[i]
         - dror * (*data_h[fr])[i] );
-    (*data_n[to])[i] = (*data_n[fr])[i] + dtn * (
+    (*data_n[to])[i] = coef_time * (*data_n[fr])[i] + coef_space * (
         - delta_n * (*data_n[fr])[i] - dror * (*data_n[fr])[i] );
   }
 
   for ( int i = 0; i < Nx; i++ ) {
-    (*data_g[to])[i] -= ( (*flux_g[0])[i+1] - (*flux_g[0])[i] ) * (dtn/dx);
-    (*data_h[to])[i] -= ( (*flux_h[0])[i+1] - (*flux_h[0])[i] ) * (dtn/dx);
-    (*data_n[to])[i] -= ( (*flux_n[0])[i+1] - (*flux_n[0])[i] ) * (dtn/dx);
+    (*data_g[to])[i] -= ( (*flux_g[0])[i+1] - (*flux_g[0])[i] ) * (coef_space/dx);
+    (*data_h[to])[i] -= ( (*flux_h[0])[i+1] - (*flux_h[0])[i] ) * (coef_space/dx);
+    (*data_n[to])[i] -= ( (*flux_n[0])[i+1] - (*flux_n[0])[i] ) * (coef_space/dx);
   }
 
   return;
@@ -3068,5 +3082,65 @@ void TDSolveFVMMod::LimFun_PPM_INT(DType alpha1, DType alpha2, DType& lim_l, DTy
     lim_l = 1.0; lim_r = 1.0;
   }
   return;
+}
+
+void TDSolveFVMMod::update_chem_rhs( const int fr, const int to, const DType shift_dt ) {
+  switch ( tdSetup->prob_id ) {
+    case 0: // PDGF
+      switch ( tdSetup->schem ) {
+        case 0:
+          update_chem_upw_rhs( fr, to );
+          break;
+        case 1:
+        case 2:
+          update_chem_muscl_rhs( fr, to );
+          break;
+      }
+      break;
+    case 1: // OPN
+      switch ( tdSetup->schem ) {
+        case 0:
+          update_chem_upw_rhs( fr, to );
+          //update_chem_opn_upw_rhs( tsol+shift_dt_fr*dtn, fr, to, tdCoef->D_1, tdCoef->alpha_1, 
+          //    tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1, tdCoef->treatP1, tdCoef->treatP1BC );
+          //update_chem_opn_upw_rhs( tsol+shift_dt_fr*dtn, fr, to, tdCoef->D_2, 
+          //    tdCoef->alpha_2, tdCoef->beta_2, tdCoef->gamma_2, data_g, data_p2 );
+          break;
+        case 1:
+        case 2:
+          update_chem_muscl_rhs( fr, to );
+          //update_chem_opn_muscl_rhs( tsol+shift_dt_fr*dtn, fr, to, tdCoef->D_1, tdCoef->alpha_1, 
+          //    tdCoef->beta_1, tdCoef->gamma_1, data_n, data_p1, tdCoef->treatP1, tdCoef->treatP1BC );
+          //update_chem_opn_muscl_rhs( tsol+shift_dt_fr*dtn, fr, to, tdCoef->D_2, 
+          //    tdCoef->alpha_2, tdCoef->beta_2, tdCoef->gamma_2, data_g, data_p2 );
+          break;
+      }
+  }
+  return;
+}
+
+void TDSolveFVMMod::update_chem_upw_rhs( const int fr, const int to ) {
+  DType alpha_a = tdCoef->alpha_a;
+  DType D       = tdCoef->D;
+  DType beta_a  = tdCoef->beta_a;
+  DType gamma_a = tdCoef->gamma_a;
+  DType theta   = tdCoef->theta;
+
+  DType dror = (*data_v[fr])[Nx]/data_r[fr];
+
+  for ( int i = 0; i < Na; i++ ) {
+    DType loc_r_fr = x_a_c[i] * data_r[fr];
+    DType loc_r_to = x_a_c[i] * data_r[to];
+    //comp = loc_r_fr * loc_r_fr * (*data_a[fr])[i];
+    //if ( i < Nx ) { // G is active 
+    //  comp += dtn * alpha_a * (*data_g[to])[i] / 
+    //    (beta_a/theta+(*data_g[to])[i]/loc_r_to/loc_r_to);
+    //}
+    //comp /= loc_r_to*loc_r_to;
+    //rhs_a->set(i,comp);
+  }
+}
+
+void TDSolveFVMMod::update_chem_muscl_rhs( const int fr, const int to ) {
 }
 

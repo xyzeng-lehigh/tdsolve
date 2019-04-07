@@ -662,6 +662,9 @@ void TDInput::parse(void) {
   for ( int i = 0; i < tdMesh.Na; i++ )
     tdMesh.x_a_c[i] = tdMesh.x_l + (i+0.5) * tdMesh.dx;
 
+  if ( tdSetup.tmeth == 2 ) // Collocation RK
+    tdSetup.vCoup = true;
+
   fin.close();
   return;
 }

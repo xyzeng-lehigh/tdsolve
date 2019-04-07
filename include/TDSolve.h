@@ -41,6 +41,8 @@ class TDSolve {
                      const DType coef_2, const int nt_2, const int to, const DType shift_dt_to=1.0);
     virtual void copy_data(const int fr, const int to) = 0;
 
+    virtual void compute_rhs(const int fr, const int to) {};
+
     bool nextIter(void) {
       iter++;
       return !reach_term_now;

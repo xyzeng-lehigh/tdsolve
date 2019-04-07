@@ -80,6 +80,37 @@ int main(int argc, char** argv) {
           tdSolve->average_sol(0.5,0,0.5,2,1);
         }
         else { // DIRK2
+          // Butcher table: (alpha = 1-sqrt(2)/2)
+          //
+          // alpha   |   alpha      0
+          // 1       |   1-alpha    alpha
+          // ----------------------------
+          //         |   1-alpha    alpha
+          //
+          //=============================== Standard Formulation =============
+          //
+          // Stage 1:
+          //   S_1 ~ t_n + alpha * dtn
+          //   S_1 = S_n + alpha * dtn * F(S_1)
+          // Stage 2:
+          //   S_2 ~ t_n + dtn
+          //   S_2 = S_n + (1-alpha) * dtn * F(S_1) + alpha * dtn * F(S_1)
+          // Finally:
+          //   S_{n+1} = S_2
+          //
+          //=============================== Modified Formulation =============
+          //
+          // Stage 1:
+          //   S_1' = S_n + alpha * dtn * F(S_1') = S_1
+          // Stage 2:
+          //   omega = (1-alpha)/alpha
+          //   S_2' = (1-omega) * S_n + omega * S_1' ~ t_n + (1-alpha) * dtn
+          //   S_2' = S_n + (1-alpha) * dtn * F(S_1')
+          //   S_3' ~ t_n + (1-alpha) * dtn + alpha * dtn
+          //   S_3' = S_2' + alpha * dtn * F(S_3')
+          // Finally:
+          //   S_{n+1} = S_3'
+          
           bool vcoup_conv;
           while (1) {
             DType alpha = 1.0-0.5*std::sqrt(2.0);
@@ -104,6 +135,56 @@ int main(int argc, char** argv) {
               break;
             }
           }
+        }
+        break;
+      case 2: // Second-order Radau collocation RK
+        {
+          // Butcher table
+          //
+          // 1/3    |    5/12   -1/12
+          // 1      |    3/4    1/4
+          // ------------------------
+          //        |    3/4    1/4
+          //
+          //=============================== Standard Formulation =============
+          //
+          //   S_1 ~ t_n + 1/3 * dtn
+          //   S_2 ~ t_n + dtn
+          //
+          //   S_1 = S_n + 5/12 * dtn * F(S_1) - 1/12 * dtn * F(S_2)
+          //   S_2 = S_n + 3/4  * dtn * F(S_1) + 1/4  * dtn * F(S_2)
+          // 
+          // Finally
+          //   S_{n+1} = S_2
+          //
+          //=============================== Modified Formulation =============
+          //
+          //   Predictor S_2^(0) ( FE, BE, etc )
+          //
+          // Given S_2^(k-1), k >= 1:
+          //   Solve for S_1^(k):
+          //     S_1^(k) = S_n + 5/12 * dtn * F(S_1^(k)) 
+          //                   - 1/12 * dtn * F(S_2^(k-1))
+          //   Solve for S_2^(k):
+          //     S_2^(k) = S_n + 3/4 * dtn * F(S_1^(k))
+          //                   + 1/4 * dtn * F(S_2^(k))
+          //
+          //   Until converge
+
+          bool vcoup_conv;
+          while (1) {
+            // Use BE as predictor for S_2
+            vcoup_conv = tdSolve->update_sol(0,2);
+            if ( !vcoup_conv ) {
+              tdSolve->reduce_dtn( 0.5 );
+              tdSolve->diagnostic(0);
+              continue;
+            }
+
+            // Use S_1 as temporary storage for F(S_2)
+            tdSolve->compute_rhs(2,1);
+          }
+
         }
         break;
       default: // First-order
