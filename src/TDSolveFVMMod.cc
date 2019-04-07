@@ -8,24 +8,6 @@ using namespace std;
 TDSolveFVMMod::TDSolveFVMMod(TDInput* tdInput_ptr) :
   TDSolveFVM(tdInput_ptr) {
 
-  //alloc_array_full( lim_g, Nx, 2 );
-  //alloc_array_full( lim_h, Nx, 2 );
-  //alloc_array_full( lim_n, Nx, 2 ); // M
-  //alloc_array_full( lim_s, Nx, 2 ); // Sync
-  //alloc_array_full( lim_muscl, Nx, 1 );
-
-  //alloc_array_full( flux_g_v, Nx+1, 1 );
-  //alloc_array_full( flux_g_r, Nx+1, 1 );
-  //alloc_array_full( flux_h_v, Nx+1, 1 );
-  //alloc_array_full( flux_h_r, Nx+1, 1 );
-  //alloc_array_full( flux_n_v, Nx+1, 1 ); // or M
-  //alloc_array_full( flux_n_r, Nx+1, 1 ); // or M
-  //alloc_array_full( flux_n_u, Nx+1, 1 ); // or M
-
-  //alloc_array_full( data_u, Nx+1, 1 );
-  //if ( tdSetup->vCoup )
-  //  alloc_array_full( vel_tmp, Nx+1, 1 );
-
   lim_g     = NULL;
   lim_h     = NULL;
   lim_n     = NULL;
@@ -355,9 +337,10 @@ void TDSolveFVMMod::calc_total_diff_model(const int nt) {
   for ( int i = 0; i < Nx; i++ )
     (*data_a[nt])[i] = 1.0 - (*data_g[nt])[i] - (*data_h[nt])[i] - (*data_n[nt])[i];
   
-  upscale_var( *data_g[nt], *data_g[nt], x_c, Nx, data_r[nt]);
-  upscale_var( *data_h[nt], *data_h[nt], x_c, Nx, data_r[nt]);
-  upscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt]);
+  upscale_var( *data_g[nt], *data_g[nt], x_c, Nx, data_r[nt] );
+  upscale_var( *data_h[nt], *data_h[nt], x_c, Nx, data_r[nt] );
+  upscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt] );
+  upscale_var( *data_a[nt], *data_a[nt], x_a_c, Na, data_r[nt] );
   return;
 }
 
@@ -457,8 +440,12 @@ void TDSolveFVMMod::compute_vel_u_chem(const int nt) {
   DType alpha = tdCoef->alpha;
   DType aor  = alpha/data_r[nt];
 
+  downscale_var( *data_a[nt], *data_a[nt], x_a_c, Na, data_r[nt] );
+
   for ( int i = 1; i <= Nx; i++ )
     (*data_u[0])[i] = aor * (((*data_a[nt])[i]-(*data_a[nt])[i-1]) / dx);
+
+  upscale_var( *data_a[nt], *data_a[nt], x_a_c, Na, data_r[nt] );
 
   return;
 }
@@ -2641,10 +2628,14 @@ void TDSolveFVMMod::update_chem_muscl_be(const int fr, const int to) {
   DType r2fr = data_r[fr]*data_r[fr];
   DType r2to = data_r[to]*data_r[to];
 
+  downscale_var( *data_a[to], *data_a[to], x_a_c, Na, data_r[to] );
   compute_flux_chem_muscl_lims( to, data_a, slope_a, Na, x_a_c, x_a_f );
+  upscale_var( *data_a[to], *data_a[to], x_a_c, Na, data_r[to] );
 
   VComp comp(1,0.0);
   Entry elem(1,0.0);
+
+  downscale_var( *data_a[fr], *data_a[fr], x_a_c, Na, data_r[fr] );
 
   // RHS
   for ( int i = 0; i < Na; i++ ) {
@@ -2673,6 +2664,8 @@ void TDSolveFVMMod::update_chem_muscl_be(const int fr, const int to) {
     sol_a->set(i,comp);
   }
 
+  upscale_var( *data_a[fr], *data_a[fr], x_a_c, Na, data_r[fr] );
+
   linSolve_a->solve();
 
   // Fetch solution
@@ -2682,6 +2675,8 @@ void TDSolveFVMMod::update_chem_muscl_be(const int fr, const int to) {
     vsol = comp.getVal();
     (*data_a[to])[i] = vsol[0];
   }
+
+  upscale_var( *data_a[to], *data_a[to], x_a_c, Na, data_r[to] );
 
   return;
 }
@@ -2708,6 +2703,9 @@ void TDSolveFVMMod::update_chem_opn_muscl_be(
   DType bc_treat = 0.0;
   if ( treatment_bc ) // Forward Euler Euler
     bc_treat = tdCoef->treatP1_bc * calc_treatment(tsol_loc);
+
+  downscale_var( *data_P[fr], *data_P[fr], x_c, Nx, data_r[fr] );
+  downscale_var( *data_P[to], *data_P[to], x_c, Nx, data_r[to] );
 
   compute_flux_chem_muscl_lims( to, data_P, slope_P, Nx, x_c, x_f, 1, bc_treat );
 
@@ -2755,6 +2753,9 @@ void TDSolveFVMMod::update_chem_opn_muscl_be(
     vsol = comp.getVal();
     (*data_P[to])[i] = vsol[0];
   }
+  
+  upscale_var( *data_P[fr], *data_P[fr], x_c, Nx, data_r[fr] );
+  upscale_var( *data_P[to], *data_P[to], x_c, Nx, data_r[to] );
 
   return;
 }
@@ -2770,6 +2771,8 @@ void TDSolveFVMMod::update_vel_int_opn(const int nt) {
   DType omega   = tdCoef->omega;
 
   (*data_v[nt])[0] = 0.0; // b.c. for velocity at x=0
+
+  downscale_var( *data_p2[nt], *data_p2[nt], x_c, Nx, data_r[nt] );
 
   // First do the integration of
   // x^2R[lambda(1+b'P2/(b+P2))*G-delta_h*H-delta_n*N]
@@ -2788,6 +2791,8 @@ void TDSolveFVMMod::update_vel_int_opn(const int nt) {
         delta_h * (*data_h[nt])[i] - delta_n * (*data_n[nt])[i] -
         omega * (*data_g[nt])[i] * (*data_n[nt])[i] / loc_r / loc_r ) / data_r[nt]; // G, H, and M have not been upscaled
   }
+
+  upscale_var( *data_p2[nt], *data_p2[nt], x_c, Nx, data_r[nt] );
 
   // Remove the advection part due to chemical gradient
   for ( int i = 1; i < Nx+1; i++ )
@@ -2835,6 +2840,8 @@ void TDSolveFVMMod::update_vel_int_opn_orig(const int nt) {
   DType omega   = tdCoef->omega;
 
   (*data_v[nt])[0] = 0.0; // b.c. for velocity at x=0
+
+  downscale_var( *data_p2[nt], *data_p2[nt], x_c, Nx, data_r[nt] );
   
   // First do the integration of
   // x^2R[lambda(1+b'P2/(b+P2))*G-delta_h*H-delta_n*N]
@@ -2851,6 +2858,8 @@ void TDSolveFVMMod::update_vel_int_opn_orig(const int nt) {
         delta_h * (*data_h[nt])[i] - delta_n * (*data_n[nt])[i] - 
         omega * (*data_g[nt])[i] * (*data_n[nt])[i] / loc_r / loc_r ) / data_r[nt];
   }
+
+  upscale_var( *data_p2[nt], *data_p2[nt], x_c, Nx, data_r[nt] );
 
   downscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt] );
 

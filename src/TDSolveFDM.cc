@@ -6,16 +6,6 @@ using namespace std;
 
 TDSolveFDM::TDSolveFDM(TDInput* tdInput_ptr) : 
   TDSolve(tdInput_ptr) {
-
-  //alloc_array_full( data_g,  Nx+1, 3 );
-  //alloc_array_full( data_h,  Nx+1, 3 );
-  //alloc_array_full( data_n,  Nx+1, 3 );
-  //alloc_array_full( data_v,  Nx+1, 3 );
-  //alloc_array_full( data_dv, Nx+1, 3 );
-  //alloc_array_full( data_na, Nx+1, 3 );
-  //
-  //alloc_array_full( data_a,  Na+1, 3 );
-
   if ( !(tdSetup->silence) ) {
     FILE* ot_file = fopen( tdInput->outputFile, "w" );
     fprintf( ot_file, "Time, time step size, num. point / x, G, H, N, A, V\n");

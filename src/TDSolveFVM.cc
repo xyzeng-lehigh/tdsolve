@@ -9,45 +9,6 @@ using namespace std;
 TDSolveFVM::TDSolveFVM(TDInput* tdInput_ptr) : 
   TDSolve(tdInput_ptr) {
 
-  //alloc_array_full( data_g, Nx, 3 );
-  //alloc_array_full( data_h, Nx, 3 );
-  //alloc_array_full( data_n, Nx, 3 ); // M
-  //alloc_array_full( data_v, Nx+1, 3 );
-  //
-  //alloc_array_full( data_a, Na, 3 ); 
-
-  //alloc_array_full( flux_g, Nx+1, 1 );
-  //alloc_array_full( flux_h, Nx+1, 1 );
-  //alloc_array_full( flux_n, Nx+1, 1 );
-  //alloc_array_full( flux_a, Na+1, 1 );
-
-  //alloc_array_full( slope_g, Nx, 1 );
-  //alloc_array_full( slope_h, Nx, 1 );
-  //alloc_array_full( slope_n, Nx, 1 );
-  //alloc_array_full( slope_a, Na, 1 );
-
-  //// OPN model
-  //if ( tdSetup->prob_id == 1 ) {
-  //  alloc_array_full (data_p1, Nx, 3);
-  //  alloc_array_full (data_p2, Nx, 3);
-
-  //  alloc_array_full (flux_p1, Nx+1, 1);
-  //  alloc_array_full (flux_p2, Nx+1, 1);
-
-  //  alloc_array_full(slope_p1, Nx, 1);
-  //  alloc_array_full(slope_p2, Nx, 1);
-  //}
-  //else {
-  //  data_p1 = NULL;
-  //  data_p2 = NULL;
-  //  flux_p1 = NULL;
-  //  flux_p2 = NULL;
-  //  slope_p1 = NULL;
-  //  slope_p2 = NULL;
-  //}
-
-  //alloc_array_full( N_dir, Nx+1 );
-
   slope_g = NULL;
   slope_h = NULL;
   slope_n = NULL;
@@ -161,9 +122,10 @@ void TDSolveFVM::set_ic(void) {
       break;
   }
 
-  upscale_var( *data_g[0], *data_g[0], x_c, Nx, data_r[0]);
-  upscale_var( *data_h[0], *data_h[0], x_c, Nx, data_r[0]);
-  upscale_var( *data_n[0], *data_n[0], x_c, Nx, data_r[0]);
+  upscale_var( *data_g[0], *data_g[0], x_c, Nx, data_r[0] );
+  upscale_var( *data_h[0], *data_h[0], x_c, Nx, data_r[0] );
+  upscale_var( *data_n[0], *data_n[0], x_c, Nx, data_r[0] );
+  upscale_var( *data_a[0], *data_a[0], x_a_c, Na, data_r[0] );
 
   if ( tdSetup->prob_id == 1 ) {
     (*data_p1[0]) = 0.0;
@@ -211,6 +173,8 @@ void TDSolveFVM::calc_dt(const int nt) {
   if ( reach_term_next )
     reach_term_now = true;
 
+  downscale_var( *data_a[nt], *data_a[nt], x_a_c, Na, data_r[nt] );
+
   DType dtn_trial = DTYPE_MAX;
   DType alpha = tdCoef->alpha;
   for ( int i = 0; i < Nx+1; i++ ) {
@@ -223,6 +187,8 @@ void TDSolveFVM::calc_dt(const int nt) {
     v_max = max( v_max, fabs(loc_vel-m_vel+a_vel) );
     dtn_trial = min( dtn_trial, tdSetup->cfl * dx / v_max );
   }
+
+  upscale_var( *data_a[nt], *data_a[nt], x_a_c, Na, data_r[nt] );
 
   if ( iter == 0 )
     dtn = min( dtn_trial, dtn );
@@ -279,6 +245,8 @@ void TDSolveFVM::output(const int nt) {
 void TDSolveFVM::output_pdgf(const int nt) {
   if ( tdSetup->silence ) return;
 
+  downscale_var( *data_a[nt], *data_a[nt], x_a_c, Na, data_r[nt] );
+
   FILE* ot_file = fopen( tdInput->radiusFile, "a" );
   if ( tdSetup->frame == 2 && tdSetup->prob_id < 0 )
     this->print_custom_vel_u( ot_file, nt );
@@ -311,6 +279,7 @@ void TDSolveFVM::output_pdgf(const int nt) {
   upscale_var( *data_g[nt], *data_g[nt], x_c, Nx, data_r[nt] );
   upscale_var( *data_h[nt], *data_h[nt], x_c, Nx, data_r[nt] );
   upscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt] );
+  upscale_var( *data_a[nt], *data_a[nt], x_a_c, Na, data_r[nt] );
 
   for ( int i = 0; i < Nx+1; i++ )
     fprintf( ot_file, "%10.20f\t%10.20f\n", x_f[i] * data_r[nt], (*data_v[nt])[i] );
@@ -321,6 +290,8 @@ void TDSolveFVM::output_pdgf(const int nt) {
 
 void TDSolveFVM::output_opn(const int nt) {
   if ( tdSetup->silence ) return;
+
+  downscale_var( *data_a[nt], *data_a[nt], x_a_c, Na, data_r[nt] );
 
   FILE* ot_file = fopen( tdInput->radiusFile, "a" );
   if ( tdSetup->frame == 2 && tdSetup->prob_id < 0 )
@@ -345,6 +316,8 @@ void TDSolveFVM::output_opn(const int nt) {
   downscale_var( *data_g[nt], *data_g[nt], x_c, Nx, data_r[nt] );
   downscale_var( *data_h[nt], *data_h[nt], x_c, Nx, data_r[nt] );
   downscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt] );
+  downscale_var( *data_p1[nt], *data_p1[nt], x_c, Nx, data_r[nt] );
+  downscale_var( *data_p2[nt], *data_p2[nt], x_c, Nx, data_r[nt] );
 
   for ( int i = 0; i < Nx; i++ )
     fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\t%10.20f\t%10.20f\t%10.20f\t%10.20f\n",
@@ -354,6 +327,9 @@ void TDSolveFVM::output_opn(const int nt) {
   upscale_var( *data_g[nt], *data_g[nt], x_c, Nx, data_r[nt] );
   upscale_var( *data_h[nt], *data_h[nt], x_c, Nx, data_r[nt] );
   upscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt] );
+  upscale_var( *data_a[nt], *data_a[nt], x_a_c, Na, data_r[nt] );
+  upscale_var( *data_p1[nt], *data_p1[nt], x_c, Nx, data_r[nt] );
+  upscale_var( *data_p2[nt], *data_p2[nt], x_c, Nx, data_r[nt] );
 
   for ( int i = 0; i < Nx+1; i++ )
     fprintf( ot_file, "%10.20f\t%10.20f\n", x_f[i] * data_r[nt], (*data_v[nt])[i] );
@@ -476,6 +452,7 @@ void TDSolveFVM::update_vel_prbid1(const int nt) {
   }
 
   downscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt] );
+  downscale_var( *data_a[nt], *data_a[nt], x_a_c, Na, data_r[nt] );
 
   // Next divide by x^2 and remove the contribution from N and dA
   for ( int i = 1; i < Nx; i++ ) {
@@ -489,7 +466,10 @@ void TDSolveFVM::update_vel_prbid1(const int nt) {
       0.5 * ( (*data_n[nt])[Nx-1] + tdCoef->n_bc ) * 
       ( ( (*data_a[nt])[Nx]-(*data_a[nt])[Nx-1]) / dx );
   } 
+
   upscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt] ); 
+  upscale_var( *data_a[nt], *data_a[nt], x_a_c, Na, data_r[nt] );
+
   return;
 }
 
@@ -510,6 +490,7 @@ void TDSolveFVM::update_vel_int(const int nt) {
   }
 
   downscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt] );
+  downscale_var( *data_a[nt], *data_a[nt], x_a_c, Na, data_r[nt] );
 
   // Next divide by x^2 and remove the contribution from N and dA
   for ( int i = 1; i < Nx; i++ ) {
@@ -525,6 +506,7 @@ void TDSolveFVM::update_vel_int(const int nt) {
   }
 
   upscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt] );
+  upscale_var( *data_a[nt], *data_a[nt], x_a_c, Na, data_r[nt] );
 
   return;
 }
@@ -544,6 +526,8 @@ void TDSolveFVM::update_vel_int_mod(const int nt) {
     (*data_v[nt])[i+1] = (*data_v[nt])[i] + dx * ( loc_lambda * (*data_g[nt])[i] - delta_h * (*data_h[nt])[i] ) / data_r[nt];
   }
 
+  downscale_var( *data_a[nt], *data_a[nt], x_a_c, Na, data_r[nt] );
+
   // Next divide by x^2 and remove the contribution from N and dA
   for ( int i = 1; i < Nx; i++ ) {
     (*data_v[nt])[i] = (*data_v[nt])[i] - (alpha/data_r[nt]/data_r[nt]/data_r[nt]) * 
@@ -559,6 +543,8 @@ void TDSolveFVM::update_vel_int_mod(const int nt) {
       ( ( (*data_a[nt])[Nx]-(*data_a[nt])[Nx-1]) / dx );
     (*data_v[nt])[Nx] = (*data_v[nt])[Nx]/x_f[Nx]/x_f[Nx];
   }
+
+  upscale_var( *data_a[nt], *data_a[nt], x_a_c, Na, data_r[nt] );
 
   return;
 }
@@ -679,6 +665,8 @@ void TDSolveFVM::update_cells_upw(const int fr, const int to) {
     (*data_n[to])[i] = (*data_n[fr])[i] + dtn * (
         - delta_n * (*data_n[fr])[i] - dror * (*data_n[fr])[i] );
   }
+  
+  downscale_var( *data_a[fr], *data_a[fr], x_a_c, Na, data_r[fr] );
 
   // Fluxes
   { // Left boundary
@@ -704,6 +692,8 @@ void TDSolveFVM::update_cells_upw(const int fr, const int to) {
         (loc_vel>=0.0) ? (*data_n[fr])[Nx-1] : 
         tdCoef->n_bc * (x_f[Nx]+0.5*dx) * (x_f[Nx]+0.5*dx) * data_r[fr] * data_r[fr] ) ;
   }
+
+  upscale_var( *data_a[fr], *data_a[fr], x_a_c, Na, data_r[fr] );
 
   for ( int i = 0; i < Nx; i++ ) {
     (*data_g[to])[i] -= ( (*flux_g[0])[i+1] - (*flux_g[0])[i] ) * (dtn/dx);
@@ -743,6 +733,8 @@ void TDSolveFVM::update_cells_upw_test(const int fr, const int to) {
         - dror * (*data_n[fr])[i] );
   }
 
+  downscale_var( *data_a[fr], *data_a[fr], x_a_c, Na, data_r[fr] );
+
   // Fluxes
   { // Left boundary
     (*flux_g[0])[0] = 0.0;
@@ -776,6 +768,8 @@ void TDSolveFVM::update_cells_upw_test(const int fr, const int to) {
         tdCoef->n_bc * (x_f[Nx]+0.5*dx) * (x_f[Nx]+0.5*dx) * data_r[fr] * data_r[fr] );
     N_dir[Nx] = (loc_vel>=0.0) ? Nx-1 : Nx;
   }
+
+  upscale_var( *data_a[fr], *data_a[fr], x_a_c, Na, data_r[fr] );
 
   for ( int i = 0; i < Nx; i++ ) {
     (*data_g[to])[i] -= ( (*flux_g[0])[i+1] - (*flux_g[0])[i] ) * (dtn/dx);
@@ -1001,6 +995,8 @@ void TDSolveFVM::update_cells_upw_be(const int fr, const int to) {
   mat->reset( 0.0 );
   sol->reset( 0.0 );
 
+  downscale_var( *data_a[fr], *data_a[fr], x_a_c, Na, data_r[fr] );
+
   // RHS
   for ( int i = 0; i < Nx-1; i++ ) {
     comp = (*data_n[fr])[i];
@@ -1095,6 +1091,8 @@ void TDSolveFVM::update_cells_upw_be(const int fr, const int to) {
     mat->set(Nx-1,Nx-1,elem);
   }
 
+  upscale_var( *data_a[fr], *data_a[fr], x_a_c, Na, data_r[fr] );
+
   // Initialize solution
   for ( int i = 0; i < Nx; i++ ) {
     comp = (*data_n[fr])[i];
@@ -1161,6 +1159,8 @@ void TDSolveFVM::update_cells_muscl(const int fr, const int to) {
     (*slope_n[0])[Nx-1] = 0.0; 
   }
 
+  downscale_var( *data_a[fr], *data_a[fr], x_a_c, Na, data_r[fr] );
+
   // Fluxes
   { // Left boundary
     (*flux_g[0])[0] = 0.0;
@@ -1188,6 +1188,8 @@ void TDSolveFVM::update_cells_muscl(const int fr, const int to) {
         (loc_vel>=0.0) ? (*data_n[fr])[Nx-1]+0.5*dx*(*slope_n[0])[Nx-1] : 
         tdCoef->n_bc * x_f[Nx] * x_f[Nx] * data_r[fr] * data_r[fr] ) ;
   }
+
+  upscale_var( *data_a[fr], *data_a[fr], x_a_c, Na, data_r[fr] );
 
   for ( int i = 0; i < Nx; i++ ) {
     (*data_g[to])[i] -= ( (*flux_g[0])[i+1] - (*flux_g[0])[i] ) * (dtn/dx);
@@ -1220,6 +1222,9 @@ void TDSolveFVM::update_cells_opn_add(const int fr, const int to,
   DType p       = tdCoef->p;
 
   DType coef_space = only_res ? 1.0 : dtn;
+
+  downscale_var( *data_p1[fr], *data_p1[fr], x_c, Nx, data_r[fr] );
+  downscale_var( *data_p2[fr], *data_p2[fr], x_c, Nx, data_r[fr] );
 
   // Additional source terms
   for ( int i = 0; i < Nx; i++ ) {
@@ -1255,6 +1260,9 @@ void TDSolveFVM::update_cells_opn_add(const int fr, const int to,
       (*data_g[to])[i] += coef_space * loc_lambda * ( 1.0 + b_prime * (*data_p2[fr])[i] / ( b + (*data_p2[fr])[i] ) ) * 
         (*data_g[fr])[i] * ( - logistic_term ); //( - (*data_g[fr])[i] / loc_r / loc_r );
     }
+
+  upscale_var( *data_p1[fr], *data_p1[fr], x_c, Nx, data_r[fr] );
+  upscale_var( *data_p2[fr], *data_p2[fr], x_c, Nx, data_r[fr] );
 
   return;
 }
@@ -1293,6 +1301,8 @@ void TDSolveFVM::update_chem_upw_be(const int fr, const int to) {
   DType theta   = tdCoef->theta;
 
   DType dror = (*data_v[fr])[Nx]/data_r[fr];
+
+  downscale_var( *data_a[fr], *data_a[fr], x_a_c, Na, data_r[fr] );
 
   // RHS
   VComp comp(1,0.0);
@@ -1410,6 +1420,9 @@ void TDSolveFVM::update_chem_upw_be(const int fr, const int to) {
     (*data_a[to])[i] = vsol[0];
   }
 
+  upscale_var( *data_a[fr], *data_a[fr], x_a_c, Na, data_r[fr] );
+  upscale_var( *data_a[to], *data_a[to], x_a_c, Na, data_r[to] );
+
   return;
 }
 
@@ -1426,6 +1439,8 @@ void TDSolveFVM::update_chem_muscl_imex(const int fr, const int to) {
   DType theta   = tdCoef->theta;
 
   DType dror = (*data_v[fr])[Nx]/data_r[fr];
+
+  downscale_var( *data_a[fr], *data_a[fr], x_a_c, Na, data_r[fr] );
 
   // Slopes
   (*slope_a[0])[0] = 0.0;
@@ -1530,6 +1545,9 @@ void TDSolveFVM::update_chem_muscl_imex(const int fr, const int to) {
     (*data_a[to])[i] = vsol[0];
   }
 
+  upscale_var( *data_a[fr], *data_a[fr], x_a_c, Na, data_r[fr] );
+  upscale_var( *data_a[to], *data_a[to], x_a_c, Na, data_r[to] );
+
   return;
 }
 
@@ -1552,6 +1570,8 @@ void TDSolveFVM::update_chem_opn_upw_be(
   DType bc_treat = 0.0;
   if ( treatment_bc ) // Backward Euler
     bc_treat = tdCoef->treatP1_bc * calc_treatment(tsol_loc+dtn);
+
+  downscale_var( *data_P[fr], *data_P[fr], x_c, Nx, data_r[fr] );
 
   // RHS
   VComp comp(1,0.0);
@@ -1684,6 +1704,8 @@ void TDSolveFVM::update_chem_opn_upw_be(
     sol_p->set(i,comp);
   }
 
+  upscale_var( *data_P[fr], *data_P[fr], x_c, Nx, data_r[fr] );
+
   linSolve_p->solve();
 
   // Fetch solution
@@ -1693,6 +1715,8 @@ void TDSolveFVM::update_chem_opn_upw_be(
     vsol = comp.getVal();
     (*data_P[to])[i] = vsol[0];
   }
+
+  upscale_var( *data_P[to], *data_P[to], x_c, Nx, data_r[to] );
 
   return;
 }
@@ -1717,6 +1741,8 @@ void TDSolveFVM::update_chem_opn_muscl_imex(
   DType bc_treat = 0.0;
   if ( treatment_bc ) // Forward Euler Euler
     bc_treat = tdCoef->treatP1_bc * calc_treatment(tsol_loc);
+
+  downscale_var( *data_P[fr], *data_P[fr], x_c, Nx, data_r[fr] );
 
   // Slopes
   (*slope_P[0])[0] = 0.0;
@@ -1833,6 +1859,8 @@ void TDSolveFVM::update_chem_opn_muscl_imex(
     sol_p->set(i,comp);
   }
 
+  upscale_var( *data_P[fr], *data_P[fr], x_c, Nx, data_r[fr] );
+
   linSolve_p->solve();
 
   // Fetch solution
@@ -1842,6 +1870,8 @@ void TDSolveFVM::update_chem_opn_muscl_imex(
     vsol = comp.getVal();
     (*data_P[to])[i] = vsol[0];
   }
+
+  upscale_var( *data_P[to], *data_P[to], x_c, Nx, data_r[to] );
 
   return;
 }

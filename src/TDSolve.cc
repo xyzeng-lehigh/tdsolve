@@ -168,6 +168,9 @@ void TDSolve::average_sol(const DType coef_1, const int fr_1,
     downscale_var( *data_g[fr_2], *data_g[fr_2], x_c, Nx, data_r[fr_2] );
     downscale_var( *data_h[fr_2], *data_h[fr_2], x_c, Nx, data_r[fr_2] );
     downscale_var( *data_n[fr_2], *data_n[fr_2], x_c, Nx, data_r[fr_2] );
+
+    downscale_var( *data_a[fr_1], *data_a[fr_1], x_a_c, Na, data_r[fr_1] );
+    downscale_var( *data_a[fr_2], *data_a[fr_2], x_a_c, Na, data_r[fr_2] );
   }
 
   *data_g[to] = coef_1 * (*data_g[fr_1]) + coef_2 * (*data_g[fr_2]);
@@ -178,8 +181,20 @@ void TDSolve::average_sol(const DType coef_1, const int fr_1,
   // OPN model -- only implemented for FVM or FVM_Mod
   if ( tdSetup->prob_id == 1 && 
        ( tdSetup->frame == 1 || tdSetup->frame == 2 ) ) {
+    downscale_var( *data_p1[fr_1], *data_p1[fr_1], x_c, Nx, data_r[fr_1] );
+    downscale_var( *data_p1[fr_2], *data_p1[fr_2], x_c, Nx, data_r[fr_2] );
+    downscale_var( *data_p2[fr_1], *data_p2[fr_1], x_c, Nx, data_r[fr_1] );
+    downscale_var( *data_p2[fr_2], *data_p2[fr_2], x_c, Nx, data_r[fr_2] );
+
     *data_p1[to] = coef_1 * (*data_p1[fr_1]) + coef_2 * (*data_p1[fr_2]);
     *data_p2[to] = coef_1 * (*data_p2[fr_1]) + coef_2 * (*data_p2[fr_2]);
+
+    upscale_var( *data_p1[fr_1], *data_p1[fr_1], x_c, Nx, data_r[fr_1] );
+    upscale_var( *data_p1[fr_2], *data_p1[fr_2], x_c, Nx, data_r[fr_2] );
+    upscale_var( *data_p1[to],   *data_p1[to],   x_c, Nx, data_r[to]   );
+    upscale_var( *data_p2[fr_1], *data_p2[fr_1], x_c, Nx, data_r[fr_1] );
+    upscale_var( *data_p2[fr_2], *data_p2[fr_2], x_c, Nx, data_r[fr_2] );
+    upscale_var( *data_p2[to],   *data_p2[to],   x_c, Nx, data_r[to]   );
   }
 
   data_r[to]  = coef_1 * data_r[fr_1] + coef_2 * data_r[fr_2];
@@ -197,6 +212,10 @@ void TDSolve::average_sol(const DType coef_1, const int fr_1,
     upscale_var( *data_g[to], *data_g[to], x_c, Nx, data_r[to] );
     upscale_var( *data_h[to], *data_h[to], x_c, Nx, data_r[to] );
     upscale_var( *data_n[to], *data_n[to], x_c, Nx, data_r[to] );
+
+    upscale_var( *data_a[fr_1], *data_a[fr_1], x_a_c, Na, data_r[fr_1] );
+    upscale_var( *data_a[fr_2], *data_a[fr_2], x_a_c, Na, data_r[fr_2] );
+    upscale_var( *data_a[to],   *data_a[to],   x_a_c, Na, data_r[to]   );
   }
 
   *data_v[to] = coef_1 * (*data_v[fr_1]) + coef_2 * (*data_v[fr_2]);
