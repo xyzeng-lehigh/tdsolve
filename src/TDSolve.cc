@@ -61,6 +61,9 @@ TDSolve::TDSolve(TDInput* tdInput_ptr) {
   data_a = NULL;
   data_v = NULL;
 
+  data_r = NULL;
+  Ndata  = 3;
+
   data_p1 = NULL;
   data_p2 = NULL;
   data_dv = NULL;
@@ -68,14 +71,16 @@ TDSolve::TDSolve(TDInput* tdInput_ptr) {
 }
 
 TDSolve::~TDSolve(void) {
-  erase_array( data_g, 3 );
-  erase_array( data_h, 3 );
-  erase_array( data_n, 3 );
-  erase_array( data_a, 3 );
-  erase_array( data_v, 3 );
+  erase_array( data_g, Ndata );
+  erase_array( data_h, Ndata );
+  erase_array( data_n, Ndata );
+  erase_array( data_a, Ndata );
+  erase_array( data_v, Ndata );
   // OPN Model
-  erase_array(data_p1, 3);
-  erase_array(data_p2, 3);
+  erase_array(data_p1, Ndata );
+  erase_array(data_p2, Ndata );
+
+  if (data_r!=NULL) delete data_r;
 
   if (mat!=NULL) delete mat;
   if (prc!=NULL) delete prc;

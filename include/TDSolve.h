@@ -70,7 +70,7 @@ class TDSolve {
     HVEC** data_n;  // N --> M = number density of immune cells infiltrated into the tumor 
     HVEC** data_a;  // A = concentration of chemotatic attractants by glimoa cells
     HVEC** data_v;  // V = veocity field within the tumor boundary
-    DType  data_r[3];
+    DType* data_r;  // R
     DType  rprime;  // R'
 
     // OPN model
@@ -85,6 +85,8 @@ class TDSolve {
     TDMesh*  tdMesh;
     TDSetup* tdSetup;
     TDLin*   tdLin;
+
+    int    Ndata; // Number of copies of data
 
     int    Nx; // will be used for Np1 and Np2
     int    Na_m;

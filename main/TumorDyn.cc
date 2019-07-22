@@ -166,7 +166,7 @@ int main(int argc, char** argv) {
           //     S_1^(k) = S_n + 5/12 * dtn * F(S_1^(k)) 
           //                   - 1/12 * dtn * F(S_2^(k-1))
           //   Solve for S_2^(k):
-          //     S_2^(k) = S_n + 3/4 * dtn * F(S_1^(k))
+          //     S_2^(k) = S_n + 3/4 * dtn * F(S_1^(k-1))
           //                   + 1/4 * dtn * F(S_2^(k))
           //
           //   Until converge

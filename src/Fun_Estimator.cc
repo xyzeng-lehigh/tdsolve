@@ -352,11 +352,11 @@ void FunEstimator::write_variable( FILE* fp, const std::string key ) {
   fprintf( fp, "%s: ", key.c_str() );
   switch ( ofuns[key] ) {
     case FUN_POLY:
-      fprintf( fp, "multivariate polynomial with degree %u in %u variables.\n", 
+      fprintf( fp, "multivariate polynomial with degree %u in %lu variables.\n", 
                ls_degree, ikeys.size() );
       break;
     case FUN_EXP_POLY:
-      fprintf( fp, "exponential of multivariate polynomial with degree %u in %u variables.\n", 
+      fprintf( fp, "exponential of multivariate polynomial with degree %u in %lu variables.\n", 
                ls_degree, ikeys.size() );
       break;
     default:

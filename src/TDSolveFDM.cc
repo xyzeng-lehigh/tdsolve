@@ -1024,13 +1024,15 @@ void TDSolveFDM::output(const int nt) {
 }
 
 void TDSolveFDM::alloc(void) {
-  alloc_array_full( data_g,  Nx+1, 3 );
-  alloc_array_full( data_h,  Nx+1, 3 );
-  alloc_array_full( data_n,  Nx+1, 3 );
-  alloc_array_full( data_v,  Nx+1, 3 );
-  alloc_array_full( data_dv, Nx+1, 3 );
-  alloc_array_full( data_na, Nx+1, 3 );
+  alloc_array_full( data_g,  Nx+1, Ndata );
+  alloc_array_full( data_h,  Nx+1, Ndata );
+  alloc_array_full( data_n,  Nx+1, Ndata );
+  alloc_array_full( data_v,  Nx+1, Ndata );
+  alloc_array_full( data_dv, Nx+1, Ndata );
+  alloc_array_full( data_na, Nx+1, Ndata );
+
+  data_r = new DType[Ndata];
   
-  alloc_array_full( data_a,  Na+1, 3 );
+  alloc_array_full( data_a,  Na+1, Ndata );
 }
 
