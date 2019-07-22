@@ -80,7 +80,7 @@ TDSolve::~TDSolve(void) {
   erase_array(data_p1, Ndata );
   erase_array(data_p2, Ndata );
 
-  if (data_r!=NULL) delete data_r;
+  if (data_r!=NULL) delete[] data_r;
 
   if (mat!=NULL) delete mat;
   if (prc!=NULL) delete prc;

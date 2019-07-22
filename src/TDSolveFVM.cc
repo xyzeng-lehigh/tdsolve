@@ -342,8 +342,6 @@ void TDSolveFVM::alloc(void) {
 
   switch (tdSetup->tmeth) {
     case 0:
-      Ndata = 2;
-      break;
     case 1:
       Ndata = 3;
       break;
