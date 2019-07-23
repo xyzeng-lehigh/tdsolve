@@ -1,5 +1,6 @@
 #include "RK_Coef.h"
 #include <cassert>
+#include <cstring>
 
 RKButcher::RKButcher(int Nstage_in) {
   assert( Nstage_in > 0 );
