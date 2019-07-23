@@ -2,6 +2,7 @@
 #include "Alloc_Utils.h"
 #include "TDInput.h"
 #include "Alg_Solve.h"
+#include "RK_Coef.h"
 using namespace std;
 
 TDSolve::TDSolve(TDInput* tdInput_ptr) {
@@ -68,6 +69,16 @@ TDSolve::TDSolve(TDInput* tdInput_ptr) {
   data_p2 = NULL;
   data_dv = NULL;
   data_na = NULL;
+
+  resd_g = NULL;
+  resd_h = NULL;
+  resd_n = NULL;
+  resd_a = NULL;
+
+  resd_p1 = NULL;
+  resd_p2 = NULL;
+
+  use_resd = false;
 }
 
 TDSolve::~TDSolve(void) {
@@ -77,8 +88,16 @@ TDSolve::~TDSolve(void) {
   erase_array( data_a, Ndata );
   erase_array( data_v, Ndata );
   // OPN Model
-  erase_array(data_p1, Ndata );
-  erase_array(data_p2, Ndata );
+  erase_array( data_p1, Ndata );
+  erase_array( data_p2, Ndata );
+
+  erase_array( resd_g, Ndata );
+  erase_array( resd_h, Ndata );
+  erase_array( resd_n, Ndata );
+  erase_array( resd_a, Ndata );
+  // OPN Model
+  erase_array( resd_p1, Ndata );
+  erase_array( resd_p2, Ndata );
 
   if (data_r!=NULL) delete[] data_r;
 
@@ -256,6 +275,69 @@ void TDSolve::update_rad(const int fr, const int to, const int v_nt) {
 
     if ( tdSetup->r_opt == 1 )
       data_r[to] = std::sqrt( data_r[fr]*data_r[fr] + 2.0*dtn*data_r[fr]*rprime );
+  }
+  return;
+}
+
+void TDSolve::update_rad_radau(RKButcher& rkButcher) {
+  int Ns = rkButcher.getNstage();
+  // It is supposed that data_r[1] ~ data_r[Ns] are allocated for
+  // the 1st ~ Ns-th stages, respectively.
+
+  // Step 1 - compute the tumor velocity for each stage
+  DType* rprime = new DType[Ns];
+  DType discount = 1.0/(1.0-0.25*dx*dx);
+  for ( int i = 0; i < Ns; i++ )
+    rprime[i] = discount * (*data_v[i+1])[Nx];
+
+  // Step 2 - solve the nonlinear system for data_r:
+  // r[i]^2 - data_r[0]^2 = 2.0*dtn*sum_{j=1~Ns}a_{ij}rprime[j]*r[j]
+  // i = 1~Ns
+  HVEC sol(Ns,0.0);  // Solution iterates
+  for ( int i = 0; i < Ns; i++ )
+    sol[i] = data_r[i+1];
+  HVEC fval(Ns,0.0); // Function evaluates
+  HMAT hess(Ns,0.0); // Hessian
+  // Newton-Raphson
+  int c_iter = 0;
+  eval_rad_radau_fval(fval, rkButcher, rprime, sol);
+  while ( fval.norm(-1) > 1e-12 ) {
+    eval_rad_radau_hess(hess, rkButcher, rprime, sol);
+    sol -= hess.inv() * fval;
+    eval_rad_radau_fval(fval, rkButcher, rprime, sol);
+    c_iter++;
+  }
+
+  // Step 3 - assign the converged solution to data_r
+  for ( int i = 0; i < Ns; i++ )
+    data_r[i+1] = sol[i];
+
+  delete[] rprime;
+  return;
+}
+
+void TDSolve::eval_rad_radau_fval(HVEC& fval,
+    const RKButcher& rkButcher, const DType* rp, const HVEC& sol) {
+  int Ns = rkButcher.getNstage();
+  fval = 0.0;
+  for ( int i = 0; i < Ns; i++ ) {
+    for ( int j = 0; j < Ns; j++ )
+      fval[i] -= rkButcher.get(i,j) * rp[j] * sol[j];
+    fval[i] *= 2.0 * dtn;
+    fval[i] += sol[i] * sol[i] - data_r[0] * data_r[0];
+  }
+  return;
+}
+
+void TDSolve::eval_rad_radau_hess(HMAT& hess,
+    const RKButcher& rkButcher, const DType* rp, const HVEC& sol) {
+  int Ns = rkButcher.getNstage();
+  hess = 0.0;
+  for ( int i = 0; i < Ns; i++ ) {
+    for ( int j = 0; j < Ns; j++ )
+      hess[i][j] -= rkButcher.get(i,j) * rp[j];
+    hess *= 2.0 * dtn;
+    hess[i][i] += 2.0 * sol[i];
   }
   return;
 }

@@ -11,6 +11,7 @@
 #include "TDSolveFDM.h"
 #include "TDSolveFVM.h"
 #include "TDSolveFVMMod.h"
+#include "RK_Coef.h"
 using namespace std;
 
 char inputFile[40];
@@ -148,8 +149,8 @@ int main(int argc, char** argv) {
           //
           //=============================== Standard Formulation =============
           //
-          //   S_1 ~ t_n + 1/3 * dtn
-          //   S_2 ~ t_n + dtn
+          //   S_1 ~ t_1 = t_n + 1/3 * dtn
+          //   S_2 ~ t_2 = t_n + dtn
           //
           //   S_1 = S_n + 5/12 * dtn * F(S_1) - 1/12 * dtn * F(S_2)
           //   S_2 = S_n + 3/4  * dtn * F(S_1) + 1/4  * dtn * F(S_2)
@@ -170,21 +171,37 @@ int main(int argc, char** argv) {
           //                   + 1/4 * dtn * F(S_2^(k))
           //
           //   Until converge
+          //   
+          //   Data usage:
+          //   data_*[0] - solutions at t_n
+          //   data_*[1] - solutions at t_1
+          //   data_*[2] - solutions at t_2
 
-          bool vcoup_conv;
+          int Ns = 2;
+          RKButcher rkButcher(Ns);
+          rkButcher.get(0,0) = 5.0/12.0;
+          rkButcher.get(0,1) = -1.0/12.0;
+          rkButcher.get(1,0) = 3.0/4.0;
+          rkButcher.get(1,1) = 1.0/4.0;
+
+          tdSolve->copy_data(0,1);
+          tdSolve->copy_data(0,2);
+
+          tdSolve->update_rad_radau(rkButcher);
+
+          bool sol_conv;
           while (1) {
-            // Use BE as predictor for S_2
-            vcoup_conv = tdSolve->update_sol(0,2);
-            if ( !vcoup_conv ) {
-              tdSolve->reduce_dtn( 0.5 );
-              tdSolve->diagnostic(0);
-              continue;
-            }
-
-            // Use S_1 as temporary storage for F(S_2)
-            tdSolve->compute_rhs(2,1);
-            // Need to study carefully how to handle the weights in averaging!
-            //tdSolve->average_sol();
+            // Step 2.1 - compute the residuals for S_1 and S_2
+            for ( int i = 1; i <= Ns; i++ )
+              tdSolve->compute_rhs(rkButcher.stage(i-1), i); // S_i
+            // Step 2.2 - Implicit solve for 
+            for ( int i = 1; i <= Ns; i++ )
+              tdSolve->update_sol(i-1,rkButcher,0,i); // Update S_i
+            // Step 3 - update the velocities
+            for ( int i = 1; i <= Ns; i++ )
+              tdSolve->update_vel(rkButcher.stage(i-1), i); // V_i
+            // Step 1 - compute data_r[1] and data_r[2]
+            tdSolve->update_rad_radau(rkButcher);
           }
 
         }

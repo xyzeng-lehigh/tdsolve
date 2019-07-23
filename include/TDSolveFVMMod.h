@@ -16,7 +16,9 @@ class TDSolveFVMMod : public TDSolveFVM {
     bool update_sol(const int fr, const int to, const DType shift_dt_fr=0.0, const DType shift_dt_to=1.0);
     void update_vel(const int fr, const int to, const DType shift_dt=0.0, const bool last_iter=false);
 
-    void compute_rhs(const int fr, const int to, const DType shift_dt_fr=0.0);
+    void compute_rhs(const DType alpha, const int nt);
+    void update_sol(const int rkns, RKButcher& rkButcher, const int fr, const int to);
+    void update_vel(const DType alpha, const int nt);
 
     TDSolveFVMMod(TDInput* tdInput_ptr);
     ~TDSolveFVMMod(void);

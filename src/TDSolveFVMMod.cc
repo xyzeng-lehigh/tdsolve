@@ -320,13 +320,16 @@ bool TDSolveFVMMod::update_sol(const int fr, const int to,
   return true;
 }
 
-void TDSolveFVMMod::compute_rhs(const int fr, const int to, const DType shift_dt ) {
-  update_vel( fr, fr, shift_dt ); // No update on radius
-  update_cells_common( fr, to, true );
-  if ( tdSetup->prob_id == 1 ) // OPN
-    update_cells_opn_add( fr, to, true );
-  update_chem_rhs( fr, to, shift_dt );
-  return;
+void TDSolveFVMMod::compute_rhs(const DType alpha, const int nt) {
+  // XYZ NEXT
+}
+
+void TDSolveFVMMod::update_sol(const int rkns, RKButcher& rkButcher, const int fr, const int to) {
+  // XYZ NEXT
+}
+
+void TDSolveFVMMod::update_vel(const DType alpha, const int nt) {
+  // XYZ NEXT
 }
 
 void TDSolveFVMMod::calc_total_diff_model(const int nt) {

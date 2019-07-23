@@ -5,8 +5,10 @@
 #include <cstdio>
 #include <cstring>
 #include "Data_Type.h"
+#include "RK_Coef.h"
 
 class  HVEC;
+class  HMAT;
 struct TDCoef;
 struct TDMesh;
 struct TDSetup;
@@ -15,6 +17,7 @@ class TDInput;
 class LinMat;
 class LinVec;
 class LinSolve;
+struct RKButcher;
 
 class TDSolve {
   public:
@@ -41,7 +44,9 @@ class TDSolve {
                      const DType coef_2, const int nt_2, const int to, const DType shift_dt_to=1.0);
     virtual void copy_data(const int fr, const int to) = 0;
 
-    virtual void compute_rhs(const int fr, const int to) {};
+    virtual void compute_rhs(const DType alpha, const int nt) {};
+    virtual void update_sol(const int rkns, RKButcher& rkButcher, const int fr, const int to) {};
+    virtual void update_vel(const DType alpha, const int nt) {};
 
     bool nextIter(void) {
       iter++;
@@ -51,6 +56,9 @@ class TDSolve {
     // offset_dt is the difference between the target tsol and the current tsol
     virtual void update_vel(const int fr, const int to, const DType offset_dt=0.0, const bool last_iter=false) = 0;
     void update_rad(const int fr, const int to, const int v_nt=-1);
+    void update_rad_radau(RKButcher&);
+    void eval_rad_radau_fval(HVEC&, const RKButcher&, const DType*, const HVEC&);
+    void eval_rad_radau_hess(HMAT&, const RKButcher&, const DType*, const HVEC&);
 
     void scale_dtn(const DType scale) { dtn *= scale; }
     void reduce_dtn(const DType scale);
@@ -79,6 +87,17 @@ class TDSolve {
 
     HVEC** data_dv; // (dv/dx)/R+(2v)/(xR)
     HVEC** data_na; // (1/x^2/R^2) d(x^2 N dA/dx )/dx
+
+    bool   use_resd;
+
+    HVEC** resd_g;
+    HVEC** resd_h; 
+    HVEC** resd_n;
+    HVEC** resd_a;
+
+    // OPN model
+    HVEC** resd_p1;
+    HVEC** resd_p2;
 
     TDInput* tdInput;
     TDCoef*  tdCoef;

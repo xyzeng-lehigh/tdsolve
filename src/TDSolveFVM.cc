@@ -346,7 +346,8 @@ void TDSolveFVM::alloc(void) {
       Ndata = 3;
       break;
     case 2:
-      Ndata = 5;
+      Ndata = 3;
+      use_resd = true;
       break;
   }
 
@@ -358,6 +359,13 @@ void TDSolveFVM::alloc(void) {
   data_r = new DType[Ndata];
   
   alloc_array_full( data_a, Na, Ndata ); 
+
+  if ( use_resd ) {
+    alloc_array_full( resd_g, Nx, Ndata );
+    alloc_array_full( resd_h, Nx, Ndata );
+    alloc_array_full( resd_n, Nx, Ndata ); // M
+    alloc_array_full( resd_a, Na, Ndata ); 
+  }
 
   alloc_array_full( flux_g, Nx+1, 1 );
   alloc_array_full( flux_h, Nx+1, 1 );
@@ -371,14 +379,19 @@ void TDSolveFVM::alloc(void) {
 
   // OPN model
   if ( tdSetup->prob_id == 1 ) {
-    alloc_array_full (data_p1, Nx, Ndata );
-    alloc_array_full (data_p2, Nx, Ndata );
+    alloc_array_full( data_p1, Nx, Ndata );
+    alloc_array_full( data_p2, Nx, Ndata );
 
-    alloc_array_full (flux_p1, Nx+1, 1);
-    alloc_array_full (flux_p2, Nx+1, 1);
+    if ( use_resd ) {
+      alloc_array_full( resd_p1, Nx, Ndata );
+      alloc_array_full( resd_p2, Nx, Ndata );
+    }
 
-    alloc_array_full(slope_p1, Nx, 1);
-    alloc_array_full(slope_p2, Nx, 1);
+    alloc_array_full( flux_p1, Nx+1, 1);
+    alloc_array_full( flux_p2, Nx+1, 1);
+
+    alloc_array_full( slope_p1, Nx, 1);
+    alloc_array_full( slope_p2, Nx, 1);
   }
   else {
     data_p1 = NULL;
