@@ -39,7 +39,7 @@ TDSolveFVMMod::~TDSolveFVMMod(void) {
   erase_array( flux_h_r, 1 );
   erase_array( flux_n_v, 1 ); // or M
   erase_array( flux_n_r, 1 ); // or M
-  erase_array( flux_n_u, 1 ); // or M
+  erase_array( flux_n_u, Ndata ); // or M
   erase_array( data_u, 1 );
   erase_array( vel_tmp, 1 );
 }
@@ -214,7 +214,7 @@ void TDSolveFVMMod::alloc(void) {
   alloc_array_full( flux_h_r, Nx+1, 1 );
   alloc_array_full( flux_n_v, Nx+1, 1 ); // or M
   alloc_array_full( flux_n_r, Nx+1, 1 ); // or M
-  alloc_array_full( flux_n_u, Nx+1, 1 ); // or M
+  alloc_array_full( flux_n_u, Nx+1, Ndata ); // or M
 
   alloc_array_full( data_u, Nx+1, 1 );
   if ( tdSetup->vCoup )
@@ -321,15 +321,98 @@ bool TDSolveFVMMod::update_sol(const int fr, const int to,
 }
 
 void TDSolveFVMMod::compute_rhs(const DType alpha, const int nt) {
-  // XYZ NEXT
+  // At this moment, flux_n_u[nt] and slope_*[nt] is computed
+  // Need to copy to [0] for the next functions
+  copy_aux( nt, 0 );
+  compute_cells_fluxes_v( nt ); // Will compute flux_*_v[0]
+  compute_cells_fluxes_r( nt ); // Will compute flux_*_r[0] and flux_*[0]
+  compute_rhs_common( nt );     // Stores the residuals to resd_*[nt]
+  return;
+}
+
+void TDSolveFVMMod::compute_rhs_common(const int nt) {
+  DType lambda  = tdCoef->lambda;
+  DType q       = tdCoef->q;
+  DType delta_h = tdCoef->delta_h;
+  DType delta_n = tdCoef->delta_n;
+
+  // mu = mu(mu_coef-mu_slp*x^p)
+  DType mu      = tdCoef->mu;
+  DType mu_slp  = tdCoef->mu_slp;
+  DType mu_coef = tdCoef->mu_coef;
+  DType p       = tdCoef->p;
+
+  DType dror = data_rp[nt]/data_r[nt];
+
+  // Source terms
+  for ( int i = 0; i < Nx; i++ ) {
+    DType loc_lambda = ( q == 0.0 ) ? lambda : lambda * pow(x_c[i],q);
+    DType loc_mu = ( p == 0.0 ) ? mu * ( mu_coef - mu_slp ) : mu * ( mu_coef - mu_slp * pow(x_c[i],p) ); 
+    (*resd_g[nt])[i] = loc_lambda * (*data_g[nt])[i] - loc_mu * (*data_g[nt])[i] - dror * (*data_g[nt])[i];
+    (*resd_h[nt])[i] = loc_mu * (*data_g[nt])[i] - delta_h * (*data_h[nt])[i] - dror * (*data_h[nt])[i];
+    (*resd_n[nt])[i] = - delta_n * (*data_n[nt])[i] - dror * (*data_n[nt])[i]; 
+  }
+
+  for ( int i = 0; i < Nx; i++ ) {
+    (*resd_g[nt])[i] -= ( (*flux_g[0])[i+1] - (*flux_g[0])[i] ) / dx;
+    (*resd_h[nt])[i] -= ( (*flux_h[0])[i+1] - (*flux_h[0])[i] ) / dx;
+    (*resd_n[nt])[i] -= ( (*flux_n[0])[i+1] - (*flux_n[0])[i] ) / dx;
+  }
+
+  return;
 }
 
 void TDSolveFVMMod::update_sol(const int rkns, RKButcher& rkButcher, const int fr, const int to) {
-  // XYZ NEXT
+  if ( tdSetup->vCoup ) {
+    // Implicit update
+    switch ( tdSetup->scell ) {
+      case 0: // Implicit first-order upwind
+        update_sol_radau_imp_upw( rkns, rkButcher, fr, to );
+        break;
+      case 2: // Implicit second-order MUSCL
+        update_sol_radau_imp_muscl( rkns, rkButcher, fr, to );
+        break;
+      default: // Implicit first-order upwind
+        update_sol_radau_imp_upw( rkns, rkButcher, fr, to );
+        break;
+    }
+  }
+  else {
+    // Explicit update -- should only use resd_*
+    update_sol_radau_exp( rkns, rkButcher, fr, to );
+  }
+
+  return;
 }
 
 void TDSolveFVMMod::update_vel(const DType alpha, const int nt) {
-  // XYZ NEXT
+  // Compute the velocity u using the gradient
+  compute_vel_u( nt, tsol+alpha*dtn );
+  // Compute fluxes - flux_n_u[0]
+  // and (if MUSCL) - lim_muscl[0]
+  compute_cells_fluxes_u( nt, tsol+alpha*dtn );
+  copy_aux( 0, nt ); // copy flux_n_u[0] to flux_n_u[nt]
+                     // copy slope_*[0] to slope_*[nt]
+  switch ( tdSetup->prob_id ) {
+    case 0:  // PDGF
+    case -1: // Test
+    case -2: // Test
+    case -3: // Test
+    case -4: // Test
+      update_vel_int( nt ); // Will use flux_n_u[0]
+      break;
+    case 1: // OPN
+      update_vel_int_opn( nt ); // Will use flux_n_u[0]
+      break;
+  }
+  return;
+}
+
+void TDSolveFVMMod::copy_aux(const int fr, const int to) {
+  *flux_n_u[to] = *flux_n_u[fr];
+  *slope_g[to]  = *slope_g[fr];
+  *slope_h[to]  = *slope_h[fr];
+  *slope_n[to]  = *slope_n[fr];
 }
 
 void TDSolveFVMMod::calc_total_diff_model(const int nt) {
@@ -1624,7 +1707,7 @@ void TDSolveFVMMod::compute_flux_r_ppm_lims(const int nt){
   return;
 }
 
-void TDSolveFVMMod::update_mat_upw_v(const int nt, HVEC**& vel, const int v_nt, const bool rbc) {
+void TDSolveFVMMod::update_mat_upw_v(const DType multip, const int nt, HVEC**& vel, const int v_nt, const bool rbc) {
 
   DType dror = rprime/data_r[nt];
   DType r2nt = data_r[nt]*data_r[nt];
@@ -1642,9 +1725,9 @@ void TDSolveFVMMod::update_mat_upw_v(const int nt, HVEC**& vel, const int v_nt, 
     DType coef_v_r = 0.0;
 
     if ( loc_v >= 0.0 )
-      coef_v_l = (dtn/dx) * xf2 * r2nt * loc_v;
+      coef_v_l = multip * (dtn/dx) * xf2 * r2nt * loc_v;
     else
-      coef_v_r = (dtn/dx) * xf2 * r2nt * loc_v;
+      coef_v_r = multip * (dtn/dx) * xf2 * r2nt * loc_v;
 
     elem = mat->get(0,0); elem += coef_v_l / xc2_l; mat->set(0,0,elem);
     elem = mat->get(0,1); elem += coef_v_r / xc2_l; mat->set(0,1,elem);
@@ -1663,9 +1746,9 @@ void TDSolveFVMMod::update_mat_upw_v(const int nt, HVEC**& vel, const int v_nt, 
     DType coef_v_r = 0.0;
 
     if ( loc_v >= 0.0 )
-      coef_v_l = (dtn/dx) * xf2 * r2nt * loc_v;
+      coef_v_l = multip * (dtn/dx) * xf2 * r2nt * loc_v;
     else
-      coef_v_r = (dtn/dx) * xf2 * r2nt * loc_v;
+      coef_v_r = multip * (dtn/dx) * xf2 * r2nt * loc_v;
 
     elem = mat->get(i-1,i-1); elem += coef_v_l / xc2_l; mat->set(i-1,i-1,elem);
     elem = mat->get(i-1,i);   elem += coef_v_r / xc2_l; mat->set(i-1,i,elem);
@@ -1683,7 +1766,7 @@ void TDSolveFVMMod::update_mat_upw_v(const int nt, HVEC**& vel, const int v_nt, 
     DType coef_v_l = 0.0;
 
     if ( loc_v >= 0.0 )
-      coef_v_l = (dtn/dx) * xf2 * r2nt * loc_v;
+      coef_v_l = multip * (dtn/dx) * xf2 * r2nt * loc_v;
 
     elem = mat->get(Nx-1,Nx-1); elem += coef_v_l / xc2; mat->set(Nx-1,Nx-1,elem);
   }
@@ -1779,7 +1862,8 @@ void TDSolveFVMMod::update_mat_orig_muscl_v(const int nt, HVEC**& vel, const int
   return;
 }
 
-void TDSolveFVMMod::update_mat_muscl_v(const int nt, HVEC**& vel, const int v_nt, const bool rbc) {
+void TDSolveFVMMod::update_mat_muscl_v(const DType multip, 
+    const int nt, HVEC**& vel, const int v_nt, const bool rbc) {
 
   DType dror = rprime/data_r[nt];
   DType r2nt = data_r[nt]*data_r[nt];
@@ -1885,7 +1969,7 @@ void TDSolveFVMMod::update_mat_muscl_v(const int nt, HVEC**& vel, const int v_nt
   return;
 }
 
-void TDSolveFVMMod::update_mat_ppm_r(const int nt) {
+void TDSolveFVMMod::update_mat_ppm_r(const DType multip, const int nt) {
 
   DType dror = rprime/data_r[nt];
   DType r2nt = data_r[nt]*data_r[nt];
@@ -1913,14 +1997,14 @@ void TDSolveFVMMod::update_mat_ppm_r(const int nt) {
     DType coef_r_rr = 0.0;
 
     if ( loc_r >= 0.0 ) {
-     coef_r_l  = (dtn/dx) * r2nt * loc_r * xc3_l  * ( (1.0-lim_r_l) + lim_r_l*(sot+oot) );
-      coef_r_r  = (dtn/dx) * r2nt * loc_r * xc3_r  * ( lim_r_l*sot );
-      coef_r_rr = (dtn/dx) * r2nt * loc_r * xc3_rr * ( -lim_r_l*oot );
+      coef_r_l  = multip * (dtn/dx) * r2nt * loc_r * xc3_l  * ( (1.0-lim_r_l) + lim_r_l*(sot+oot) );
+      coef_r_r  = multip * (dtn/dx) * r2nt * loc_r * xc3_r  * ( lim_r_l*sot );
+      coef_r_rr = multip * (dtn/dx) * r2nt * loc_r * xc3_rr * ( -lim_r_l*oot );
     }
     else {
-      coef_r_l  = (dtn/dx) * r2nt * loc_r * xc3_l  * ( lim_r_r*(sot+oot) );
-      coef_r_r  = (dtn/dx) * r2nt * loc_r * xc3_r  * ( (1.0-lim_r_r) + lim_r_r*sot );
-      coef_r_rr = (dtn/dx) * r2nt * loc_r * xc3_rr * ( -lim_r_r*oot );
+      coef_r_l  = multip * (dtn/dx) * r2nt * loc_r * xc3_l  * ( lim_r_r*(sot+oot) );
+      coef_r_r  = multip * (dtn/dx) * r2nt * loc_r * xc3_r  * ( (1.0-lim_r_r) + lim_r_r*sot );
+      coef_r_rr = multip * (dtn/dx) * r2nt * loc_r * xc3_rr * ( -lim_r_r*oot );
     }
 
     elem = mat->get(0,0); elem += coef_r_l  / xc2_l; mat->set(0,0,elem);
@@ -1951,16 +2035,16 @@ void TDSolveFVMMod::update_mat_ppm_r(const int nt) {
     DType coef_r_rr = 0.0;
 
     if ( loc_r >= 0.0 ) {
-      coef_r_ll = (dtn/dx) * r2nt * loc_r * xc3_ll * ( -lim_r_l*oot );
-      coef_r_l  = (dtn/dx) * r2nt * loc_r * xc3_l  * ( (1.0-lim_r_l) + lim_r_l*sot );
-      coef_r_r  = (dtn/dx) * r2nt * loc_r * xc3_r  * ( lim_r_l*sot );
-      coef_r_rr = (dtn/dx) * r2nt * loc_r * xc3_rr * ( -lim_r_l*oot );
+      coef_r_ll = multip * (dtn/dx) * r2nt * loc_r * xc3_ll * ( -lim_r_l*oot );
+      coef_r_l  = multip * (dtn/dx) * r2nt * loc_r * xc3_l  * ( (1.0-lim_r_l) + lim_r_l*sot );
+      coef_r_r  = multip * (dtn/dx) * r2nt * loc_r * xc3_r  * ( lim_r_l*sot );
+      coef_r_rr = multip * (dtn/dx) * r2nt * loc_r * xc3_rr * ( -lim_r_l*oot );
     }
     else {
-      coef_r_ll = (dtn/dx) * r2nt * loc_r * xc3_ll * ( -lim_r_r*oot );
-      coef_r_l  = (dtn/dx) * r2nt * loc_r * xc3_l  * ( lim_r_r*sot );
-      coef_r_r  = (dtn/dx) * r2nt * loc_r * xc3_r  * ( (1.0-lim_r_r) + lim_r_r*sot );
-      coef_r_rr = (dtn/dx) * r2nt * loc_r * xc3_rr * ( -lim_r_r*oot );
+      coef_r_ll = multip * (dtn/dx) * r2nt * loc_r * xc3_ll * ( -lim_r_r*oot );
+      coef_r_l  = multip * (dtn/dx) * r2nt * loc_r * xc3_l  * ( lim_r_r*sot );
+      coef_r_r  = multip * (dtn/dx) * r2nt * loc_r * xc3_r  * ( (1.0-lim_r_r) + lim_r_r*sot );
+      coef_r_rr = multip * (dtn/dx) * r2nt * loc_r * xc3_rr * ( -lim_r_r*oot );
     }
 
     elem = mat->get(i-1,i-2); elem += coef_r_ll / xc2_l; mat->set(i-1,i-2,elem);
@@ -1993,16 +2077,16 @@ void TDSolveFVMMod::update_mat_ppm_r(const int nt) {
     DType coef_r_r  = 0.0;
 
     if ( loc_r >= 0.0 ) {
-      coef_r_l3 = (dtn/dx) * r2nt * loc_r * xc3_l3 * ( lim_r_l*oot );
-      coef_r_ll = (dtn/dx) * r2nt * loc_r * xc3_ll * ( -lim_r_l*5.0*oot );
-      coef_r_l  = (dtn/dx) * r2nt * loc_r * xc3_l  * ( (1.0-lim_r_l) + lim_r_l*13.0*oot );
-      coef_r_r  = (dtn/dx) * r2nt * loc_r * xc3_r  * ( lim_r_l*3.0*oot );
+      coef_r_l3 = multip * (dtn/dx) * r2nt * loc_r * xc3_l3 * ( lim_r_l*oot );
+      coef_r_ll = multip * (dtn/dx) * r2nt * loc_r * xc3_ll * ( -lim_r_l*5.0*oot );
+      coef_r_l  = multip * (dtn/dx) * r2nt * loc_r * xc3_l  * ( (1.0-lim_r_l) + lim_r_l*13.0*oot );
+      coef_r_r  = multip * (dtn/dx) * r2nt * loc_r * xc3_r  * ( lim_r_l*3.0*oot );
     }
     else {
-      coef_r_l3 = (dtn/dx) * r2nt * loc_r * xc3_l3 * ( lim_r_r*oot );
-      coef_r_ll = (dtn/dx) * r2nt * loc_r * xc3_ll * ( -lim_r_r*5.0*oot );
-      coef_r_l  = (dtn/dx) * r2nt * loc_r * xc3_l  * ( lim_r_r*13.0*oot );
-      coef_r_r  = (dtn/dx) * r2nt * loc_r * xc3_r  * ( (1.0-lim_r_r) + lim_r_r*3.0*oot );
+      coef_r_l3 = multip * (dtn/dx) * r2nt * loc_r * xc3_l3 * ( lim_r_r*oot );
+      coef_r_ll = multip * (dtn/dx) * r2nt * loc_r * xc3_ll * ( -lim_r_r*5.0*oot );
+      coef_r_l  = multip * (dtn/dx) * r2nt * loc_r * xc3_l  * ( lim_r_r*13.0*oot );
+      coef_r_r  = multip * (dtn/dx) * r2nt * loc_r * xc3_r  * ( (1.0-lim_r_r) + lim_r_r*3.0*oot );
     }
 
     elem = mat->get(Nx-2,Nx-4); elem += coef_r_l3 / xc2_l; mat->set(Nx-2,Nx-4,elem);
@@ -2068,8 +2152,8 @@ void TDSolveFVMMod::update_cells_imp_upw(const int fr, const int to, const DType
     mat->set(i,i,elem);
   }
 
-  update_mat_upw_v( to, data_v, to );
-  update_mat_ppm_r( to );
+  update_mat_upw_v( 1.0, to, data_v, to );
+  update_mat_ppm_r( 1.0, to );
 
   // Initialize solution
   for ( int i = 0; i < Nx; i++ ) {
@@ -2105,8 +2189,8 @@ void TDSolveFVMMod::update_cells_imp_upw(const int fr, const int to, const DType
     mat->set(i,i,elem);
   }
 
-  update_mat_upw_v( to, data_v, to );
-  update_mat_ppm_r( to );
+  update_mat_upw_v( 1.0, to, data_v, to );
+  update_mat_ppm_r( 1.0, to );
 
   // Initialize solution
   for ( int i = 0; i < Nx; i++ ) {
@@ -2154,9 +2238,9 @@ void TDSolveFVMMod::update_cells_imp_upw(const int fr, const int to, const DType
     mat->set(i,i,elem);
   }
 
-  update_mat_upw_v( to, data_v, to );
-  update_mat_ppm_r( to );
-  update_mat_upw_v( to, data_u, 0, true );
+  update_mat_upw_v( 1.0, to, data_v, to );
+  update_mat_ppm_r( 1.0, to );
+  update_mat_upw_v( 1.0, to, data_u, 0, true );
 
   // Initialize solution
   for ( int i = 0; i < Nx; i++ ) {
@@ -2209,6 +2293,11 @@ void TDSolveFVMMod::update_cells_imp_muscl(const int fr, const int to, const DTy
   downscale_var(*data_h[fr],*data_h[fr],x_c,Nx,data_r[fr]);
   downscale_var(*data_n[fr],*data_n[fr],x_c,Nx,data_r[fr]);
 
+  // XYZ -- this seems to be a bug in the previous implementation
+  downscale_var(*data_g[to],*data_g[to],x_c,Nx,data_r[to]);
+  downscale_var(*data_h[to],*data_h[to],x_c,Nx,data_r[to]);
+  downscale_var(*data_n[to],*data_n[to],x_c,Nx,data_r[to]);
+
   // For the modified FVM, use primitive variables to compute muscl limiters
   compute_flux_muscl_lims( to );
   
@@ -2234,8 +2323,8 @@ void TDSolveFVMMod::update_cells_imp_muscl(const int fr, const int to, const DTy
     mat->set(i,i,elem);
   }
 
-  update_mat_muscl_v( to, data_v, to );
-  update_mat_ppm_r( to );
+  update_mat_muscl_v( 1.0, to, data_v, to );
+  update_mat_ppm_r( 1.0, to );
 
   // Initialize solution
   for ( int i = 0; i < Nx; i++ ) {
@@ -2271,8 +2360,8 @@ void TDSolveFVMMod::update_cells_imp_muscl(const int fr, const int to, const DTy
     mat->set(i,i,elem);
   }
 
-  update_mat_muscl_v( to, data_v, to );
-  update_mat_ppm_r( to );
+  update_mat_muscl_v( 1.0, to, data_v, to );
+  update_mat_ppm_r( 1.0, to );
 
   // Initialize solution
   for ( int i = 0; i < Nx; i++ ) {
@@ -2319,9 +2408,9 @@ void TDSolveFVMMod::update_cells_imp_muscl(const int fr, const int to, const DTy
     mat->set(i,i,elem);
   }
 
-  update_mat_muscl_v( to, data_v, to );
-  update_mat_ppm_r( to );
-  update_mat_muscl_v( to, data_u, 0, true );
+  update_mat_muscl_v( 1.0, to, data_v, to );
+  update_mat_ppm_r( 1.0, to );
+  update_mat_muscl_v( 1.0, to, data_u, 0, true );
 
   // Initialize solution
   for ( int i = 0; i < Nx; i++ ) {
@@ -3156,3 +3245,397 @@ void TDSolveFVMMod::update_chem_upw_rhs( const int fr, const int to ) {
 void TDSolveFVMMod::update_chem_muscl_rhs( const int fr, const int to ) {
 }
 
+void TDSolveFVMMod::update_sol_radau_exp( const int rkns, 
+    RKButcher& rkButcher, const int fr, const int to) {
+  assert( to == rkns+1 );
+  *data_g[to] = *data_g[fr];
+  *data_h[to] = *data_h[fr];
+  *data_n[to] = *data_n[fr];
+
+  int Ns = rkButcher.getNstage();
+  for ( int j = 0; j < Ns; j++ ) {
+    DType rk_coef = rkButcher.get(rkns,j) * dtn;
+    *data_g[to] += rk_coef * (*resd_g[j+1]);
+    *data_h[to] += rk_coef * (*resd_h[j+1]);
+    *data_n[to] += rk_coef * (*resd_n[j+1]);
+  }
+
+  return;
+}
+
+void TDSolveFVMMod::update_sol_radau_imp_upw( const int rkns, 
+    RKButcher& rkButcher, const int fr, const int to) {
+  assert( to == rkns+1 );
+  int Ns = rkButcher.getNstage();
+  DType rk_coef = rkButcher.get(rkns,rkns);
+
+  DType lambda = tdCoef->lambda;
+  DType q      = tdCoef->q;
+  DType delta_h = tdCoef->delta_h;
+  DType delta_n = tdCoef->delta_n;
+
+  // mu = mu(mu_coef-mu_slp*x^p)
+  DType mu      = tdCoef->mu;
+  DType mu_slp  = tdCoef->mu_slp;
+  DType mu_coef = tdCoef->mu_coef;
+  DType p       = tdCoef->p;
+
+  rprime = data_rp[to];
+
+  DType dror = rprime/data_r[to];
+  DType r2fr = data_r[fr]*data_r[fr];
+  DType r2to = data_r[to]*data_r[to];
+
+  DType n_bc = calc_n_bc( tsol+rkButcher.stage(rkns)*dtn );
+
+  // Compute the limiters and store them in lim_?, as well as 
+  // unlimited interpolated values, and store them in flux_?
+  // We won't use flux_? here, though
+  compute_flux_r_ppm_lims( to );
+
+  downscale_var(*data_g[fr],*data_g[fr],x_c,Nx,data_r[fr]);
+  downscale_var(*data_h[fr],*data_h[fr],x_c,Nx,data_r[fr]);
+  downscale_var(*data_n[fr],*data_n[fr],x_c,Nx,data_r[fr]);
+
+  downscale_var(*data_g[to],*data_g[to],x_c,Nx,data_r[to]);
+  downscale_var(*data_h[to],*data_h[to],x_c,Nx,data_r[to]);
+  downscale_var(*data_n[to],*data_n[to],x_c,Nx,data_r[to]);
+
+  VComp comp(1,0.0);
+  Entry elem(1,0.0);
+
+  // First data_g
+  rhs->reset( 0.0 );
+  mat->reset( 0.0 );
+  sol->reset( 0.0 );
+
+  // RHS
+  for ( int i = 0; i < Nx; i++ ) {
+    comp = (*data_g[fr])[i] * r2fr;
+    for ( int j = 0; j < Ns; j++ )
+      if ( j != rkns )
+        comp += rkButcher.get(rkns,j) * dtn * (*resd_g[j+1])[i];
+    rhs->set(i,comp);
+  }
+
+  // Matrix
+  for ( int i = 0; i < Nx; i++ ) {
+    DType loc_lambda = ( q == 0.0 ) ? lambda : lambda * pow(x_c[0],q);
+    DType loc_mu = ( p == 0.0 ) ? mu * ( mu_coef - mu_slp ) : mu * ( mu_coef - mu_slp * pow(x_c[0],p) ); 
+    elem = r2to - rk_coef * dtn * r2to * ( loc_lambda - loc_mu - dror );
+    mat->set(i,i,elem);
+  }
+
+  update_mat_upw_v( rk_coef, to, data_v, to );
+  update_mat_ppm_r( rk_coef, to );
+
+  // Initialize solution
+  for ( int i = 0; i < Nx; i++ ) {
+    comp = (*data_g[to])[i];
+    sol->set(i,comp);
+  }
+
+  linSolve->solve();
+
+  // Fetch solution
+  for ( int i = 0; i < Nx; i++ ) {
+    comp = sol->get(i);
+    HVEC vsol(1);
+    vsol = comp.getVal();
+    (*data_g[to])[i] = vsol[0];
+  }
+
+  // Second data_h
+  rhs->reset( 0.0 );
+  mat->reset( 0.0 );
+  sol->reset( 0.0 );
+
+  // RHS
+  for ( int i = 0; i < Nx; i++ ) {
+    DType loc_mu = ( p == 0.0 ) ? mu * ( mu_coef - mu_slp ) : mu * ( mu_coef - mu_slp * pow(x_c[i],p) ); 
+    comp = (*data_h[fr])[i] * r2fr + dtn * loc_mu * (*data_g[to])[i] * r2to;
+    for ( int j = 0; j < Ns; j++ )
+      if ( j!= rkns )
+        comp += rkButcher.get(rkns,j) * dtn * (*resd_h[j+1])[i];
+    rhs->set(i,comp);
+  }
+
+  // Matrix
+  for ( int i = 0; i < Nx; i++ ) {
+    elem = r2to - rk_coef * dtn * r2to * ( - delta_h - dror );
+    mat->set(i,i,elem);
+  }
+
+  update_mat_upw_v( rk_coef, to, data_v, to );
+  update_mat_ppm_r( rk_coef, to );
+
+  // Initialize solution
+  for ( int i = 0; i < Nx; i++ ) {
+    comp = (*data_h[to])[i];
+    sol->set(i,comp);
+  }
+
+  linSolve->solve();
+
+  // Fetch solution
+  for ( int i = 0; i < Nx; i++ ) {
+    comp = sol->get(i);
+    HVEC vsol(1);
+    vsol = comp.getVal();
+    (*data_h[to])[i] = vsol[0];
+  }
+
+
+  // Last data_n
+  rhs->reset( 0.0 );
+  mat->reset( 0.0 );
+  sol->reset( 0.0 );
+
+  // RHS
+  for ( int i = 0; i < Nx-1; i++ ) {
+    comp = (*data_n[fr])[i] * r2fr;
+    for ( int j = 0; j < Ns; j++ )
+      if ( j != rkns )
+        comp += rkButcher.get(rkns,j) * dtn * (*resd_n[j+1])[i];
+    rhs->set(i,comp);
+  }
+  // Right boundary
+  {
+    DType xc2 = x_c[Nx-1]*x_c[Nx-1];
+    DType xf2 = x_f[Nx]*x_f[Nx];
+
+    DType loc_u = (*data_u[0])[Nx]/data_r[to];
+    DType coef_u_r = 0.0;
+    if ( loc_u < 0.0 )
+      coef_u_r += (dtn/dx) * xf2 * r2to * loc_u;
+    comp = (*data_n[fr])[Nx-1] * r2fr - coef_u_r * n_bc / xc2;
+    for ( int j = 0; j < Ns; j++ )
+      if ( j != rkns )
+        comp += rkButcher.get(rkns,j) * dtn * (*resd_n[j+1])[Nx-1];
+    rhs->set(Nx-1,comp);
+  }
+
+  // Matrix
+  for ( int i = 0; i < Nx; i++ ) {
+    elem = r2to - rk_coef * dtn * r2to * ( - delta_n - dror );
+    mat->set(i,i,elem);
+  }
+
+  update_mat_upw_v( rk_coef, to, data_v, to );
+  update_mat_ppm_r( rk_coef, to );
+  update_mat_upw_v( rk_coef, to, data_u, 0, true );
+
+  // Initialize solution
+  for ( int i = 0; i < Nx; i++ ) {
+    comp = (*data_n[to])[i];
+    sol->set(i,comp);
+  }
+
+  linSolve->solve();
+
+  // Fetch solution
+  for ( int i = 0; i < Nx; i++ ) {
+    comp = sol->get(i);
+    HVEC vsol(1);
+    vsol = comp.getVal();
+    (*data_n[to])[i] = vsol[0];
+  }
+
+  upscale_var(*data_g[fr],*data_g[fr],x_c,Nx,data_r[fr]);
+  upscale_var(*data_h[fr],*data_h[fr],x_c,Nx,data_r[fr]);
+  upscale_var(*data_n[fr],*data_n[fr],x_c,Nx,data_r[fr]);
+
+  upscale_var(*data_g[to],*data_g[to],x_c,Nx,data_r[to]);
+  upscale_var(*data_h[to],*data_h[to],x_c,Nx,data_r[to]);
+  upscale_var(*data_n[to],*data_n[to],x_c,Nx,data_r[to]);
+  
+  return;
+}
+
+void TDSolveFVMMod::update_sol_radau_imp_muscl( const int rkns, 
+    RKButcher& rkButcher, const int fr, const int to) {
+  assert( to == rkns+1 );
+  int Ns = rkButcher.getNstage();
+  DType rk_coef = rkButcher.get(rkns,rkns);
+
+  DType lambda = tdCoef->lambda;
+  DType q      = tdCoef->q;
+  DType delta_h = tdCoef->delta_h;
+  DType delta_n = tdCoef->delta_n;
+
+  // mu = mu(mu_coef-mu_slp*x^p)
+  DType mu      = tdCoef->mu;
+  DType mu_slp  = tdCoef->mu_slp;
+  DType mu_coef = tdCoef->mu_coef;
+  DType p       = tdCoef->p;
+
+  rprime = data_rp[to];
+
+  DType dror = rprime/data_r[to];
+  DType r2fr = data_r[fr]*data_r[fr];
+  DType r2to = data_r[to]*data_r[to];
+
+  DType n_bc = calc_n_bc( tsol+rkButcher.stage(rkns)*dtn );
+
+  compute_flux_r_ppm_lims( to );
+
+  downscale_var(*data_g[fr],*data_g[fr],x_c,Nx,data_r[fr]);
+  downscale_var(*data_h[fr],*data_h[fr],x_c,Nx,data_r[fr]);
+  downscale_var(*data_n[fr],*data_n[fr],x_c,Nx,data_r[fr]);
+
+  downscale_var(*data_g[to],*data_g[to],x_c,Nx,data_r[to]);
+  downscale_var(*data_h[to],*data_h[to],x_c,Nx,data_r[to]);
+  downscale_var(*data_n[to],*data_n[to],x_c,Nx,data_r[to]);
+
+  // For the modified FVM, use primitive variables to compute muscl limiters
+  compute_flux_muscl_lims( to );
+  
+  VComp comp(1,0.0);
+  Entry elem(1,0.0);
+
+  // First data_g
+  rhs->reset( 0.0 );
+  mat->reset( 0.0 );
+  sol->reset( 0.0 );
+
+  // RHS
+  for ( int i = 0; i < Nx; i++ ) {
+    comp = (*data_g[fr])[i] * r2fr;
+    for ( int j = 0; j < Ns; j++ )
+      if ( j != rkns )
+        comp += rkButcher.get(rkns,j) * dtn * (*resd_g[j+1])[i];
+    rhs->set(i,comp);
+  }
+
+  // Matrix
+  for ( int i = 0; i < Nx; i++ ) {
+    DType loc_lambda = ( q == 0.0 ) ? lambda : lambda * pow(x_c[0],q);
+    DType loc_mu = ( p == 0.0 ) ? mu * ( mu_coef - mu_slp ) : mu * ( mu_coef - mu_slp * pow(x_c[0],p) ); 
+    elem = r2to - rk_coef * dtn * r2to * ( loc_lambda - loc_mu - dror );
+    mat->set(i,i,elem);
+  }
+
+  update_mat_muscl_v( rk_coef, to, data_v, to );
+  update_mat_ppm_r( rk_coef, to );
+
+  // Initialize solution
+  for ( int i = 0; i < Nx; i++ ) {
+    comp = (*data_g[to])[i];
+    sol->set(i,comp);
+  }
+
+  linSolve->solve();
+
+  // Fetch solution
+  for ( int i = 0; i < Nx; i++ ) {
+    comp = sol->get(i);
+    HVEC vsol(1);
+    vsol = comp.getVal();
+    (*data_g[to])[i] = vsol[0];
+  }
+
+  // Second data_h
+  rhs->reset( 0.0 );
+  mat->reset( 0.0 );
+  sol->reset( 0.0 );
+
+  // RHS
+  for ( int i = 0; i < Nx; i++ ) {
+    DType loc_mu = ( p == 0.0 ) ? mu * ( mu_coef - mu_slp ) : mu * ( mu_coef - mu_slp * pow(x_c[i],p) ); 
+    comp = (*data_h[fr])[i] * r2fr + dtn * loc_mu * (*data_g[to])[i] * r2to;
+    for ( int j = 0; j < Ns; j++ )
+      if ( j!= rkns )
+        comp += rkButcher.get(rkns,j) * dtn * (*resd_h[j+1])[i];
+    rhs->set(i,comp);
+  }
+
+  // Matrix
+  for ( int i = 0; i < Nx; i++ ) {
+    elem = r2to - rk_coef * dtn * r2to * ( - delta_h - dror );
+    mat->set(i,i,elem);
+  }
+
+  update_mat_muscl_v( rk_coef, to, data_v, to );
+  update_mat_ppm_r( rk_coef, to );
+
+  // Initialize solution
+  for ( int i = 0; i < Nx; i++ ) {
+    comp = (*data_h[to])[i];
+    sol->set(i,comp);
+  }
+
+  linSolve->solve();
+
+  // Fetch solution
+  for ( int i = 0; i < Nx; i++ ) {
+    comp = sol->get(i);
+    HVEC vsol(1);
+    vsol = comp.getVal();
+    (*data_h[to])[i] = vsol[0];
+  }
+
+  // Last data_n
+  rhs->reset( 0.0 );
+  mat->reset( 0.0 );
+  sol->reset( 0.0 );
+
+  // RHS
+  for ( int i = 0; i < Nx-1; i++ ) {
+    comp = (*data_n[fr])[i] * r2fr;
+    for ( int j = 0; j < Ns; j++ )
+      if ( j != rkns )
+        comp += rkButcher.get(rkns,j) * dtn * (*resd_n[j+1])[i];
+    rhs->set(i,comp);
+  }
+  // Right boundary
+  {
+    DType xc2 = x_c[Nx-1]*x_c[Nx-1];
+    DType xf2 = x_f[Nx]*x_f[Nx];
+
+    DType loc_u = (*data_u[0])[Nx]/data_r[to];
+    DType coef_u_r = 0.0;
+    if ( loc_u < 0.0 )
+      coef_u_r += (dtn/dx) * xf2 * r2to * loc_u;
+    comp = (*data_n[fr])[Nx-1] * r2fr - coef_u_r * n_bc / xc2;
+    for ( int j = 0; j < Ns; j++ )
+      if ( j != rkns )
+        comp += rkButcher.get(rkns,j) * dtn * (*resd_n[j+1])[Nx-1];
+    rhs->set(Nx-1,comp);
+  }
+
+  // Matrix
+  for ( int i = 0; i < Nx; i++ ) {
+    elem = r2to - rk_coef * dtn * r2to * ( - delta_n - dror );
+    mat->set(i,i,elem);
+  }
+
+  update_mat_muscl_v( rk_coef, to, data_v, to );
+  update_mat_ppm_r( rk_coef, to );
+  update_mat_muscl_v( rk_coef, to, data_u, 0, true );
+
+  // Initialize solution
+  for ( int i = 0; i < Nx; i++ ) {
+    comp = (*data_n[to])[i];
+    sol->set(i,comp);
+  }
+
+  linSolve->solve();
+
+  // Fetch solution
+  for ( int i = 0; i < Nx; i++ ) {
+    comp = sol->get(i);
+    HVEC vsol(1);
+    vsol = comp.getVal();
+    (*data_n[to])[i] = vsol[0];
+  }
+
+  upscale_var(*data_g[fr],*data_g[fr],x_c,Nx,data_r[fr]);
+  upscale_var(*data_h[fr],*data_h[fr],x_c,Nx,data_r[fr]);
+  upscale_var(*data_n[fr],*data_n[fr],x_c,Nx,data_r[fr]);
+
+  upscale_var(*data_g[to],*data_g[to],x_c,Nx,data_r[to]);
+  upscale_var(*data_h[to],*data_h[to],x_c,Nx,data_r[to]);
+  upscale_var(*data_n[to],*data_n[to],x_c,Nx,data_r[to]);
+
+  return;
+}

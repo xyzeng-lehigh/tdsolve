@@ -43,6 +43,7 @@ class TDSolve {
     void average_sol(const DType coef_1, const int nt_1, 
                      const DType coef_2, const int nt_2, const int to, const DType shift_dt_to=1.0);
     virtual void copy_data(const int fr, const int to) = 0;
+    virtual void copy_aux(const int fr, const int to) {};
 
     virtual void compute_rhs(const DType alpha, const int nt) {};
     virtual void update_sol(const int rkns, RKButcher& rkButcher, const int fr, const int to) {};
@@ -59,6 +60,7 @@ class TDSolve {
     void update_rad_radau(RKButcher&);
     void eval_rad_radau_fval(HVEC&, const RKButcher&, const DType*, const HVEC&);
     void eval_rad_radau_hess(HMAT&, const RKButcher&, const DType*, const HVEC&);
+    void check_conv_radau(const RKButcher&, int&, bool&, bool&);
 
     void scale_dtn(const DType scale) { dtn *= scale; }
     void reduce_dtn(const DType scale);
@@ -67,6 +69,9 @@ class TDSolve {
     bool check_Rterm(const int nt);
     DType get_tsol(void) {return tsol;}
     virtual DType get_nperc(const int nt) {return 0.0;};
+
+    void downscale_sol(const int s_nt, const int r_nt);
+    void upscale_sol(const int s_nt, const int r_nt);
 
     TDInput*& getTDInput(void) {
       return tdInput;
@@ -79,7 +84,8 @@ class TDSolve {
     HVEC** data_a;  // A = concentration of chemotatic attractants by glimoa cells
     HVEC** data_v;  // V = veocity field within the tumor boundary
     DType* data_r;  // R
-    DType  rprime;  // R'
+    DType* data_rp; // R'
+    DType  rprime;  // R' for display
 
     // OPN model
     HVEC** data_p1; // concentration of osteopontin secreted by immunue cells

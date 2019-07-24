@@ -40,9 +40,9 @@ TDSolveFVM::~TDSolveFVM(void) {
   erase_array( flux_h, 1 );
   erase_array( flux_n, 1 );
   erase_array( flux_a, 1 );
-  erase_array( slope_g, 1 );
-  erase_array( slope_h, 1 );
-  erase_array( slope_n, 1 );
+  erase_array( slope_g, Ndata );
+  erase_array( slope_h, Ndata );
+  erase_array( slope_n, Ndata );
   erase_array( slope_a, 1 );
   erase_array( N_dir );
 
@@ -356,7 +356,8 @@ void TDSolveFVM::alloc(void) {
   alloc_array_full( data_n, Nx, Ndata ); // M
   alloc_array_full( data_v, Nx+1, Ndata );
 
-  data_r = new DType[Ndata];
+  data_r  = new DType[Ndata];
+  data_rp = new DType[Ndata];
   
   alloc_array_full( data_a, Na, Ndata ); 
 
@@ -372,9 +373,9 @@ void TDSolveFVM::alloc(void) {
   alloc_array_full( flux_n, Nx+1, 1 );
   alloc_array_full( flux_a, Na+1, 1 );
 
-  alloc_array_full( slope_g, Nx, 1 );
-  alloc_array_full( slope_h, Nx, 1 );
-  alloc_array_full( slope_n, Nx, 1 );
+  alloc_array_full( slope_g, Nx, Ndata );
+  alloc_array_full( slope_h, Nx, Ndata );
+  alloc_array_full( slope_n, Nx, Ndata );
   alloc_array_full( slope_a, Na, 1 );
 
   // OPN model

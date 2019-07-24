@@ -17,8 +17,11 @@ class TDSolveFVMMod : public TDSolveFVM {
     void update_vel(const int fr, const int to, const DType shift_dt=0.0, const bool last_iter=false);
 
     void compute_rhs(const DType alpha, const int nt);
+    void compute_rhs_common(const int nt);
     void update_sol(const int rkns, RKButcher& rkButcher, const int fr, const int to);
     void update_vel(const DType alpha, const int nt);
+
+    void copy_aux(const int fr, const int to);
 
     TDSolveFVMMod(TDInput* tdInput_ptr);
     ~TDSolveFVMMod(void);
@@ -67,10 +70,10 @@ class TDSolveFVMMod : public TDSolveFVM {
     // implicit methods
     void update_cells_orig_imp_upw(const int fr, const int to, const DType tsol_loc);
     void update_cells_orig_imp_muscl(const int fr, const int to, const DType tsol_loc);
-    void update_mat_upw_v(const int nt, HVEC**& vel, const int v_nt, const bool rbc=false);
+    void update_mat_upw_v(const DType multip, const int nt, HVEC**& vel, const int v_nt, const bool rbc=false);
     void update_mat_orig_muscl_v(const int nt, HVEC**& vel, const int v_nt, HVEC**& lim, const bool rbc=false);
-    void update_mat_muscl_v(const int nt, HVEC**& vel, const int v_nt, const bool rbc=false);
-    void update_mat_ppm_r(const int nt);
+    void update_mat_muscl_v(const DType multip, const int nt, HVEC**& vel, const int v_nt, const bool rbc=false);
+    void update_mat_ppm_r(const DType multip, const int nt);
     void update_cells_imp_upw(const int fr, const int to, const DType tsol_loc);
     void update_cells_imp_muscl(const int fr, const int to, const DType tsol_loc);
 
@@ -125,6 +128,10 @@ class TDSolveFVMMod : public TDSolveFVM {
     DType LimFun_PPM_BC(DType dval_c, DType dval_r); 
     void  LimFun_PPM_INT(DType alpha1, DType alpha2, DType& lim_l, DType& lim_r);
 
+    // RK Radau methods
+    void update_sol_radau_exp(const int rkns, RKButcher& rkButcher, const int fr, const int to);
+    void update_sol_radau_imp_upw(const int rkns, RKButcher& rkButcher, const int fr, const int to);
+    void update_sol_radau_imp_muscl(const int rkns, RKButcher& rkButcher, const int fr, const int to);
 };
 
 #endif

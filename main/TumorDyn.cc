@@ -184,26 +184,64 @@ int main(int argc, char** argv) {
           rkButcher.get(1,0) = 3.0/4.0;
           rkButcher.get(1,1) = 1.0/4.0;
 
-          tdSolve->copy_data(0,1);
-          tdSolve->copy_data(0,2);
+          bool sol_conv, red_dt;
 
-          tdSolve->update_rad_radau(rkButcher);
-
-          bool sol_conv;
           while (1) {
-            // Step 2.1 - compute the residuals for S_1 and S_2
-            for ( int i = 1; i <= Ns; i++ )
-              tdSolve->compute_rhs(rkButcher.stage(i-1), i); // S_i
-            // Step 2.2 - Implicit solve for 
-            for ( int i = 1; i <= Ns; i++ )
-              tdSolve->update_sol(i-1,rkButcher,0,i); // Update S_i
-            // Step 3 - update the velocities
-            for ( int i = 1; i <= Ns; i++ )
-              tdSolve->update_vel(rkButcher.stage(i-1), i); // V_i
-            // Step 1 - compute data_r[1] and data_r[2]
+            tdSolve->copy_data(0,1);
+            tdSolve->copy_data(0,2);
+            // flux_n_u should have been computed in set_ic
+            // or previous iteration
+            tdSolve->copy_aux(0,1);
+            tdSolve->copy_aux(0,2);
+
+            // Step 3 - compute data_r[1] and data_r[2]
+            tdSolve->downscale_sol(1,0);
+            tdSolve->downscale_sol(2,0);
             tdSolve->update_rad_radau(rkButcher);
+            tdSolve->upscale_sol(1,1);
+            tdSolve->upscale_sol(2,2);
+            // Step 4 - compute the residuals for S_1 and S_2
+            for ( int i = 1; i <= Ns; i++ )
+              tdSolve->compute_rhs(rkButcher.stage(i-1), i);
+            // Step 5 - evaluate full residual to check convergence
+            int  n_iter = -1;
+            tdSolve->check_conv_radau(rkButcher, n_iter, sol_conv, red_dt);
+
+            while (!sol_conv && !red_dt) {
+              // Step 1 - Implicit solve for new iterates
+              for ( int i = 1; i <= Ns; i++ )
+                tdSolve->update_sol(i-1,rkButcher,0,i); // Update S_i
+              // Step 2 - update the velocities
+              //        - and flux_n_u and lim_muscl
+              for ( int i = 1; i <= Ns; i++ )
+                tdSolve->update_vel(rkButcher.stage(i-1), i); // V_i
+              // Step 3 - compute data_r[1] and data_r[2]
+              for ( int i = 1; i <= Ns; i++ )
+                tdSolve->downscale_sol(i,i);
+              tdSolve->update_rad_radau(rkButcher);
+              for ( int i = 1; i <= Ns; i++ )
+                tdSolve->upscale_sol(i,i);
+              // Step 4 - compute the residuals for S_1 and S_2
+              for ( int i = 1; i <= Ns; i++ )
+                tdSolve->compute_rhs(rkButcher.stage(i-1), i); // S_i
+              // Step 5 - compute non-cell species if needed
+              // Step 6 - evaluate full residual to check convergence
+              tdSolve->check_conv_radau(rkButcher, n_iter, sol_conv, red_dt);
+            }
+
+            // Either converged or need to reduce dt
+            if (sol_conv) // Converged
+              break;
+            else { // Reduce dt
+              tdSolve->reduce_dtn( 0.5 );
+              tdSolve->diagnostic( 0 );
+              continue;
+            }
           }
 
+          // Legacy issue, the solution at t_{n+1} needs to be 
+          // stored at data_*[1]
+          tdSolve->copy_data(2,1);
         }
         break;
       default: // First-order
@@ -291,6 +329,7 @@ void print_help(void) {
   printf(" time_methd   {1}      Scheme for time-integration\n");
   printf("                       0 -- FE/BE\n");
   printf("                       1 -- RK2\n");
+  printf("                       2 -- Radau RK2\n");
   //printf(" rbc          {0}      Boundary condition at the tumor front\n");
   //printf("                       0 -- Homogeneous Neumann b.c. for G and H\n");
   //printf("                       1 -- ODE based (no b.c. at the front)\n");

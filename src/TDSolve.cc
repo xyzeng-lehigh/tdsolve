@@ -62,8 +62,9 @@ TDSolve::TDSolve(TDInput* tdInput_ptr) {
   data_a = NULL;
   data_v = NULL;
 
-  data_r = NULL;
-  Ndata  = 3;
+  data_r  = NULL;
+  data_rp = NULL;
+  Ndata   = 3;
 
   data_p1 = NULL;
   data_p2 = NULL;
@@ -99,7 +100,8 @@ TDSolve::~TDSolve(void) {
   erase_array( resd_p1, Ndata );
   erase_array( resd_p2, Ndata );
 
-  if (data_r!=NULL) delete[] data_r;
+  if (data_r!=NULL)  delete[] data_r;
+  if (data_rp!=NULL) delete[] data_rp;
 
   if (mat!=NULL) delete mat;
   if (prc!=NULL) delete prc;
@@ -285,13 +287,16 @@ void TDSolve::update_rad_radau(RKButcher& rkButcher) {
   // the 1st ~ Ns-th stages, respectively.
 
   // Step 1 - compute the tumor velocity for each stage
-  DType* rprime = new DType[Ns];
   DType discount = 1.0/(1.0-0.25*dx*dx);
-  for ( int i = 0; i < Ns; i++ )
-    rprime[i] = discount * (*data_v[i+1])[Nx];
+  for ( int i = 1; i <= Ns; i++ )
+    data_rp[i] = discount * (*data_v[i])[Nx];
+  // Note that rprime is reset several times in regular updates
+  // hence update_rad_radau needs to be updated near the end
+  // of each iteration
+  rprime = data_rp[2]; // This is only valid if rkButcher.row(1)==1.0
 
   // Step 2 - solve the nonlinear system for data_r:
-  // r[i]^2 - data_r[0]^2 = 2.0*dtn*sum_{j=1~Ns}a_{ij}rprime[j]*r[j]
+  // r[i]^2 - data_r[0]^2 = 2.0*dtn*sum_{j=1~Ns}a_{ij}rp[j]*r[j]
   // i = 1~Ns
   HVEC sol(Ns,0.0);  // Solution iterates
   for ( int i = 0; i < Ns; i++ )
@@ -300,11 +305,11 @@ void TDSolve::update_rad_radau(RKButcher& rkButcher) {
   HMAT hess(Ns,0.0); // Hessian
   // Newton-Raphson
   int c_iter = 0;
-  eval_rad_radau_fval(fval, rkButcher, rprime, sol);
+  eval_rad_radau_fval(fval, rkButcher, data_rp+1, sol);
   while ( fval.norm(-1) > 1e-12 ) {
-    eval_rad_radau_hess(hess, rkButcher, rprime, sol);
+    eval_rad_radau_hess(hess, rkButcher, data_rp+1, sol);
     sol -= hess.inv() * fval;
-    eval_rad_radau_fval(fval, rkButcher, rprime, sol);
+    eval_rad_radau_fval(fval, rkButcher, data_rp+1, sol);
     c_iter++;
   }
 
@@ -312,7 +317,6 @@ void TDSolve::update_rad_radau(RKButcher& rkButcher) {
   for ( int i = 0; i < Ns; i++ )
     data_r[i+1] = sol[i];
 
-  delete[] rprime;
   return;
 }
 
@@ -339,6 +343,35 @@ void TDSolve::eval_rad_radau_hess(HMAT& hess,
     hess *= 2.0 * dtn;
     hess[i][i] += 2.0 * sol[i];
   }
+  return;
+}
+
+void TDSolve::check_conv_radau(const RKButcher& rkButcher, int& n_iter, bool& sol_conv, bool& red_dt) {
+  DType res_s = 0.0;
+  int Ns = rkButcher.getNstage();
+  for ( int i = 0; i < Ns; i++ ) {
+    HVEC tres(Nx,0.0);
+    // data_g
+    tres = (*data_g[i+1]-*data_g[0])/dtn;
+    for ( int j = 0; j < Ns; j++ )
+      tres -= rkButcher.get(i,j) * (*resd_g[j+1]);
+    res_s = std::max( res_s, tres.norm(-1) );
+    // data_h
+    tres = (*data_h[i+1]-*data_h[0])/dtn;
+    for ( int j = 0; j < Ns; j++ )
+      tres -= rkButcher.get(i,j) * (*resd_h[j+1]);
+    res_s = std::max( res_s, tres.norm(-1) );
+    // data_n
+    tres = (*data_n[i+1]-*data_n[0])/dtn;
+    for ( int j = 0; j < Ns; j++ )
+      tres -= rkButcher.get(i,j) * (*resd_n[j+1]);
+    res_s = std::max( res_s, tres.norm(-1) );
+  }
+  n_iter++;
+  sol_conv = res_s <= tdSetup->vTol;
+  red_dt   = (tdSetup->vIter >= 0) && (n_iter == tdSetup->vIter) && (res_s > tdSetup->vTol);
+  if (red_dt)
+    std::cout << "Radau PMC iteration: " << n_iter << "; Maximum residue: " << res_s << "; Will reduce dt." << std::endl;
   return;
 }
 
@@ -371,5 +404,17 @@ void TDSolve::downscale_var(
     data_to[i] = data_fr[i] / pow(loc_r, scal_pow);
   }
   return;
+}
+
+void TDSolve::downscale_sol(const int s_nt, const int r_nt) {
+  downscale_var( *data_g[s_nt], *data_g[s_nt], x_c, Nx, data_r[r_nt] );
+  downscale_var( *data_h[s_nt], *data_h[s_nt], x_c, Nx, data_r[r_nt] );
+  downscale_var( *data_n[s_nt], *data_n[s_nt], x_c, Nx, data_r[r_nt] );
+}
+
+void TDSolve::upscale_sol(const int s_nt, const int r_nt) {
+  upscale_var( *data_g[s_nt], *data_g[s_nt], x_c, Nx, data_r[r_nt] );
+  upscale_var( *data_h[s_nt], *data_h[s_nt], x_c, Nx, data_r[r_nt] );
+  upscale_var( *data_n[s_nt], *data_n[s_nt], x_c, Nx, data_r[r_nt] );
 }
 
