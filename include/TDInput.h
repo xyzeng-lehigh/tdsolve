@@ -90,6 +90,7 @@ struct TDSetup {
   bool  slim_tot;
   bool  diagn_vcoup;
   bool  silence;
+  bool  auto_red_dt;
 
   int   logistic;
   int   prob_id;

@@ -64,7 +64,7 @@ int main(int argc, char** argv) {
           bool vcoup_conv;
           while (1) {
             vcoup_conv = tdSolve->update_sol(0,1); // BE or FE
-            if ( !vcoup_conv ) {
+            if ( !vcoup_conv && tdInput.tdSetup.auto_red_dt ) {
               tdSolve->reduce_dtn( 0.5 );
               tdSolve->diagnostic(0);
               continue;
@@ -117,7 +117,7 @@ int main(int argc, char** argv) {
             DType alpha = 1.0-0.5*std::sqrt(2.0);
             tdSolve->scale_dtn( alpha );
             vcoup_conv = tdSolve->update_sol(0,1);
-            if ( !vcoup_conv ) {
+            if ( !vcoup_conv && tdInput.tdSetup.auto_red_dt ) {
               tdSolve->scale_dtn( 1.0/alpha );
               tdSolve->reduce_dtn( 0.5 );
               tdSolve->diagnostic(0);
@@ -125,7 +125,7 @@ int main(int argc, char** argv) {
             }
             tdSolve->average_sol(2.0-1.0/alpha,0,1.0/alpha-1.0,1,2);
             vcoup_conv = tdSolve->update_sol(2,1,1.0/alpha-1.0,1.0/alpha);
-            if ( !vcoup_conv ) {
+            if ( !vcoup_conv && tdInput.tdSetup.auto_red_dt ) {
               tdSolve->scale_dtn( 1.0/alpha );
               tdSolve->reduce_dtn( 0.5 );
               tdSolve->diagnostic(0);
@@ -232,10 +232,14 @@ int main(int argc, char** argv) {
             // Either converged or need to reduce dt
             if (sol_conv) // Converged
               break;
-            else { // Reduce dt
+            else if ( tdInput.tdSetup.auto_red_dt ) { // Reduce dt
               tdSolve->reduce_dtn( 0.5 );
               tdSolve->diagnostic( 0 );
               continue;
+            }
+            else { // Not converged but no reduce of dt
+              tdSolve->print_warning("Not converged");
+              break;
             }
           }
 

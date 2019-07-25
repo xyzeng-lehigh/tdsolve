@@ -281,7 +281,7 @@ void TDSolve::update_rad(const int fr, const int to, const int v_nt) {
   return;
 }
 
-void TDSolve::update_rad_radau(RKButcher& rkButcher) {
+void TDSolve::update_rad_radau(RKButcher& rkButcher, const bool diagnos) {
   int Ns = rkButcher.getNstage();
   // It is supposed that data_r[1] ~ data_r[Ns] are allocated for
   // the 1st ~ Ns-th stages, respectively.
@@ -307,6 +307,11 @@ void TDSolve::update_rad_radau(RKButcher& rkButcher) {
   int c_iter = 0;
   eval_rad_radau_fval(fval, rkButcher, data_rp+1, sol);
   while ( fval.norm(-1) > 1e-12 ) {
+    if (diagnos) {
+      cout << "TDSolve::update_rad_radau -- iteration " << c_iter << std::endl;
+      cout << "\t"; sol.print();
+      cout << "\tResidual: " << fval.norm(-1) << std::endl;
+    }
     eval_rad_radau_hess(hess, rkButcher, data_rp+1, sol);
     sol -= hess.inv() * fval;
     eval_rad_radau_fval(fval, rkButcher, data_rp+1, sol);
@@ -337,16 +342,17 @@ void TDSolve::eval_rad_radau_hess(HMAT& hess,
     const RKButcher& rkButcher, const DType* rp, const HVEC& sol) {
   int Ns = rkButcher.getNstage();
   hess = 0.0;
-  for ( int i = 0; i < Ns; i++ ) {
+  for ( int i = 0; i < Ns; i++ ) 
     for ( int j = 0; j < Ns; j++ )
       hess[i][j] -= rkButcher.get(i,j) * rp[j];
-    hess *= 2.0 * dtn;
+  hess *= 2.0 * dtn;
+  for ( int i = 0; i < Ns; i++ )
     hess[i][i] += 2.0 * sol[i];
-  }
   return;
 }
 
-void TDSolve::check_conv_radau(const RKButcher& rkButcher, int& n_iter, bool& sol_conv, bool& red_dt) {
+void TDSolve::check_conv_radau(const RKButcher& rkButcher, int& n_iter, 
+    bool& sol_conv, bool& red_dt, const bool diagnos) {
   DType res_s = 0.0;
   int Ns = rkButcher.getNstage();
   for ( int i = 0; i < Ns; i++ ) {
@@ -370,6 +376,10 @@ void TDSolve::check_conv_radau(const RKButcher& rkButcher, int& n_iter, bool& so
   n_iter++;
   sol_conv = res_s <= tdSetup->vTol;
   red_dt   = (tdSetup->vIter >= 0) && (n_iter == tdSetup->vIter) && (res_s > tdSetup->vTol);
+  if (diagnos)
+    std::cout << "Radau PMC iteration: " << n_iter << "; Residue: " << res_s << std::endl;
+  if (sol_conv)
+    std::cout << "Radau PMC converged in iteration: " << n_iter << "; Residue: " << res_s << std::endl;
   if (red_dt)
     std::cout << "Radau PMC iteration: " << n_iter << "; Maximum residue: " << res_s << "; Will reduce dt." << std::endl;
   return;
@@ -418,3 +428,6 @@ void TDSolve::upscale_sol(const int s_nt, const int r_nt) {
   upscale_var( *data_n[s_nt], *data_n[s_nt], x_c, Nx, data_r[r_nt] );
 }
 
+void TDSolve::print_warning(const char* w_message) {
+  std::cerr << "Warning: " << w_message << std::endl;
+}

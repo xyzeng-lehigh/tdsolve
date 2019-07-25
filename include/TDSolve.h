@@ -57,10 +57,10 @@ class TDSolve {
     // offset_dt is the difference between the target tsol and the current tsol
     virtual void update_vel(const int fr, const int to, const DType offset_dt=0.0, const bool last_iter=false) = 0;
     void update_rad(const int fr, const int to, const int v_nt=-1);
-    void update_rad_radau(RKButcher&);
+    void update_rad_radau(RKButcher&, const bool diagnos=false);
     void eval_rad_radau_fval(HVEC&, const RKButcher&, const DType*, const HVEC&);
     void eval_rad_radau_hess(HMAT&, const RKButcher&, const DType*, const HVEC&);
-    void check_conv_radau(const RKButcher&, int&, bool&, bool&);
+    void check_conv_radau(const RKButcher&, int&, bool&, bool&, const bool diagnos=false);
 
     void scale_dtn(const DType scale) { dtn *= scale; }
     void reduce_dtn(const DType scale);
@@ -72,6 +72,7 @@ class TDSolve {
 
     void downscale_sol(const int s_nt, const int r_nt);
     void upscale_sol(const int s_nt, const int r_nt);
+    void print_warning(const char*); 
 
     TDInput*& getTDInput(void) {
       return tdInput;

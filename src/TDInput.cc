@@ -94,6 +94,7 @@ TDInput::TDInput(void) {
   tdSetup.init_u_par  = 1.0; 
   tdSetup.diagn_vcoup = true;
   tdSetup.silence     = false; // Turn off all outputs (on-screen or file)
+  tdSetup.auto_red_dt = true;
 
   tdLin.Type      = LSYS_TYPE_DIR;
   tdLin.Print     = true;
@@ -406,10 +407,6 @@ void TDInput::parse_old(void) {
       strcpy(outputFile,(const char*)value);
     else if (strcmp(name,"radiusDataFile")==0)
       strcpy(radiusFile,(const char*)value);
-    else if (strcmp(name,"recompute_vel")==0 ||
-             strcmp(name,"bc_lim") == 0 ) {
-      // Obsolete options, just to get rid of the warning below
-    }
     else {
       fprintf(stderr,"Warning: the following line in the input file %s is not recogonized:\n",inputFile);
       fprintf(stderr,"         %s\n",file_line_s.c_str());
@@ -539,6 +536,7 @@ void TDInput::setup_toggles(void) {
   tdToggles["lim_sync_tot"]       = &tdSetup.slim_tot;
   tdToggles["diagnostic_vcoup"]   = &tdSetup.diagn_vcoup;
   tdToggles["silence"]            = &tdSetup.silence;
+  tdToggles["auto_reduce_dt"]     = &tdSetup.auto_red_dt;
   tdToggles["lsysPrint"]          = &tdLin.Print;
   return;
 }
@@ -630,10 +628,6 @@ void TDInput::parse(void) {
       strcpy(outputFile,(const char*)value);
     else if (strcmp(name,"radiusDataFile")==0)
       strcpy(radiusFile,(const char*)value);
-    else if (strcmp(name,"recompute_vel")==0 ||
-             strcmp(name,"bc_lim") == 0 ) {
-      // Obsolete options, just to get rid of the warning below
-    }
     else {
       fprintf(stderr,"Warning: the following line in the input file %s is not recogonized:\n",inputFile);
       fprintf(stderr,"         %s\n",file_line_s.c_str());
@@ -661,9 +655,6 @@ void TDInput::parse(void) {
     tdMesh.x_a_f[i] = tdMesh.x_l + i * tdMesh.dx;
   for ( int i = 0; i < tdMesh.Na; i++ )
     tdMesh.x_a_c[i] = tdMesh.x_l + (i+0.5) * tdMesh.dx;
-
-  if ( tdSetup.tmeth == 2 ) // Collocation RK
-    tdSetup.vCoup = true;
 
   fin.close();
   return;
