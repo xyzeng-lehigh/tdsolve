@@ -1,0 +1,88 @@
+Trigger: tmeth == 2                             | [C]
+Options: vcoup = 0 -- explicit PMC              | [TE]
+         vcoup = 1 -- diagonally implicit PMC   | [TI]
+Options: smeth = 0 -- upwind                    | [SU]
+         smeth = 2 -- MUSCL                     | [SM]
+
+**************************************************************************************************************************
+- set_ic()                                                | [C]: data_g[0], data_h[0], data_n[0], data_u[0],
+                                                          |      data_v[0], data_r[0], data_rp[0]
+                                                          |      flux_n_u[0], flux_g_v[0], flux_h_v[0], flux_n_v[0],
+                                                          |      flux_g_r[0], flux_h_r[0], flux_n_r[0]
+                                                          |      flux_g[0], flux_h[0], flux_n[0], lim_s[0], lim_s[1]
+                                                          | [SM]: slope_g[0], slope_h[0], slope_n[0]
+- while nextIter()
+   |
+   |-- while 1 (reduce dt)
+   |    |
+   |    |-- copy_data(0,i)                                | [C]: data_g[i], data_h[i], data_n[i], data_v[i], data_r[i]
+   |    |                                                 | [C] REQUIRE: data_g[0], data_h[0], data_n[0], 
+   |    |                                                 |              data_v[0], data_r[0]
+   |    |
+   |    |-- copy_aux(0,i)                                 | [C]: data_u[i], flux_n_u[i]
+   |    |                                                 | [C] REQUIRE: data_u[0], flux_n_u[0]
+   |    |                                                 | [SM]: slope_g[i], slope_h[i], slope_n[i]
+   |    |                                                 | [SM] REQUIRE: slope_g[0], slope_h[0], slope_n[0]
+   |    |
+   |    |
+   |    |-- Step 3 update data_r                          | [C]: data_rp[i], data_r[i], data_g[i], data_h[i], data_n[i]
+   |    |
+   |    |-- Step 4 compute residuals (rhs) 
+   |    |    |
+   |    |    |-- compute_cells_fluxes_v                   | [C]: flux_g_v[0], flux_h_v[0], flux_n_v[0]
+   |    |    |                                            | [SM] REQUIRE: slope_g[i], slope_h[i], slope_n[i]
+   |    |    |
+   |    |    |-- compute_cells_fluxes_r                   | [C]: flux_g_r[0], flux_h_r[0], flux_n_r[0],
+   |    |    |                                            |      flux_g[0], flux_h[0], flux_n[0], lim_s[0], lim_s[1]
+   |    |    |                                            | [C] REQUIRE: flux_g_v[0], flux_h_v[0], flux_n_v[0]
+   |    |    |                                            |              flux_n_u[i]
+   |    |    |
+   |    |    |-- compute_rhs_common                       | [C]: resd_g[i], resd_h[i], resd_n[i]
+   |    |                                                 | [C] REQUIRE: flux_g[0], flux_h[0], flux_n[0]
+   |    |
+   |    |-- Step 5 non cell species
+   |    |
+   |    |-- Step 6 check convergence                      | [C] REQUIRE: resd_g[i], resd_h[i], resd_n[i]
+   |    |
+   |    |-- while not converged
+   |    |    |
+   |    |    |-- Step 1 update solutions
+   |    |    |    |  |
+   |    |    |    |  |-- update_sol_radau_exp             | [TE]: data_g[i], data_h[i], data_n[i]
+   |    |    |    |                                       | [TE] REQUIRE: resd_g[i], resd_h[i], resd_n[i]
+   |    |    |    |
+   |    |    |    |-- update_sol_radau_imp                | [TI]: TBD
+   |    |    |
+   |    |    |-- Step 2 update the velocity
+   |    |    |    |
+   |    |    |    |-- compute_vel_u                       | [C]: data_u[i]
+   |    |    |    |
+   |    |    |    |-- copmute_cells_fluxes_u              | [C]: flux_n_u[i] 
+   |    |    |    |                                       | [SM]: slope_g[i], slope_h[i], slope_n[i]
+   |    |    |    |
+   |    |    |    |-- update_vel_int                      | [C]: data_v[i]
+   |    |    |                                            | [C] REQUIRE: flux_n_u[i]
+   |    |    |
+   |    |    |-- Step 3 update data_r                     | [C]: data_rp[i], data_r[i], data_g[i], data_h[i], data_n[i]
+   |    |    |
+   |    |    |-- Step 4 compute residuals (rhs) 
+   |    |    |    |
+   |    |    |    |-- compute_cells_fluxes_v              | [C]: flux_g_v[0], flux_h_v[0], flux_n_v[0]
+   |    |    |    |                                       | [SM] REQUIRE: slope_g[i], slope_h[i], slope_n[i]
+   |    |    |    |
+   |    |    |    |-- compute_cells_fluxes_r              | [C]: flux_g_r[0], flux_h_r[0], flux_n_r[0],
+   |    |    |    |                                       |      flux_g[0], flux_h[0], flux_n[0], lim_s[0], lim_s[1]
+   |    |    |    |                                       | [C] REQUIRE: flux_g_v[0], flux_h_v[0], flux_n_v[0]
+   |    |    |    |                                       |              flux_n_u[i]
+   |    |    |    |
+   |    |    |    |-- compute_rhs_common                  | [C]: resd_g[i], resd_h[i], resd_n[i]
+   |    |    |                                            | [C] REQUIRE: flux_g[0], flux_h[0], flux_n[0]
+   |    |    |
+   |    |    |-- Step 5 non cell species
+   |    |    |
+   |    |    |-- Step 6 check convergence                 | [C] REQUIRE: resd_g[i], resd_h[i], resd_n[i]
+   |    |
+   |    |-- Check if need to reduce dt by half
+   |
+   |
+   |-- copy_data(2,1)

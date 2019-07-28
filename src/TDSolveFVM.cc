@@ -58,7 +58,10 @@ TDSolveFVM::~TDSolveFVM(void) {
 void TDSolveFVM::setup(void) {
 
   setupLinSolve( mat, prc, sol, rhs, res, linSolve, Nx );
-  setupLinSolve( mat_a, prc_a, sol_a, rhs_a, res_a, linSolve_a, Na );
+  
+  // Non test problems
+  if ( tdSetup->prob_id >= 0 )
+    setupLinSolve( mat_a, prc_a, sol_a, rhs_a, res_a, linSolve_a, Na );
 
   // OPN model
   if ( tdSetup->prob_id == 1 ) 
@@ -140,7 +143,7 @@ void TDSolveFVM::set_ic(void) {
 
   if ( tdSetup->frame == 1 )
   {
-    rprime = (*data_v[0])[Nx];
+    data_rp[0] = (*data_v[0])[Nx];
   }
 
   return;
@@ -150,8 +153,11 @@ void TDSolveFVM::copy_data(const int nt_fr, const int nt_to) {
   *data_g[nt_to]  = *data_g[nt_fr];
   *data_h[nt_to]  = *data_h[nt_fr];
   *data_n[nt_to]  = *data_n[nt_fr];
-  *data_a[nt_to]  = *data_a[nt_fr];
   *data_v[nt_to]  = *data_v[nt_fr];
+  
+  // Chemotaxis models 
+  if ( tdSetup->prob_id >= 0 )
+    *data_a[nt_to]  = *data_a[nt_fr];
   
   // OPN model
   if ( tdSetup->prob_id == 1 ) {

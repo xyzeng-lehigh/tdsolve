@@ -186,23 +186,28 @@ int main(int argc, char** argv) {
 
           bool sol_conv, red_dt;
 
+          // Each loop corresponds to a dt (could be reduced!)
+          // data_*[0], slope_*[0], and flux_n_u[0] should NOT be modified!
           while (1) {
-            tdSolve->copy_data(0,1);
-            tdSolve->copy_data(0,2);
-            // flux_n_u should have been computed in set_ic
-            // or previous iteration
-            tdSolve->copy_aux(0,1);
-            tdSolve->copy_aux(0,2);
+            // Copy data_g, data_h, data_n, and data_v
+            for ( int i = 1; i <= Ns; i++ ) {
+              tdSolve->copy_data(0,i); // Stage i (0) at data_*[i]
+              // flux_n_u and slope_*[nt] should have been computed 
+              // in set_ic or previous iteration
+              tdSolve->copy_aux(0,i);
+            }
 
             // Step 3 - compute data_r[1] and data_r[2]
-            tdSolve->downscale_sol(1,0);
-            tdSolve->downscale_sol(2,0);
+            for ( int i = 1; i <= Ns; i++ )
+              tdSolve->downscale_sol(i,i); // Get the primitive Stage i (0)
+            // Compute data_rp and data_r at all stages
             tdSolve->update_rad_radau(rkButcher);
-            tdSolve->upscale_sol(1,1);
-            tdSolve->upscale_sol(2,2);
+            for ( int i = 1; i <= Ns; i++ )
+              tdSolve->upscale_sol(i,i); // Get the conservative Stage i (0)
+                                         // using the re-calculated data_r[i]
             // Step 4 - compute the residuals for S_1 and S_2
             for ( int i = 1; i <= Ns; i++ )
-              tdSolve->compute_rhs(rkButcher.stage(i-1), i);
+              tdSolve->compute_rhs(rkButcher.stage(i-1), i); // Stored in resd_*[i]
             // Step 5 - evaluate full residual to check convergence
             int  n_iter = -1;
             tdSolve->check_conv_radau(rkButcher, n_iter, sol_conv, red_dt, true);

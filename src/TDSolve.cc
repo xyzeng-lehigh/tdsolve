@@ -252,31 +252,31 @@ void TDSolve::average_sol(const DType coef_1, const int fr_1,
 void TDSolve::diagnostic(const int nt) {
   if ( tdSetup->silence ) return;
   fprintf( stdout, "Iter %3d: Time %6.8f; Time step %6.8f; Radius %6.8f; Front-velocity %6.8f.\n",
-      iter, tsol, dtn, data_r[nt], rprime );
+      iter, tsol, dtn, data_r[nt], data_rp[0] );
   return;
 }
 
 void TDSolve::update_rad(const int fr, const int to, const int v_nt) {
   int vnt = (v_nt>=0) ? v_nt : fr;
-  rprime     = (*data_v[vnt])[Nx];           // dr_opt == 0
-  data_r[to] = data_r[fr] + dtn * rprime;   //  r_opt == 0
+  data_rp[0] = (*data_v[vnt])[Nx];            // dr_opt == 0
+  data_r[to] = data_r[fr] + dtn * data_rp[0]; //  r_opt == 0
   if ( tdSetup->vCoup ) {
     if ( tdSetup->dr_opt == 1 )
-      rprime = rprime * ( 1.0 - 0.5 * dtn * rprime / data_r[to] );
+      data_rp[0] = data_rp[0] * ( 1.0 - 0.5 * dtn * data_rp[0] / data_r[to] );
     if ( tdSetup->dr_opt == 2 )
-      rprime = rprime / ( 1.0 - 0.25 * dx * dx );
+      data_rp[0] = data_rp[0] / ( 1.0 - 0.25 * dx * dx );
 
     if ( tdSetup->r_opt == 1 )
-      data_r[to] = std::sqrt( data_r[fr]*data_r[fr] + dtn*dtn*rprime*rprime ) + dtn*rprime;
+      data_r[to] = std::sqrt( data_r[fr]*data_r[fr] + dtn*dtn*data_rp[0]*data_rp[0]) + dtn*data_rp[0];
   }
   else {
     if ( tdSetup->dr_opt == 1 )
-      rprime = rprime * ( 1.0 + 0.5 * dtn * rprime / data_r[fr] );
+      data_rp[0] = data_rp[0] * ( 1.0 + 0.5 * dtn * data_rp[0] / data_r[fr] );
     if ( tdSetup->dr_opt == 2 )
-      rprime = rprime / ( 1.0 - 0.25 * dx * dx );
+      data_rp[0] = data_rp[0] / ( 1.0 - 0.25 * dx * dx );
 
     if ( tdSetup->r_opt == 1 )
-      data_r[to] = std::sqrt( data_r[fr]*data_r[fr] + 2.0*dtn*data_r[fr]*rprime );
+      data_r[to] = std::sqrt( data_r[fr]*data_r[fr] + 2.0*dtn*data_r[fr]*data_rp[0] );
   }
   return;
 }
@@ -290,10 +290,6 @@ void TDSolve::update_rad_radau(RKButcher& rkButcher, const bool diagnos) {
   DType discount = 1.0/(1.0-0.25*dx*dx);
   for ( int i = 1; i <= Ns; i++ )
     data_rp[i] = discount * (*data_v[i])[Nx];
-  // Note that rprime is reset several times in regular updates
-  // hence update_rad_radau needs to be updated near the end
-  // of each iteration
-  rprime = data_rp[2]; // This is only valid if rkButcher.row(1)==1.0
 
   // Step 2 - solve the nonlinear system for data_r:
   // r[i]^2 - data_r[0]^2 = 2.0*dtn*sum_{j=1~Ns}a_{ij}rp[j]*r[j]
@@ -355,29 +351,46 @@ void TDSolve::check_conv_radau(const RKButcher& rkButcher, int& n_iter,
     bool& sol_conv, bool& red_dt, const bool diagnos) {
   DType res_s = 0.0;
   int Ns = rkButcher.getNstage();
+  HVEC res_g(Ns,0.0), res_h(Ns,0.0), res_n(Ns,0.0);
   for ( int i = 0; i < Ns; i++ ) {
     HVEC tres(Nx,0.0);
     // data_g
     tres = (*data_g[i+1]-*data_g[0])/dtn;
     for ( int j = 0; j < Ns; j++ )
       tres -= rkButcher.get(i,j) * (*resd_g[j+1]);
-    res_s = std::max( res_s, tres.norm(-1) );
+    res_g[i] = tres.norm(-1);
+    res_s = std::max( res_s, res_g[i] );
     // data_h
     tres = (*data_h[i+1]-*data_h[0])/dtn;
     for ( int j = 0; j < Ns; j++ )
       tres -= rkButcher.get(i,j) * (*resd_h[j+1]);
-    res_s = std::max( res_s, tres.norm(-1) );
+    res_h[i] = tres.norm(-1);
+    res_s = std::max( res_s, res_h[i] );
     // data_n
     tres = (*data_n[i+1]-*data_n[0])/dtn;
     for ( int j = 0; j < Ns; j++ )
       tres -= rkButcher.get(i,j) * (*resd_n[j+1]);
-    res_s = std::max( res_s, tres.norm(-1) );
+    res_n[i] = tres.norm(-1);
+    res_s = std::max( res_s, res_n[i] );
   }
   n_iter++;
   sol_conv = res_s <= tdSetup->vTol;
   red_dt   = (tdSetup->vIter >= 0) && (n_iter == tdSetup->vIter) && (res_s > tdSetup->vTol);
-  if (diagnos)
-    std::cout << "Radau PMC iteration: " << n_iter << "; Residue: " << res_s << std::endl;
+  if (diagnos) {
+    std::cout << "Radau PMC iteration: " << n_iter << "; Maximum residue: " << res_s << std::endl;
+    std::cout << "  residuals G: ";
+    for ( int i = 0; i < Ns; i++ )
+      std::cout << "Stage " << i+1 << " - " << res_g[i] << "; ";
+    std::cout << std::endl;
+    std::cout << "  residuals H: ";
+    for ( int i = 0; i < Ns; i++ )
+      std::cout << "Stage " << i+1 << " - " << res_h[i] << "; ";
+    std::cout << std::endl;
+    std::cout << "  residuals N: ";
+    for ( int i = 0; i < Ns; i++ )
+      std::cout << "Stage " << i+1 << " - " << res_n[i] << "; ";
+    std::cout << std::endl;
+  }
   if (sol_conv)
     std::cout << "Radau PMC converged in iteration: " << n_iter << "; Residue: " << res_s << std::endl;
   if (red_dt)

@@ -86,7 +86,6 @@ class TDSolve {
     HVEC** data_v;  // V = veocity field within the tumor boundary
     DType* data_r;  // R
     DType* data_rp; // R'
-    DType  rprime;  // R' for display
 
     // OPN model
     HVEC** data_p1; // concentration of osteopontin secreted by immunue cells

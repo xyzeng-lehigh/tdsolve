@@ -241,7 +241,7 @@ bool TDSolveFVMMod::update_sol(const int fr, const int to,
     DType max_tol  = tdSetup->vTol;
     DType cur_res;
     while ( max_iter < 0 || cur_iter < max_iter ) {
-      // Use *data_v[to], data_r[to], and rprime to compute
+      // Use *data_v[to], data_r[to], and data_rp[0] to compute
       // the cells implicitly
       switch ( tdSetup->scell ) {
         case 0: // Implicit first-order upwind
@@ -275,7 +275,7 @@ bool TDSolveFVMMod::update_sol(const int fr, const int to,
 
       *vel_tmp[0] = *data_v[to];
       update_vel( to, 0, shift_dt_to, true ); // Update data_v[to] no updating on radius
-      update_rad( fr, to, to );           // Update the radius data_r[to] and rprime
+      update_rad( fr, to, to );           // Update the radius data_r[to] and data_rp[0] 
       *vel_tmp[0] -= *data_v[to];
       cur_res = (*vel_tmp[0]).norm(-1);
       if ( (*vel_tmp[0]).norm(-1) < max_tol )
@@ -322,10 +322,8 @@ bool TDSolveFVMMod::update_sol(const int fr, const int to,
 
 void TDSolveFVMMod::compute_rhs(const DType alpha, const int nt) {
   // At this moment, flux_n_u[nt] and slope_*[nt] is computed
-  // Need to copy to [0] for the next functions
-  copy_aux( nt, 0 );
-  compute_cells_fluxes_v( nt ); // Will compute flux_*_v[0]
-  compute_cells_fluxes_r( nt ); // Will compute flux_*_r[0] and flux_*[0]
+  compute_cells_fluxes_v( nt, nt ); // Will compute flux_*_v[0]
+  compute_cells_fluxes_r( nt, nt ); // Will compute flux_*_r[0] and flux_*[0]
   compute_rhs_common( nt );     // Stores the residuals to resd_*[nt]
   return;
 }
@@ -364,7 +362,6 @@ void TDSolveFVMMod::compute_rhs_common(const int nt) {
 
 void TDSolveFVMMod::update_sol(const int rkns, RKButcher& rkButcher, const int fr, const int to) {
   if ( tdSetup->vCoup ) {
-    copy_aux( to, 0 );
     // Implicit update
     switch ( tdSetup->scell ) {
       case 0: // Implicit first-order upwind
@@ -387,26 +384,24 @@ void TDSolveFVMMod::update_sol(const int rkns, RKButcher& rkButcher, const int f
 }
 
 void TDSolveFVMMod::update_vel(const DType alpha, const int nt) {
-  // Compute the velocity u data_u[0] using the gradient
-  compute_vel_u( nt, tsol+alpha*dtn );
-  // Compute fluxes - flux_n_u[0]
-  // and (if MUSCL) - lim_muscl[0]
-  compute_cells_fluxes_u( nt, tsol+alpha*dtn );
-  copy_aux( 0, nt ); // copy data_u[0] to data_u[nt]
-                     // copy flux_n_u[0] to flux_n_u[nt]
-                     // copy slope_*[0] to slope_*[nt]
+  // Compute the velocity u data_u[nt] using the gradient
+  compute_vel_u( nt, tsol+alpha*dtn, nt );
+  // Compute fluxes - flux_n_u[nt]
+  // and (if MUSCL) - slope_*[nt]
+  compute_cells_fluxes_u( nt, tsol+alpha*dtn, nt );
   switch ( tdSetup->prob_id ) {
     case 0:  // PDGF
     case -1: // Test
     case -2: // Test
     case -3: // Test
     case -4: // Test
-      update_vel_int( nt ); // Will use flux_n_u[0]
+      update_vel_int( nt, nt ); // Will use flux_n_u[0]
       break;
     case 1: // OPN
-      update_vel_int_opn( nt ); // Will use flux_n_u[0]
+      update_vel_int_opn( nt, nt ); // Will use flux_n_u[0]
       break;
   }
+
   return;
 }
 
@@ -486,45 +481,45 @@ void TDSolveFVMMod::update_vel(const int fr, const int to, const DType shift_dt,
   return;
 }
 
-void TDSolveFVMMod::compute_vel_u(const int nt, const DType tsol_loc) {
+void TDSolveFVMMod::compute_vel_u(const int nt, const DType tsol_loc, const int u_nt) {
   switch ( tdSetup->prob_id ) {
     case -1: // Test 1, u is only a function of x
       break;
     case -2: // Test 2, space homogeneous solutions
       {
         DType v_par = tdSetup->init_u_par;
-        (*data_u[0])[0] = 0.0;
+        (*data_u[u_nt])[0] = 0.0;
         for ( int i = 1; i <= Nx; i++ )
-          (*data_u[0])[i] = - x_f[i] * data_r[nt] * v_par / ( 1.0 - std::exp(-3.0*v_par*tsol_loc) * (1.0-tdCoef->n_bc));
+          (*data_u[u_nt])[i] = - x_f[i] * data_r[nt] * v_par / ( 1.0 - std::exp(-3.0*v_par*tsol_loc) * (1.0-tdCoef->n_bc));
       }
       break;
     case -3: // Test 3, linear growth
       {
         DType v_par = tdSetup->init_u_par;
-        (*data_u[0])[0] = 0.0;
+        (*data_u[u_nt])[0] = 0.0;
         for ( int i = 1; i <= Nx; i++ )
-          (*data_u[0])[i] = -  v_par * std::sin( 0.5 * PI * x_f[i] ) / tdCoef->n_bc;
+          (*data_u[u_nt])[i] = -  v_par * std::sin( 0.5 * PI * x_f[i] ) / tdCoef->n_bc;
       }
       break;
     case -4: // Test 4, non-monotone radius change
       {
         DType v_par = tdSetup->init_u_par;
-        (*data_u[0])[0] = 0.0;
+        (*data_u[u_nt])[0] = 0.0;
         for ( int i = 1; i <= Nx; i++ )
-          (*data_u[0])[i] = v_par * std::sin( 4.0 * x_f[i] * data_r[nt] * ( 1.0 + tsol_loc ) );
+          (*data_u[u_nt])[i] = v_par * std::sin( 4.0 * x_f[i] * data_r[nt] * ( 1.0 + tsol_loc ) );
       }
       break;
     case 0: // PDGF
     case 1: // OPN
       // u = (alpha/R^2)(dA/dx)
-      compute_vel_u_chem( nt );
+      compute_vel_u_chem( nt, u_nt );
       break;
   }
   return;
 }
 
-void TDSolveFVMMod::compute_vel_u_chem(const int nt) {
-  *data_u[0] = 0.0;
+void TDSolveFVMMod::compute_vel_u_chem(const int nt, const int u_nt) {
+  *data_u[u_nt] = 0.0;
 
   DType alpha = tdCoef->alpha;
   DType aor  = alpha/data_r[nt];
@@ -532,38 +527,38 @@ void TDSolveFVMMod::compute_vel_u_chem(const int nt) {
   downscale_var( *data_a[nt], *data_a[nt], x_a_c, Na, data_r[nt] );
 
   for ( int i = 1; i <= Nx; i++ )
-    (*data_u[0])[i] = aor * (((*data_a[nt])[i]-(*data_a[nt])[i-1]) / dx);
+    (*data_u[u_nt])[i] = aor * (((*data_a[nt])[i]-(*data_a[nt])[i-1]) / dx);
 
   upscale_var( *data_a[nt], *data_a[nt], x_a_c, Na, data_r[nt] );
 
   return;
 }
 
-void TDSolveFVMMod::compute_cells_fluxes_u(const int nt, const DType tsol_loc) {
+void TDSolveFVMMod::compute_cells_fluxes_u(const int nt, const DType tsol_loc, const int u_nt) {
   switch ( tdSetup->scell ) {
     case 0: // Explicit first-order upwind
-      compute_cells_fluxes_u_upw( nt, tsol_loc );
+      compute_cells_fluxes_u_upw( nt, tsol_loc, u_nt );
       break;
     case 2: // Explicit second-order MUSCL
-      compute_cells_fluxes_u_muscl( nt, tsol_loc );
+      compute_cells_fluxes_u_muscl( nt, tsol_loc, u_nt );
       break;
     default:
       std::cout << "Warning: The flux scheme for cell not defined, "
         << "using upwind instead\n" << std::endl;
-      compute_cells_fluxes_u_upw( nt, tsol_loc );
+      compute_cells_fluxes_u_upw( nt, tsol_loc, u_nt );
       break;
   }
 
   return;
 }
 
-void TDSolveFVMMod::compute_cells_fluxes_v(const int nt) {
+void TDSolveFVMMod::compute_cells_fluxes_v(const int nt, const int aux_nt) {
   switch ( tdSetup->scell ) {
     case 0: // Explicit first-order upwind
       compute_cells_fluxes_v_upw( nt );
       break;
     case 2: // Explicit second-order MUSCL
-      compute_cells_fluxes_v_muscl( nt );
+      compute_cells_fluxes_v_muscl( nt, aux_nt );
       break;
     default:
       std::cout << "Warning: The flux scheme for cell not defined, "
@@ -575,7 +570,7 @@ void TDSolveFVMMod::compute_cells_fluxes_v(const int nt) {
   return;
 }
 
-void TDSolveFVMMod::compute_cells_fluxes_u_upw(const int nt, const DType tsol_loc) {
+void TDSolveFVMMod::compute_cells_fluxes_u_upw(const int nt, const DType tsol_loc, const int u_nt) {
 
   downscale_var(*data_n[nt],*data_n[nt],x_c,Nx,data_r[nt]);
 
@@ -583,20 +578,20 @@ void TDSolveFVMMod::compute_cells_fluxes_u_upw(const int nt, const DType tsol_lo
 
   // Fluxes
   { // Left boundary
-    (*flux_n_u[0])[0] = 0.0;
+    (*flux_n_u[u_nt])[0] = 0.0;
   }
   for ( int i = 1; i < Nx; i++ ) {
     DType loc_r  = x_f[i] * data_r[nt];
     DType loc_r2 = loc_r * loc_r;
 
-    DType loc_vel_u = (*data_u[0])[i]/data_r[nt];
+    DType loc_vel_u = (*data_u[u_nt])[i]/data_r[nt];
     int i_idx_u = (loc_vel_u>=0.0) ? i-1 : i;
-    (*flux_n_u[0])[i] = loc_r2 * loc_vel_u * (*data_n[nt])[i_idx_u];
+    (*flux_n_u[u_nt])[i] = loc_r2 * loc_vel_u * (*data_n[nt])[i_idx_u];
   }
   { // Right boundary
-    DType loc_vel_u = (*data_u[0])[Nx]/data_r[nt];
+    DType loc_vel_u = (*data_u[u_nt])[Nx]/data_r[nt];
     DType loc_r = x_f[Nx]*data_r[nt];
-    (*flux_n_u[0])[Nx] = loc_r * loc_r * loc_vel_u * 
+    (*flux_n_u[u_nt])[Nx] = loc_r * loc_r * loc_vel_u * 
       ((loc_vel_u>=0.0) ? (*data_n[nt])[Nx-1] : n_bc);
   }
 
@@ -605,7 +600,7 @@ void TDSolveFVMMod::compute_cells_fluxes_u_upw(const int nt, const DType tsol_lo
   return;
 }
 
-void TDSolveFVMMod::compute_cells_fluxes_u_muscl(const int nt, const DType tsol_loc) {
+void TDSolveFVMMod::compute_cells_fluxes_u_muscl(const int nt, const DType tsol_loc, const int u_nt) {
 
   downscale_var(*data_g[nt],*data_g[nt],x_c,Nx,data_r[nt]);
   downscale_var(*data_h[nt],*data_h[nt],x_c,Nx,data_r[nt]);
@@ -618,45 +613,45 @@ void TDSolveFVMMod::compute_cells_fluxes_u_muscl(const int nt, const DType tsol_
 
   // Slopes
   { // Left boundary
-    (*slope_g[0])[0] = 0.0;
-    (*slope_h[0])[0] = 0.0;
-    (*slope_n[0])[0] = 0.0;
+    (*slope_g[u_nt])[0] = 0.0;
+    (*slope_h[u_nt])[0] = 0.0;
+    (*slope_n[u_nt])[0] = 0.0;
   }
   for ( int i = 1; i < Nx-1; i++ ) {
-    (*slope_g[0])[i] = (*lim_muscl[0])[i] * 
+    (*slope_g[u_nt])[i] = (*lim_muscl[0])[i] * 
       ((*data_g[nt])[i+1]-(*data_g[nt])[i])/dx;
-    (*slope_h[0])[i] = (*lim_muscl[0])[i] * 
+    (*slope_h[u_nt])[i] = (*lim_muscl[0])[i] * 
       ((*data_h[nt])[i+1]-(*data_h[nt])[i])/dx;
-    (*slope_n[0])[i] = (*lim_muscl[0])[i] * 
+    (*slope_n[u_nt])[i] = (*lim_muscl[0])[i] * 
       ((*data_n[nt])[i+1]-(*data_n[nt])[i])/dx;
   }
   { // Right boundary
-    (*slope_g[0])[Nx-1] = 0.0;
-    (*slope_h[0])[Nx-1] = 0.0;
-    (*slope_n[0])[Nx-1] = 0.0;
+    (*slope_g[u_nt])[Nx-1] = 0.0;
+    (*slope_h[u_nt])[Nx-1] = 0.0;
+    (*slope_n[u_nt])[Nx-1] = 0.0;
   }
 
   // Fluxes
   { // Left boundary
-    (*flux_n_u[0])[0] = 0.0;
+    (*flux_n_u[u_nt])[0] = 0.0;
   }
   for ( int i = 1; i < Nx; i++ ) {
     DType loc_r  = x_f[i] * data_r[nt];
     DType loc_r2 = loc_r * loc_r;
 
-    DType loc_vel_u = (*data_u[0])[i]/data_r[nt];
+    DType loc_vel_u = (*data_u[u_nt])[i]/data_r[nt];
     if ( loc_vel_u >= 0.0 )
-      (*flux_n_u[0])[i] = loc_r2 * loc_vel_u * (
-          (*data_n[nt])[i-1]+0.5*dx*(*slope_n[0])[i-1] );
+      (*flux_n_u[u_nt])[i] = loc_r2 * loc_vel_u * (
+          (*data_n[nt])[i-1]+0.5*dx*(*slope_n[u_nt])[i-1] );
     else
-      (*flux_n_u[0])[i] = loc_r2 * loc_vel_u * (
-          (*data_n[nt])[i]-0.5*dx*(*slope_n[0])[i] );
+      (*flux_n_u[u_nt])[i] = loc_r2 * loc_vel_u * (
+          (*data_n[nt])[i]-0.5*dx*(*slope_n[u_nt])[i] );
   }
   { // Right boundary
-    DType loc_vel_u = (*data_u[0])[Nx]/data_r[nt];
+    DType loc_vel_u = (*data_u[u_nt])[Nx]/data_r[nt];
     DType loc_r = x_f[Nx]*data_r[nt];
-    (*flux_n_u[0])[Nx] = loc_r * loc_r * loc_vel_u * 
-      ((loc_vel_u>=0.0) ? (*data_n[nt])[Nx-1]+0.5*dx*(*slope_n[0])[Nx-1] : n_bc );
+    (*flux_n_u[u_nt])[Nx] = loc_r * loc_r * loc_vel_u * 
+      ((loc_vel_u>=0.0) ? (*data_n[nt])[Nx-1]+0.5*dx*(*slope_n[u_nt])[Nx-1] : n_bc );
   }
 
   upscale_var(*data_g[nt],*data_g[nt],x_c,Nx,data_r[nt]);
@@ -701,7 +696,7 @@ void TDSolveFVMMod::compute_cells_fluxes_v_upw(const int nt) {
   return;
 }
 
-void TDSolveFVMMod::compute_cells_fluxes_v_muscl(const int nt) {
+void TDSolveFVMMod::compute_cells_fluxes_v_muscl(const int nt, const int slp_nt) {
 
   downscale_var(*data_g[nt],*data_g[nt],x_c,Nx,data_r[nt]);
   downscale_var(*data_h[nt],*data_h[nt],x_c,Nx,data_r[nt]);
@@ -720,19 +715,19 @@ void TDSolveFVMMod::compute_cells_fluxes_v_muscl(const int nt) {
     DType loc_vel_v = (*data_v[nt])[i]/data_r[nt];
     if ( loc_vel_v >= 0.0 ) {
       (*flux_g_v[0])[i] = loc_r2 * loc_vel_v * (
-          (*data_g[nt])[i-1]+0.5*dx*(*slope_g[0])[i-1] );
+          (*data_g[nt])[i-1]+0.5*dx*(*slope_g[slp_nt])[i-1] );
       (*flux_h_v[0])[i] = loc_r2 * loc_vel_v * (
-          (*data_h[nt])[i-1]+0.5*dx*(*slope_h[0])[i-1] );
+          (*data_h[nt])[i-1]+0.5*dx*(*slope_h[slp_nt])[i-1] );
       (*flux_n_v[0])[i] = loc_r2 * loc_vel_v * (
-          (*data_n[nt])[i-1]+0.5*dx*(*slope_n[0])[i-1] );
+          (*data_n[nt])[i-1]+0.5*dx*(*slope_n[slp_nt])[i-1] );
     }
     else {
       (*flux_g_v[0])[i] = loc_r2 * loc_vel_v * (
-          (*data_g[nt])[i]-0.5*dx*(*slope_g[0])[i] );
+          (*data_g[nt])[i]-0.5*dx*(*slope_g[slp_nt])[i] );
       (*flux_h_v[0])[i] = loc_r2 * loc_vel_v * (
-          (*data_h[nt])[i]-0.5*dx*(*slope_h[0])[i] );
+          (*data_h[nt])[i]-0.5*dx*(*slope_h[slp_nt])[i] );
       (*flux_n_v[0])[i] = loc_r2 * loc_vel_v * (
-          (*data_n[nt])[i]-0.5*dx*(*slope_n[0])[i] );
+          (*data_n[nt])[i]-0.5*dx*(*slope_n[slp_nt])[i] );
     }
   }
   { // Right boundary
@@ -748,8 +743,8 @@ void TDSolveFVMMod::compute_cells_fluxes_v_muscl(const int nt) {
   return;
 }
 
-void TDSolveFVMMod::compute_cells_fluxes_r(const int nt) {
-  DType dror = rprime/data_r[nt];
+void TDSolveFVMMod::compute_cells_fluxes_r(const int nt, const int rp_nt) {
+  DType dror = data_rp[rp_nt]/data_r[nt];
 
   const DType sot = 7.0/12.0;
   const DType oot = 1.0/12.0;
@@ -802,7 +797,7 @@ void TDSolveFVMMod::compute_cells_fluxes_r(const int nt) {
   for ( int i = 0; i < Nx+1; i++ ) {
     (*flux_g[0])[i] = (*flux_g_v[0])[i]+(*flux_g_r[0])[i];
     (*flux_h[0])[i] = (*flux_h_v[0])[i]+(*flux_h_r[0])[i];
-    (*flux_n[0])[i] = (*flux_n_v[0])[i]+(*flux_n_r[0])[i]+(*flux_n_u[0])[i];
+    (*flux_n[0])[i] = (*flux_n_v[0])[i]+(*flux_n_r[0])[i]+(*flux_n_u[rp_nt])[i];
   }
 
   return;
@@ -837,7 +832,7 @@ void TDSolveFVMMod::compute_cells_fluxes_orig(const int nt, const DType tsol_loc
 
 void TDSolveFVMMod::compute_cells_fluxes_orig_upw(const int nt, const DType tsol_loc) {
 
-  DType dror = rprime/data_r[nt];
+  DType dror = data_rp[0]/data_r[nt];
 
   DType n_bc = calc_n_bc( tsol_loc );
 
@@ -871,7 +866,7 @@ void TDSolveFVMMod::compute_cells_fluxes_orig_upw(const int nt, const DType tsol
 
 void TDSolveFVMMod::compute_cells_fluxes_orig_upw_auto_g(const int nt, const DType tsol_loc) {
 
-  DType dror = rprime/data_r[nt];
+  DType dror = data_rp[0]/data_r[nt];
 
   DType n_bc = calc_n_bc( tsol_loc );
 
@@ -901,7 +896,7 @@ void TDSolveFVMMod::compute_cells_fluxes_orig_upw_auto_g(const int nt, const DTy
 
 void TDSolveFVMMod::compute_cells_fluxes_orig_upw_auto_h(const int nt, const DType tsol_loc) {
 
-  DType dror = rprime/data_r[nt];
+  DType dror = data_rp[0]/data_r[nt];
 
   DType n_bc = calc_n_bc( tsol_loc );
 
@@ -931,7 +926,7 @@ void TDSolveFVMMod::compute_cells_fluxes_orig_upw_auto_h(const int nt, const DTy
 
 void TDSolveFVMMod::compute_cells_fluxes_orig_upw_auto_n(const int nt, const DType tsol_loc) {
 
-  DType dror = rprime/data_r[nt];
+  DType dror = data_rp[0]/data_r[nt];
 
   // Fluxes
   { // Left boundary
@@ -955,7 +950,7 @@ void TDSolveFVMMod::compute_cells_fluxes_orig_upw_auto_n(const int nt, const DTy
 
 void TDSolveFVMMod::compute_cells_fluxes_orig_muscl(const int nt, const DType tsol_loc) {
 
-  DType dror = rprime/data_r[nt];
+  DType dror = data_rp[0]/data_r[nt];
 
   DType n_bc = calc_n_bc( tsol_loc );
 
@@ -1019,7 +1014,7 @@ void TDSolveFVMMod::update_cells_orig_imp_upw(const int fr, const int to, const 
   DType mu_coef = tdCoef->mu_coef;
   DType p       = tdCoef->p;
 
-  DType dror = rprime/data_r[to];
+  DType dror = data_rp[0]/data_r[to];
 
   DType n_bc = calc_n_bc( tsol_loc );
 
@@ -1342,7 +1337,7 @@ void TDSolveFVMMod::update_cells_orig_imp_muscl(const int fr, const int to, cons
   DType mu_coef = tdCoef->mu_coef;
   DType p       = tdCoef->p;
 
-  DType dror = rprime/data_r[to];
+  DType dror = data_rp[0]/data_r[to];
 
   DType n_bc = calc_n_bc( tsol_loc );
 
@@ -1524,7 +1519,6 @@ void TDSolveFVMMod::compute_flux_muscl_lims(const int nt){
 }
 
 void TDSolveFVMMod::compute_flux_r_ppm_lims(const int nt) {
-  DType dror = rprime/data_r[nt];
 
   const DType sot = 7.0/12.0;
   const DType oot = 1.0/12.0;
@@ -1710,9 +1704,10 @@ void TDSolveFVMMod::compute_flux_r_ppm_lims(const int nt) {
   return;
 }
 
-void TDSolveFVMMod::update_mat_upw_v(const DType multip, const int nt, HVEC**& vel, const int v_nt, const bool rbc) {
+void TDSolveFVMMod::update_mat_upw_v(const DType multip, const int nt, HVEC**& vel, 
+    const int v_nt, const bool rbc, const int rp_nt) {
 
-  DType dror = rprime/data_r[nt];
+  DType dror = data_rp[rp_nt]/data_r[nt];
   DType r2nt = data_r[nt]*data_r[nt];
   
   Entry elem(1,0.0);
@@ -1866,9 +1861,9 @@ void TDSolveFVMMod::update_mat_orig_muscl_v(const int nt, HVEC**& vel, const int
 }
 
 void TDSolveFVMMod::update_mat_muscl_v(const DType multip, 
-    const int nt, HVEC**& vel, const int v_nt, const bool rbc) {
+    const int nt, HVEC**& vel, const int v_nt, const bool rbc, const int rp_nt) {
 
-  DType dror = rprime/data_r[nt];
+  DType dror = data_rp[rp_nt]/data_r[nt];
   DType r2nt = data_r[nt]*data_r[nt];
 
   Entry elem(1,0.0);
@@ -1972,9 +1967,9 @@ void TDSolveFVMMod::update_mat_muscl_v(const DType multip,
   return;
 }
 
-void TDSolveFVMMod::update_mat_ppm_r(const DType multip, const int nt) {
+void TDSolveFVMMod::update_mat_ppm_r(const DType multip, const int nt, const int rp_nt) {
 
-  DType dror = rprime/data_r[nt];
+  DType dror = data_rp[rp_nt]/data_r[nt];
   DType r2nt = data_r[nt]*data_r[nt];
 
   Entry elem(1,0.0);
@@ -2118,7 +2113,7 @@ void TDSolveFVMMod::update_cells_imp_upw(const int fr, const int to, const DType
   DType mu_coef = tdCoef->mu_coef;
   DType p       = tdCoef->p;
 
-  DType dror = rprime/data_r[to];
+  DType dror = data_rp[0]/data_r[to];
   DType r2fr = data_r[fr]*data_r[fr];
   DType r2to = data_r[to]*data_r[to];
 
@@ -2284,7 +2279,7 @@ void TDSolveFVMMod::update_cells_imp_muscl(const int fr, const int to, const DTy
   DType mu_coef = tdCoef->mu_coef;
   DType p       = tdCoef->p;
 
-  DType dror = rprime/data_r[to];
+  DType dror = data_rp[0]/data_r[to];
   DType r2fr = data_r[fr]*data_r[fr];
   DType r2to = data_r[to]*data_r[to];
 
@@ -2442,7 +2437,7 @@ void TDSolveFVMMod::update_cells_imp_muscl(const int fr, const int to, const DTy
   return;
 }
 
-void TDSolveFVMMod::update_vel_int(const int nt) {
+void TDSolveFVMMod::update_vel_int(const int nt, const int u_nt) {
 
   DType lambda  = tdCoef->lambda;
   DType q       = tdCoef->q;
@@ -2459,7 +2454,7 @@ void TDSolveFVMMod::update_vel_int(const int nt) {
 
   // Remove the advection part due to chemical gradient
   for ( int i = 1; i < Nx+1; i++ )
-    (*data_v[nt])[i] = ((*data_v[nt])[i] - (*flux_n_u[0])[i]/data_r[nt])/x_f[i]/x_f[i];
+    (*data_v[nt])[i] = ((*data_v[nt])[i] - (*flux_n_u[u_nt])[i]/data_r[nt])/x_f[i]/x_f[i];
 
   return;
 }
@@ -2568,9 +2563,9 @@ void TDSolveFVMMod::compute_flux_chem_muscl_lims(const int nt, HVEC**& data, HVE
   return;
 }
 
-void TDSolveFVMMod::update_mat_chem_muscl_r(const int nt, LinMat*& mat_loc, HVEC**& lim, const int N_loc, const DType* xc_loc, const DType* xf_loc, const int rbc) {
+void TDSolveFVMMod::update_mat_chem_muscl_r(const int nt, LinMat*& mat_loc, HVEC**& lim, const int N_loc, const DType* xc_loc, const DType* xf_loc, const int rbc, const int rp_nt) {
 
-  DType dror = rprime/data_r[nt];
+  DType dror = data_rp[rp_nt]/data_r[nt];
   DType r2nt = data_r[nt]*data_r[nt];
 
   Entry elem(1,0.0);
@@ -2708,7 +2703,7 @@ void TDSolveFVMMod::update_mat_chem_diff(const int nt, LinMat*& mat_loc, const i
 }
 
 // Implicit MUSCL
-void TDSolveFVMMod::update_chem_muscl_be(const int fr, const int to) {
+void TDSolveFVMMod::update_chem_muscl_be(const int fr, const int to, const int rp_nt) {
   rhs_a->reset( 0.0 );
   mat_a->reset( 0.0 );
   sol_a->reset( 0.0 );
@@ -2719,7 +2714,7 @@ void TDSolveFVMMod::update_chem_muscl_be(const int fr, const int to) {
   DType gamma_a = tdCoef->gamma_a;
   DType theta   = tdCoef->theta;
 
-  DType dror = rprime/data_r[to];
+  DType dror = data_rp[rp_nt]/data_r[to];
   DType r2fr = data_r[fr]*data_r[fr];
   DType r2to = data_r[to]*data_r[to];
 
@@ -2781,14 +2776,14 @@ void TDSolveFVMMod::update_chem_opn_muscl_be(
     const DType coef_D, const DType coef_alpha, const DType coef_beta, 
     const DType coef_gamma, HVEC**& data_source, 
     HVEC**& data_P, HVEC**& flux_P, HVEC**& slope_P,
-    const bool treatment, const bool treatment_bc) {
+    const bool treatment, const bool treatment_bc, const int rp_nt) {
   rhs_p->reset( 0.0 );
   mat_p->reset( 0.0 );
   sol_p->reset( 0.0 );
 
   DType theta = tdCoef->theta;
 
-  DType dror = rprime/data_r[to];
+  DType dror = data_rp[rp_nt]/data_r[to];
   DType r2fr = data_r[fr]*data_r[fr];
   DType r2to = data_r[to]*data_r[to];
 
@@ -2855,7 +2850,7 @@ void TDSolveFVMMod::update_chem_opn_muscl_be(
   return;
 }
 
-void TDSolveFVMMod::update_vel_int_opn(const int nt) {
+void TDSolveFVMMod::update_vel_int_opn(const int nt, const int u_nt) {
 
   DType lambda  = tdCoef->lambda;
   DType q       = tdCoef->q;
@@ -2891,7 +2886,7 @@ void TDSolveFVMMod::update_vel_int_opn(const int nt) {
 
   // Remove the advection part due to chemical gradient
   for ( int i = 1; i < Nx+1; i++ )
-    (*data_v[nt])[i] = ((*data_v[nt])[i] - (*flux_n_u[0])[i]/data_r[nt])/x_f[i]/x_f[i];
+    (*data_v[nt])[i] = ((*data_v[nt])[i] - (*flux_n_u[u_nt])[i]/data_r[nt])/x_f[i]/x_f[i];
 
   return;
 }
@@ -2981,7 +2976,7 @@ void TDSolveFVMMod::update_cells_common(const int fr, const int to,
   DType mu_coef = tdCoef->mu_coef;
   DType p       = tdCoef->p;
 
-  DType dror = rprime/data_r[fr];
+  DType dror = data_rp[0]/data_r[fr];
 
   DType coef_time  = only_res ? 0.0 : 1.0;
   DType coef_space = only_res ? 1.0 : dtn;
@@ -3039,7 +3034,7 @@ void TDSolveFVMMod::update_cells_common_auto_g(const int fr, const int to) {
   DType mu_coef = tdCoef->mu_coef;
   DType p       = tdCoef->p;
 
-  DType dror = rprime/data_r[fr];
+  DType dror = data_rp[0]/data_r[fr];
 
   // Source terms
   for ( int i = 0; i < Nx; i++ ) {
@@ -3082,7 +3077,7 @@ void TDSolveFVMMod::update_cells_common_auto_h(const int fr, const int to) {
   DType mu_coef = tdCoef->mu_coef;
   DType p       = tdCoef->p;
 
-  DType dror = rprime/data_r[fr];
+  DType dror = data_rp[0]/data_r[fr];
 
   // Source terms
   for ( int i = 0; i < Nx; i++ ) {
@@ -3125,7 +3120,7 @@ void TDSolveFVMMod::update_cells_common_auto_n(const int fr, const int to) {
   DType mu_coef = tdCoef->mu_coef;
   DType p       = tdCoef->p;
 
-  DType dror = rprime/data_r[fr];
+  DType dror = data_rp[0]/data_r[fr];
 
   // Source terms
   for ( int i = 0; i < Nx; i++ ) {
@@ -3270,7 +3265,8 @@ void TDSolveFVMMod::update_sol_radau_imp_upw( const int rkns,
     RKButcher& rkButcher, const int fr, const int to) {
   assert( to == rkns+1 );
   int Ns = rkButcher.getNstage();
-  DType rk_coef = rkButcher.get(rkns,rkns);
+  //DType rk_coef = rkButcher.get(rkns,rkns);
+  DType rk_coef = rkButcher.stage(rkns);
 
   DType lambda = tdCoef->lambda;
   DType q      = tdCoef->q;
@@ -3283,9 +3279,7 @@ void TDSolveFVMMod::update_sol_radau_imp_upw( const int rkns,
   DType mu_coef = tdCoef->mu_coef;
   DType p       = tdCoef->p;
 
-  rprime = data_rp[to];
-
-  DType dror = rprime/data_r[to];
+  DType dror = data_rp[to]/data_r[to];
   DType r2fr = data_r[fr]*data_r[fr];
   DType r2to = data_r[to]*data_r[to];
 
@@ -3316,9 +3310,10 @@ void TDSolveFVMMod::update_sol_radau_imp_upw( const int rkns,
   for ( int i = 0; i < Nx; i++ ) {
     comp = (*data_g[fr])[i] * r2fr;
     DType xc2 = x_c[i] * x_c[i];
+    DType loc_res = (*resd_g[rkns+1])[i];
     for ( int j = 0; j < Ns; j++ )
       if ( j != rkns )
-        comp += rkButcher.get(rkns,j) * dtn * (*resd_g[j+1])[i] / xc2;
+        comp += rkButcher.get(rkns,j) * dtn * ((*resd_g[j+1])[i]-loc_res) / xc2;
     rhs->set(i,comp);
   }
 
@@ -3330,9 +3325,8 @@ void TDSolveFVMMod::update_sol_radau_imp_upw( const int rkns,
     mat->set(i,i,elem);
   }
 
-  // This will need rprime
-  update_mat_upw_v( rk_coef, to, data_v, to );
-  update_mat_ppm_r( rk_coef, to );
+  update_mat_upw_v( rk_coef, to, data_v, to, false, to );
+  update_mat_ppm_r( rk_coef, to, to );
 
   // Initialize solution
   for ( int i = 0; i < Nx; i++ ) {
@@ -3360,9 +3354,10 @@ void TDSolveFVMMod::update_sol_radau_imp_upw( const int rkns,
     DType loc_mu = ( p == 0.0 ) ? mu * ( mu_coef - mu_slp ) : mu * ( mu_coef - mu_slp * pow(x_c[i],p) ); 
     comp = (*data_h[fr])[i] * r2fr + rk_coef * dtn * loc_mu * (*data_g[to])[i] * r2to;
     DType xc2 = x_c[i] * x_c[i];
+    DType loc_res = (*resd_h[rkns+1])[i];
     for ( int j = 0; j < Ns; j++ )
       if ( j!= rkns )
-        comp += rkButcher.get(rkns,j) * dtn * (*resd_h[j+1])[i] / xc2;
+        comp += rkButcher.get(rkns,j) * dtn * ((*resd_h[j+1])[i]-loc_res) / xc2;
     rhs->set(i,comp);
   }
 
@@ -3372,8 +3367,8 @@ void TDSolveFVMMod::update_sol_radau_imp_upw( const int rkns,
     mat->set(i,i,elem);
   }
 
-  update_mat_upw_v( rk_coef, to, data_v, to );
-  update_mat_ppm_r( rk_coef, to );
+  update_mat_upw_v( rk_coef, to, data_v, to, false, to );
+  update_mat_ppm_r( rk_coef, to, to );
 
   // Initialize solution
   for ( int i = 0; i < Nx; i++ ) {
@@ -3401,9 +3396,10 @@ void TDSolveFVMMod::update_sol_radau_imp_upw( const int rkns,
   for ( int i = 0; i < Nx-1; i++ ) {
     comp = (*data_n[fr])[i] * r2fr;
     DType xc2 = x_c[i] * x_c[i];
+    DType loc_res = (*resd_n[rkns+1])[i];
     for ( int j = 0; j < Ns; j++ )
       if ( j != rkns )
-        comp += rkButcher.get(rkns,j) * dtn * (*resd_n[j+1])[i] / xc2;
+        comp += rkButcher.get(rkns,j) * dtn * ((*resd_n[j+1])[i]-loc_res) / xc2;
     rhs->set(i,comp);
   }
   // Right boundary
@@ -3416,9 +3412,10 @@ void TDSolveFVMMod::update_sol_radau_imp_upw( const int rkns,
     if ( loc_u < 0.0 )
       coef_u_r += rk_coef * (dtn/dx) * xf2 * r2to * loc_u;
     comp = (*data_n[fr])[Nx-1] * r2fr - coef_u_r * n_bc / xc2;
+    DType loc_res = (*resd_n[rkns+1])[Nx-1];
     for ( int j = 0; j < Ns; j++ )
       if ( j != rkns )
-        comp += rkButcher.get(rkns,j) * dtn * (*resd_n[j+1])[Nx-1] / xc2;
+        comp += rkButcher.get(rkns,j) * dtn * ((*resd_n[j+1])[Nx-1]-loc_res) / xc2;
     rhs->set(Nx-1,comp);
   }
 
@@ -3428,9 +3425,9 @@ void TDSolveFVMMod::update_sol_radau_imp_upw( const int rkns,
     mat->set(i,i,elem);
   }
 
-  update_mat_upw_v( rk_coef, to, data_v, to );
-  update_mat_ppm_r( rk_coef, to );
-  update_mat_upw_v( rk_coef, to, data_u, 0, true );
+  update_mat_upw_v( rk_coef, to, data_v, to, false, to );
+  update_mat_ppm_r( rk_coef, to, to );
+  update_mat_upw_v( rk_coef, to, data_u, to, true, to );
 
   // Initialize solution
   for ( int i = 0; i < Nx; i++ ) {
@@ -3474,7 +3471,8 @@ void TDSolveFVMMod::update_sol_radau_imp_muscl( const int rkns,
     RKButcher& rkButcher, const int fr, const int to) {
   assert( to == rkns+1 );
   int Ns = rkButcher.getNstage();
-  DType rk_coef = rkButcher.get(rkns,rkns);
+  //DType rk_coef = rkButcher.get(rkns,rkns);
+  DType rk_coef = rkButcher.stage(rkns);
 
   DType lambda = tdCoef->lambda;
   DType q      = tdCoef->q;
@@ -3487,9 +3485,7 @@ void TDSolveFVMMod::update_sol_radau_imp_muscl( const int rkns,
   DType mu_coef = tdCoef->mu_coef;
   DType p       = tdCoef->p;
 
-  rprime = data_rp[to];
-
-  DType dror = rprime/data_r[to];
+  DType dror = data_rp[to]/data_r[to];
   DType r2fr = data_r[fr]*data_r[fr];
   DType r2to = data_r[to]*data_r[to];
 
@@ -3520,9 +3516,10 @@ void TDSolveFVMMod::update_sol_radau_imp_muscl( const int rkns,
   for ( int i = 0; i < Nx; i++ ) {
     comp = (*data_g[fr])[i] * r2fr;
     DType xc2 = x_c[i] * x_c[i];
+    DType loc_res = (*resd_g[rkns+1])[i];
     for ( int j = 0; j < Ns; j++ )
       if ( j != rkns )
-        comp += rkButcher.get(rkns,j) * dtn * (*resd_g[j+1])[i] / xc2;
+        comp += rkButcher.get(rkns,j) * dtn * ((*resd_g[j+1])[i]-loc_res) / xc2;
     rhs->set(i,comp);
   }
 
@@ -3534,8 +3531,8 @@ void TDSolveFVMMod::update_sol_radau_imp_muscl( const int rkns,
     mat->set(i,i,elem);
   }
 
-  update_mat_muscl_v( rk_coef, to, data_v, to );
-  update_mat_ppm_r( rk_coef, to );
+  update_mat_muscl_v( rk_coef, to, data_v, to, false, to );
+  update_mat_ppm_r( rk_coef, to, to );
 
   // Initialize solution
   for ( int i = 0; i < Nx; i++ ) {
@@ -3563,9 +3560,10 @@ void TDSolveFVMMod::update_sol_radau_imp_muscl( const int rkns,
     DType loc_mu = ( p == 0.0 ) ? mu * ( mu_coef - mu_slp ) : mu * ( mu_coef - mu_slp * pow(x_c[i],p) ); 
     comp = (*data_h[fr])[i] * r2fr + rk_coef * dtn * loc_mu * (*data_g[to])[i] * r2to;
     DType xc2 = x_c[i] * x_c[i];
+    DType loc_res = (*resd_h[rkns+1])[i];
     for ( int j = 0; j < Ns; j++ )
       if ( j!= rkns )
-        comp += rkButcher.get(rkns,j) * dtn * (*resd_h[j+1])[i] / xc2;
+        comp += rkButcher.get(rkns,j) * dtn * ((*resd_h[j+1])[i]-loc_res) / xc2;
     rhs->set(i,comp);
   }
 
@@ -3575,8 +3573,8 @@ void TDSolveFVMMod::update_sol_radau_imp_muscl( const int rkns,
     mat->set(i,i,elem);
   }
 
-  update_mat_muscl_v( rk_coef, to, data_v, to );
-  update_mat_ppm_r( rk_coef, to );
+  update_mat_muscl_v( rk_coef, to, data_v, to, false, to );
+  update_mat_ppm_r( rk_coef, to, to );
 
   // Initialize solution
   for ( int i = 0; i < Nx; i++ ) {
@@ -3603,9 +3601,10 @@ void TDSolveFVMMod::update_sol_radau_imp_muscl( const int rkns,
   for ( int i = 0; i < Nx-1; i++ ) {
     comp = (*data_n[fr])[i] * r2fr;
     DType xc2 = x_c[i] * x_c[i];
+    DType loc_res = (*resd_n[rkns+1])[i];
     for ( int j = 0; j < Ns; j++ )
       if ( j != rkns )
-        comp += rkButcher.get(rkns,j) * dtn * (*resd_n[j+1])[i] / xc2;
+        comp += rkButcher.get(rkns,j) * dtn * ((*resd_n[j+1])[i]-loc_res) / xc2;
     rhs->set(i,comp);
   }
   // Right boundary
@@ -3618,9 +3617,10 @@ void TDSolveFVMMod::update_sol_radau_imp_muscl( const int rkns,
     if ( loc_u < 0.0 )
       coef_u_r += rk_coef * (dtn/dx) * xf2 * r2to * loc_u;
     comp = (*data_n[fr])[Nx-1] * r2fr - coef_u_r * n_bc / xc2;
+    DType loc_res = (*resd_n[rkns+1])[Nx-1];
     for ( int j = 0; j < Ns; j++ )
       if ( j != rkns )
-        comp += rkButcher.get(rkns,j) * dtn * (*resd_n[j+1])[Nx-1] / xc2;
+        comp += rkButcher.get(rkns,j) * dtn * ((*resd_n[j+1])[Nx-1]-loc_res) / xc2;
     rhs->set(Nx-1,comp);
   }
 
@@ -3630,9 +3630,9 @@ void TDSolveFVMMod::update_sol_radau_imp_muscl( const int rkns,
     mat->set(i,i,elem);
   }
 
-  update_mat_muscl_v( rk_coef, to, data_v, to );
-  update_mat_ppm_r( rk_coef, to );
-  update_mat_muscl_v( rk_coef, to, data_u, 0, true );
+  update_mat_muscl_v( rk_coef, to, data_v, to, false, to );
+  update_mat_ppm_r( rk_coef, to, to );
+  update_mat_muscl_v( rk_coef, to, data_u, to, true, to );
 
   // Initialize solution
   for ( int i = 0; i < Nx; i++ ) {
