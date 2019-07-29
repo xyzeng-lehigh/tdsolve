@@ -140,6 +140,7 @@ void TDSolveFVMMod::calc_dt(const int nt) {
     reach_term_now = true;
 
   DType dtn_trial = DTYPE_MAX;
+  DType dtn_cfl1  = DTYPE_MAX; // dtn corresponding to CFL 1
   DType dr = (*data_v[nt])[Nx]; // A predictor
 
   compute_vel_u( nt, tsol );
@@ -152,6 +153,7 @@ void TDSolveFVMMod::calc_dt(const int nt) {
       DType v_max = max( fabs(loc_vel-m_vel), fabs(loc_vel-m_vel+u_vel) );
       v_max = max( fabs(m_vel), v_max );
       dtn_trial = min( dtn_trial, tdSetup->cfl * dx / v_max );
+      dtn_cfl1  = min( dtn_cfl1, dx / v_max );
     }
   }
   else {
@@ -161,6 +163,7 @@ void TDSolveFVMMod::calc_dt(const int nt) {
       DType u_vel = (*data_u[0])[i]/data_r[nt];
       DType v_max = fabs( loc_vel ) + fabs( m_vel ) + fabs( u_vel );
       dtn_trial = min( dtn_trial, tdSetup->cfl * dx / v_max );
+      dtn_cfl1  = min( dtn_cfl1, dx / v_max );
     }
   }
 
@@ -188,6 +191,8 @@ void TDSolveFVMMod::calc_dt(const int nt) {
 
   if ( iter >= tdSetup->maxit )
     reach_term_now = true;
+
+  cur_cfl = dtn/dtn_cfl1;
 
   return;
 }
@@ -277,8 +282,8 @@ bool TDSolveFVMMod::update_sol(const int fr, const int to,
       update_vel( to, 0, shift_dt_to, true ); // Update data_v[to] no updating on radius
       update_rad( fr, to, to );           // Update the radius data_r[to] and data_rp[0] 
       *vel_tmp[0] -= *data_v[to];
-      cur_res = (*vel_tmp[0]).norm(-1);
-      if ( (*vel_tmp[0]).norm(-1) < max_tol )
+      cur_res = (*vel_tmp[0]).norm(tdSetup->nrmPow);
+      if ( (*vel_tmp[0]).norm(tdSetup->nrmPow) < max_tol )
         break;
 
       cur_iter++;
@@ -389,6 +394,8 @@ void TDSolveFVMMod::update_vel(const DType alpha, const int nt) {
   // Compute fluxes - flux_n_u[nt]
   // and (if MUSCL) - slope_*[nt]
   compute_cells_fluxes_u( nt, tsol+alpha*dtn, nt );
+  // Make a copy of old velocity
+  *data_node[0] = *data_v[nt];
   switch ( tdSetup->prob_id ) {
     case 0:  // PDGF
     case -1: // Test
@@ -401,6 +408,9 @@ void TDSolveFVMMod::update_vel(const DType alpha, const int nt) {
       update_vel_int_opn( nt, nt ); // Will use flux_n_u[0]
       break;
   }
+  // Compare the difference between the old and the new velocity
+  *data_node[0] -= *data_v[nt];
+  diff_v[nt] = (*data_node[0]).norm(tdSetup->nrmPow);
 
   return;
 }
@@ -1478,7 +1488,7 @@ void TDSolveFVMMod::update_cells_orig_imp_muscl(const int fr, const int to, cons
   return;
 }
 
-void TDSolveFVMMod::compute_flux_muscl_lims(const int nt){
+void TDSolveFVMMod::compute_flux_muscl_lims(const int nt) {
 
   // Limiters for the velocity associated with u and with v
   { // Left boundary
@@ -3246,17 +3256,34 @@ void TDSolveFVMMod::update_chem_muscl_rhs( const int fr, const int to ) {
 void TDSolveFVMMod::update_sol_radau_exp( const int rkns, 
     RKButcher& rkButcher, const int fr, const int to) {
   assert( to == rkns+1 );
-  *data_g[to] = *data_g[fr];
-  *data_h[to] = *data_h[fr];
-  *data_n[to] = *data_n[fr];
-
   int Ns = rkButcher.getNstage();
-  for ( int j = 0; j < Ns; j++ ) {
-    DType rk_coef = rkButcher.get(rkns,j) * dtn;
-    *data_g[to] += rk_coef * (*resd_g[j+1]);
-    *data_h[to] += rk_coef * (*resd_h[j+1]);
-    *data_n[to] += rk_coef * (*resd_n[j+1]);
-  }
+
+  // data_g
+  *data_cell[0] = *data_g[to]; // old data
+  *data_g[to]   = *data_g[fr];
+  for ( int j = 0; j < Ns; j++ )
+    *data_g[to] += (rkButcher.get(rkns,j) * dtn) * (*resd_g[j+1]);
+  *data_cell[0] -= *data_g[to];
+  downscale_var(*data_cell[0],*data_cell[0],x_c,Nx,data_r[to]);
+  diff_g[to] = (*data_cell[0]).norm(tdSetup->nrmPow);
+
+  // data_h
+  *data_cell[0] = *data_h[to]; // old data
+  *data_h[to]   = *data_h[fr];
+  for ( int j = 0; j < Ns; j++ )
+    *data_h[to] += (rkButcher.get(rkns,j) * dtn) * (*resd_h[j+1]);
+  *data_cell[0] -= *data_h[to];
+  downscale_var(*data_cell[0],*data_cell[0],x_c,Nx,data_r[to]);
+  diff_h[to] = (*data_cell[0]).norm(tdSetup->nrmPow);
+
+  // data_n
+  *data_cell[0] = *data_n[to]; // old data
+  *data_n[to] = *data_n[fr];
+  for ( int j = 0; j < Ns; j++ )
+    *data_n[to] += (rkButcher.get(rkns,j) * dtn) * (*resd_n[j+1]);
+  *data_cell[0] -= *data_n[to];
+  downscale_var(*data_cell[0],*data_cell[0],x_c,Nx,data_r[to]);
+  diff_n[to] = (*data_cell[0]).norm(tdSetup->nrmPow);
 
   return;
 }
@@ -3305,6 +3332,7 @@ void TDSolveFVMMod::update_sol_radau_imp_upw( const int rkns,
   rhs->reset( 0.0 );
   mat->reset( 0.0 );
   sol->reset( 0.0 );
+  *data_cell[0] = *data_g[to];
 
   // RHS
   for ( int i = 0; i < Nx; i++ ) {
@@ -3343,11 +3371,14 @@ void TDSolveFVMMod::update_sol_radau_imp_upw( const int rkns,
     vsol = comp.getVal();
     (*data_g[to])[i] = vsol[0];
   }
+  *data_cell[0] -= *data_g[to];
+  diff_g[to] = (*data_cell[0]).norm(tdSetup->nrmPow);
 
   // Second data_h
   rhs->reset( 0.0 );
   mat->reset( 0.0 );
   sol->reset( 0.0 );
+  *data_cell[0] = *data_h[to];
 
   // RHS
   for ( int i = 0; i < Nx; i++ ) {
@@ -3385,12 +3416,15 @@ void TDSolveFVMMod::update_sol_radau_imp_upw( const int rkns,
     vsol = comp.getVal();
     (*data_h[to])[i] = vsol[0];
   }
+  *data_cell[0] -= *data_h[to];
+  diff_h[to] = (*data_cell[0]).norm(tdSetup->nrmPow);
 
 
   // Last data_n
   rhs->reset( 0.0 );
   mat->reset( 0.0 );
   sol->reset( 0.0 );
+  *data_cell[0] = *data_n[to];
 
   // RHS
   for ( int i = 0; i < Nx-1; i++ ) {
@@ -3444,6 +3478,8 @@ void TDSolveFVMMod::update_sol_radau_imp_upw( const int rkns,
     vsol = comp.getVal();
     (*data_n[to])[i] = vsol[0];
   }
+  *data_cell[0] -= *data_n[to];
+  diff_n[to] = (*data_cell[0]).norm(tdSetup->nrmPow);
 
   upscale_var(*data_g[fr],*data_g[fr],x_c,Nx,data_r[fr]);
   upscale_var(*data_h[fr],*data_h[fr],x_c,Nx,data_r[fr]);
@@ -3452,17 +3488,6 @@ void TDSolveFVMMod::update_sol_radau_imp_upw( const int rkns,
   upscale_var(*data_g[to],*data_g[to],x_c,Nx,data_r[to]);
   upscale_var(*data_h[to],*data_h[to],x_c,Nx,data_r[to]);
   upscale_var(*data_n[to],*data_n[to],x_c,Nx,data_r[to]);
-
-  // // Debug -- recompute as explicit
-  // *data_g[to] = *data_g[fr];
-  // *data_n[to] = *data_n[fr];
-
-  // Ns = rkButcher.getNstage();
-  // for ( int j = 0; j < Ns; j++ ) {
-  //   DType rk_coef = rkButcher.get(rkns,j) * dtn;
-  //   *data_g[to] += rk_coef * (*resd_g[j+1]);
-  //   *data_n[to] += rk_coef * (*resd_n[j+1]);
-  // }
 
   return;
 }
@@ -3511,6 +3536,7 @@ void TDSolveFVMMod::update_sol_radau_imp_muscl( const int rkns,
   rhs->reset( 0.0 );
   mat->reset( 0.0 );
   sol->reset( 0.0 );
+  *data_cell[0] = *data_g[to];
 
   // RHS
   for ( int i = 0; i < Nx; i++ ) {
@@ -3549,11 +3575,14 @@ void TDSolveFVMMod::update_sol_radau_imp_muscl( const int rkns,
     vsol = comp.getVal();
     (*data_g[to])[i] = vsol[0];
   }
+  *data_cell[0] -= *data_g[to];
+  diff_g[to] = (*data_cell[0]).norm(tdSetup->nrmPow);
 
   // Second data_h
   rhs->reset( 0.0 );
   mat->reset( 0.0 );
   sol->reset( 0.0 );
+  *data_cell[0] = *data_h[to];
 
   // RHS
   for ( int i = 0; i < Nx; i++ ) {
@@ -3591,11 +3620,14 @@ void TDSolveFVMMod::update_sol_radau_imp_muscl( const int rkns,
     vsol = comp.getVal();
     (*data_h[to])[i] = vsol[0];
   }
+  *data_cell[0] -= *data_h[to];
+  diff_h[to] = (*data_cell[0]).norm(tdSetup->nrmPow);
 
   // Last data_n
   rhs->reset( 0.0 );
   mat->reset( 0.0 );
   sol->reset( 0.0 );
+  *data_cell[0] = *data_n[to];
 
   // RHS
   for ( int i = 0; i < Nx-1; i++ ) {
@@ -3649,6 +3681,8 @@ void TDSolveFVMMod::update_sol_radau_imp_muscl( const int rkns,
     vsol = comp.getVal();
     (*data_n[to])[i] = vsol[0];
   }
+  *data_cell[0] -= *data_n[to];
+  diff_n[to] = (*data_cell[0]).norm(tdSetup->nrmPow);
 
   upscale_var(*data_g[fr],*data_g[fr],x_c,Nx,data_r[fr]);
   upscale_var(*data_h[fr],*data_h[fr],x_c,Nx,data_r[fr]);

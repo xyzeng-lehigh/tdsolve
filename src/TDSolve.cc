@@ -66,6 +66,15 @@ TDSolve::TDSolve(TDInput* tdInput_ptr) {
   data_rp = NULL;
   Ndata   = 3;
 
+  data_cell = NULL;
+  data_node = NULL;
+
+  diff_g  = NULL;
+  diff_h  = NULL;
+  diff_n  = NULL;
+  diff_v  = NULL;
+  diff_r  = NULL;
+
   data_p1 = NULL;
   data_p2 = NULL;
   data_dv = NULL;
@@ -88,6 +97,9 @@ TDSolve::~TDSolve(void) {
   erase_array( data_n, Ndata );
   erase_array( data_a, Ndata );
   erase_array( data_v, Ndata );
+
+  erase_array( data_cell, 1 );
+  erase_array( data_node, 1 );
   // OPN Model
   erase_array( data_p1, Ndata );
   erase_array( data_p2, Ndata );
@@ -102,6 +114,12 @@ TDSolve::~TDSolve(void) {
 
   if (data_r!=NULL)  delete[] data_r;
   if (data_rp!=NULL) delete[] data_rp;
+
+  if (diff_g!=NULL)  delete[] diff_g;
+  if (diff_h!=NULL)  delete[] diff_h;
+  if (diff_n!=NULL)  delete[] diff_n;
+  if (diff_v!=NULL)  delete[] diff_v;
+  if (diff_r!=NULL)  delete[] diff_r;
 
   if (mat!=NULL) delete mat;
   if (prc!=NULL) delete prc;
@@ -251,8 +269,8 @@ void TDSolve::average_sol(const DType coef_1, const int fr_1,
 
 void TDSolve::diagnostic(const int nt) {
   if ( tdSetup->silence ) return;
-  fprintf( stdout, "Iter %3d: Time %6.8f; Time step %6.8f; Radius %6.8f; Front-velocity %6.8f.\n",
-      iter, tsol, dtn, data_r[nt], data_rp[0] );
+  fprintf( stdout, "Iter %3d: Time %6.8f; Time step %6.8f; CFL %2.4f; Radius %6.8f; Front-velocity %6.8f.\n",
+      iter, tsol, dtn, cur_cfl, data_r[nt], data_rp[0] );
   return;
 }
 
@@ -315,8 +333,11 @@ void TDSolve::update_rad_radau(RKButcher& rkButcher, const bool diagnos) {
   }
 
   // Step 3 - assign the converged solution to data_r
-  for ( int i = 0; i < Ns; i++ )
+  for ( int i = 0; i < Ns; i++ ) {
+    // The difference between new and old data_r
+    diff_r[i+1] = std::fabs(data_r[i+1]-sol[i]); 
     data_r[i+1] = sol[i];
+  }
 
   return;
 }
@@ -351,44 +372,46 @@ void TDSolve::check_conv_radau(const RKButcher& rkButcher, int& n_iter,
     bool& sol_conv, bool& red_dt, const bool diagnos) {
   DType res_s = 0.0;
   int Ns = rkButcher.getNstage();
-  HVEC res_g(Ns,0.0), res_h(Ns,0.0), res_n(Ns,0.0);
   for ( int i = 0; i < Ns; i++ ) {
-    HVEC tres(Nx,0.0);
-    // data_g
-    tres = (*data_g[i+1]-*data_g[0])/dtn;
-    for ( int j = 0; j < Ns; j++ )
-      tres -= rkButcher.get(i,j) * (*resd_g[j+1]);
-    res_g[i] = tres.norm(-1);
-    res_s = std::max( res_s, res_g[i] );
-    // data_h
-    tres = (*data_h[i+1]-*data_h[0])/dtn;
-    for ( int j = 0; j < Ns; j++ )
-      tres -= rkButcher.get(i,j) * (*resd_h[j+1]);
-    res_h[i] = tres.norm(-1);
-    res_s = std::max( res_s, res_h[i] );
-    // data_n
-    tres = (*data_n[i+1]-*data_n[0])/dtn;
-    for ( int j = 0; j < Ns; j++ )
-      tres -= rkButcher.get(i,j) * (*resd_n[j+1]);
-    res_n[i] = tres.norm(-1);
-    res_s = std::max( res_s, res_n[i] );
+    // data_r
+    res_s = std::max( res_s, diff_r[i+1] );
+    // data_v
+    res_s = std::max( res_s, diff_v[i+1] );
+    if (!tdSetup->vOnly) {
+      // data_g
+      res_s = std::max( res_s, diff_g[i+1] );
+      // data_h
+      res_s = std::max( res_s, diff_h[i+1] );
+      // data_n
+      res_s = std::max( res_s, diff_n[i+1] );
+    }
   }
   n_iter++;
-  sol_conv = res_s <= tdSetup->vTol;
-  red_dt   = (tdSetup->vIter >= 0) && (n_iter == tdSetup->vIter) && (res_s > tdSetup->vTol);
+  if (n_iter == 0) init_err = 1.0;   // In the first iteration, use absolute error
+  sol_conv = res_s <= (tdSetup->vTol * init_err);
+  red_dt   = (tdSetup->vIter >= 0) && (n_iter == tdSetup->vIter) && (res_s > (tdSetup->vTol * init_err) );
+  if (n_iter == 0) init_err = res_s; // In the next iterations, use relative error
   if (diagnos) {
     std::cout << "Radau PMC iteration: " << n_iter << "; Maximum residue: " << res_s << std::endl;
-    std::cout << "  residuals G: ";
+    std::cout << "  radius: ";
     for ( int i = 0; i < Ns; i++ )
-      std::cout << "Stage " << i+1 << " - " << res_g[i] << "; ";
+      std::cout << "stage " << i+1 << " - " << std::fabs( diff_r[i+1] ) << "; ";
     std::cout << std::endl;
-    std::cout << "  residuals H: ";
+    std::cout << "  velocity: ";
     for ( int i = 0; i < Ns; i++ )
-      std::cout << "Stage " << i+1 << " - " << res_h[i] << "; ";
+      std::cout << "stage " << i+1 << " - " << std::fabs( diff_v[i+1] ) << "; ";
     std::cout << std::endl;
-    std::cout << "  residuals N: ";
+    std::cout << "  G: ";
     for ( int i = 0; i < Ns; i++ )
-      std::cout << "Stage " << i+1 << " - " << res_n[i] << "; ";
+      std::cout << "stage " << i+1 << " - " << std::fabs( diff_g[i+1] ) << "; ";
+    std::cout << std::endl;
+    std::cout << "  H: ";
+    for ( int i = 0; i < Ns; i++ )
+      std::cout << "stage " << i+1 << " - " << std::fabs( diff_h[i+1] ) << "; ";
+    std::cout << std::endl;
+    std::cout << "  N: ";
+    for ( int i = 0; i < Ns; i++ )
+      std::cout << "stage " << i+1 << " - " << std::fabs( diff_n[i+1] ) << "; ";
     std::cout << std::endl;
   }
   if (sol_conv)
@@ -401,6 +424,7 @@ void TDSolve::check_conv_radau(const RKButcher& rkButcher, int& n_iter,
 void TDSolve::reduce_dtn(const DType scale) {
   scale_dtn( scale );
   dtn_old = dtn;
+  cur_cfl *= scale;
   reach_term_next = false;
   reach_output_next = false;
 }

@@ -210,7 +210,7 @@ int main(int argc, char** argv) {
               tdSolve->compute_rhs(rkButcher.stage(i-1), i); // Stored in resd_*[i]
             // Step 5 - evaluate full residual to check convergence
             int  n_iter = -1;
-            tdSolve->check_conv_radau(rkButcher, n_iter, sol_conv, red_dt, true);
+            tdSolve->check_conv_radau(rkButcher, n_iter, sol_conv, red_dt);
 
             while (!sol_conv && !red_dt) {
               // Step 1 - Implicit solve for new iterates
@@ -231,7 +231,7 @@ int main(int argc, char** argv) {
                 tdSolve->compute_rhs(rkButcher.stage(i-1), i); // S_i
               // Step 5 - compute non-cell species if needed
               // Step 6 - evaluate full residual to check convergence
-              tdSolve->check_conv_radau(rkButcher, n_iter, sol_conv, red_dt, true);
+              tdSolve->check_conv_radau(rkButcher, n_iter, sol_conv, red_dt);
             }
 
             // Either converged or need to reduce dt

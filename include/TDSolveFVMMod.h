@@ -111,7 +111,7 @@ class TDSolveFVMMod : public TDSolveFVM {
     void update_chem_muscl_rhs( const int fr, const int to );
 
     // OPN model
-    void update_vel_int_opn(const int nt, const int u_nt);
+    void update_vel_int_opn(const int nt, const int u_nt=0);
 
     // Other functions
     DType calc_n_bc( const DType tsol_loc );

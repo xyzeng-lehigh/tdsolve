@@ -182,6 +182,7 @@ void TDSolveFVM::calc_dt(const int nt) {
   downscale_var( *data_a[nt], *data_a[nt], x_a_c, Na, data_r[nt] );
 
   DType dtn_trial = DTYPE_MAX;
+  DType dtn_cfl1  = DTYPE_MAX; // dtn corresponding to CFL 1
   DType alpha = tdCoef->alpha;
   for ( int i = 0; i < Nx+1; i++ ) {
     DType loc_vel = (*data_v[nt])[i]/data_r[nt];
@@ -192,6 +193,7 @@ void TDSolveFVM::calc_dt(const int nt) {
     DType v_max = max( fabs(m_vel), fabs(loc_vel-m_vel));
     v_max = max( v_max, fabs(loc_vel-m_vel+a_vel) );
     dtn_trial = min( dtn_trial, tdSetup->cfl * dx / v_max );
+    dtn_cfl1  = min( dtn_cfl1, dx / v_max );
   }
 
   upscale_var( *data_a[nt], *data_a[nt], x_a_c, Na, data_r[nt] );
@@ -220,6 +222,8 @@ void TDSolveFVM::calc_dt(const int nt) {
 
   if ( iter >= tdSetup->maxit )
     reach_term_now = true;
+
+  cur_cfl = dtn/dtn_cfl1;
 
   return;
 }
@@ -362,8 +366,17 @@ void TDSolveFVM::alloc(void) {
   alloc_array_full( data_n, Nx, Ndata ); // M
   alloc_array_full( data_v, Nx+1, Ndata );
 
+  alloc_array_full( data_cell, Nx, 1 );
+  alloc_array_full( data_node, Nx+1, 1 );
+
   data_r  = new DType[Ndata];
   data_rp = new DType[Ndata];
+
+  diff_g  = new DType[Ndata];
+  diff_h  = new DType[Ndata];
+  diff_n  = new DType[Ndata];
+  diff_v  = new DType[Ndata];
+  diff_r  = new DType[Ndata];
   
   alloc_array_full( data_a, Na, Ndata ); 
 

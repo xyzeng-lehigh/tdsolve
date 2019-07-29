@@ -81,6 +81,8 @@ struct TDSetup {
   bool  vCoup;
   int   vIter; 
   DType vTol;
+  int   nrmPow;
+  bool  vOnly;
   DType Tinit, Tterm, Tfreq;
   DType Rterm, Rdead;
   int   freq;

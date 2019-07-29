@@ -87,6 +87,15 @@ class TDSolve {
     DType* data_r;  // R
     DType* data_rp; // R'
 
+    HVEC** data_cell; // Temporary array for cellular values
+    HVEC** data_node; // Temporary array for nodal values
+
+    DType* diff_g;  // Difference in G
+    DType* diff_h;  // Difference in H
+    DType* diff_n;  // Difference in N
+    DType* diff_v;  // Difference in V
+    DType* diff_r;  // Difference in R
+
     // OPN model
     HVEC** data_p1; // concentration of osteopontin secreted by immunue cells
     HVEC** data_p2; // concentration of osteopontin secreted by glimoa cells
@@ -123,11 +132,15 @@ class TDSolve {
     DType* x_a_c;
 
     DType  dtn, tsol, t_output, dtn_old;
+    DType  cur_cfl;
     bool   reach_term_next;
     bool   reach_output_now;
     bool   reach_output_next;
     bool   reach_term_now;
     bool   use_tfreq;
+
+    // Used by check_conv_radau
+    DType init_err;
 
     // Linear solver for anything else other than A, P1, P2
     LinMat*   mat;

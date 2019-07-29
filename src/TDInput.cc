@@ -73,6 +73,8 @@ TDInput::TDInput(void) {
   tdSetup.vIter  = 10;    // -1  -- iterate until converge
                           // >=0 -- up to tIter iterations
   tdSetup.vTol   = 1e-6;  // Iteration tolerance for tIter=-1
+  tdSetup.nrmPow = -1;    // Vector norm used to compute convergence errors
+  tdSetup.vOnly  = true;  // Check only V for convergence
   tdSetup.Tinit  = 0.0;
   tdSetup.Tterm  = 1.0;
   tdSetup.Rterm  = 6.0;
@@ -515,6 +517,7 @@ void TDInput::setup_options(void) {
   tdOptions["rbc"]           = &tdSetup.rbc;
   tdOptions["time_method"]   = &tdSetup.tmeth;
   tdOptions["vel_iter"]      = &tdSetup.vIter;
+  tdOptions["norm_pow"]      = &tdSetup.nrmPow;
   tdOptions["frequency"]     = &tdSetup.freq;
   tdOptions["max_iter"]      = &tdSetup.maxit;
   tdOptions["dr_option"]     = &tdSetup.dr_opt;
@@ -533,6 +536,7 @@ void TDInput::setup_toggles(void) {
   tdToggles["use_treatment_P1"]   = &tdCoef.treatP1;
   tdToggles["use_treatmentBC_P1"] = &tdCoef.treatP1BC;
   tdToggles["vel_couple"]         = &tdSetup.vCoup;
+  tdToggles["v_conv_only"]        = &tdSetup.vOnly;
   tdToggles["lim_sync_tot"]       = &tdSetup.slim_tot;
   tdToggles["diagnostic_vcoup"]   = &tdSetup.diagn_vcoup;
   tdToggles["silence"]            = &tdSetup.silence;
