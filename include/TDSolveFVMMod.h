@@ -21,6 +21,9 @@ class TDSolveFVMMod : public TDSolveFVM {
     void update_sol(const int rkns, RKButcher& rkButcher, const int fr, const int to);
     void update_vel(const DType alpha, const int nt);
 
+    void setup_rk_lin( RKButcher& rkButcher );
+    void update_rk_sol( RKButcher& rkButcher, const bool diagnos=false );
+
     void copy_aux(const int fr, const int to);
 
     TDSolveFVMMod(TDInput* tdInput_ptr);
@@ -132,6 +135,26 @@ class TDSolveFVMMod : public TDSolveFVM {
     void update_sol_radau_exp(const int rkns, RKButcher& rkButcher, const int fr, const int to);
     void update_sol_radau_imp_upw(const int rkns, RKButcher& rkButcher, const int fr, const int to);
     void update_sol_radau_imp_muscl(const int rkns, RKButcher& rkButcher, const int fr, const int to);
+
+    void copy_rk_data_to_sol( LinVec*& vec, RKButcher& rkButcher );
+    void add_sol_to_rk_data( const DType scale, LinVec*& vec, RKButcher& rkButcher );
+
+    void eval_rk_radau_fval( LinVec*& vec, RKButcher& rkButcher );
+    void compute_rhs_primitive(const DType alpha, const int nt);
+    void compute_cells_fluxes_u_primitive(const int nt, const DType tsol_loc, const int u_nt=0);
+    void compute_cells_fluxes_v_primitive(const int nt, const int slp_nt=0);
+    void compute_cells_fluxes_r_primitive(const int nt, const int rp_nt=0);
+    void compute_rhs_common_primitive(const int nt);
+
+    void eval_rk_radau_fjac( LinMat*& lmat, RKButcher& rkButcher );
+
+    void update_vel_primitive( RKButcher& rkButcher );
+    void update_vel_int_primitive(const int nt, const int u_nt=0);
+    void update_vel_int_opn_primitive(const int nt, const int u_nt=0) {}
+
+    void assemble_rk_rhs_g(LinVec*& vec, const int n, RKButcher& rkButcher);
+    void assemble_rk_rhs_h(LinVec*& vec, const int n, RKButcher& rkButcher);
+    void assemble_rk_rhs_n(LinVec*& vec, const int n, RKButcher& rkButcher);
 };
 
 #endif

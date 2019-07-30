@@ -42,6 +42,14 @@ TDSolve::TDSolve(TDInput* tdInput_ptr) {
   linSolve_a = NULL;
   iter = 0;
 
+  // Radau RK
+  matRK = NULL;
+  prcRK = NULL;
+  solRK = NULL;
+  rhsRK = NULL;
+  resRK = NULL;
+  linSolveRK = NULL;
+
   // OPN Model
   mat_p = NULL;
   prc_p = NULL;
@@ -134,6 +142,14 @@ TDSolve::~TDSolve(void) {
   if (res_a!=NULL) delete res_a;
   if (sol_a!=NULL) delete sol_a;
   if (linSolve_a!=NULL) delete linSolve_a;
+  
+  // Radau RK
+  if (matRK!=NULL) delete matRK;
+  if (prcRK!=NULL) delete prcRK;
+  if (rhsRK!=NULL) delete rhsRK;
+  if (resRK!=NULL) delete resRK;
+  if (solRK!=NULL) delete solRK;
+  if (linSolveRK!=NULL) delete linSolveRK;
 
   // OPN Model
   if (mat_p!=NULL) delete mat_p;
@@ -418,6 +434,31 @@ void TDSolve::check_conv_radau(const RKButcher& rkButcher, int& n_iter,
     std::cout << "Radau PMC converged in iteration: " << n_iter << "; Residue: " << res_s << std::endl;
   if (red_dt)
     std::cout << "Radau PMC iteration: " << n_iter << "; Maximum residue: " << res_s << "; Will reduce dt." << std::endl;
+  return;
+}
+
+void TDSolve::check_conv_radius(const RKButcher& rkButcher, int& n_iter, 
+    bool& sol_conv, bool& red_dt, const bool diagnos) {
+  DType res_s = 0.0;
+  int Ns = rkButcher.getNstage();
+  for ( int i = 0; i < Ns; i++ ) 
+    res_s = std::max( res_s, diff_r[i+1] );
+  n_iter++;
+  if (n_iter == 0) init_err = 1.0;   // In the first iteration, use absolute error
+  sol_conv = res_s <= (tdSetup->vTol * init_err);
+  red_dt   = (tdSetup->vIter >= 0) && (n_iter == tdSetup->vIter) && (res_s > (tdSetup->vTol * init_err) );
+  if (n_iter == 0) init_err = res_s; // In the next iterations, use relative error
+  if (diagnos) {
+    std::cout << "Radau PMC iteration: " << n_iter << "; Maximum diff in R: " << res_s << std::endl;
+    std::cout << "  radius: ";
+    for ( int i = 0; i < Ns; i++ )
+      std::cout << "stage " << i+1 << " - " << std::fabs( diff_r[i+1] ) << "; ";
+    std::cout << std::endl;
+  }
+  if (sol_conv)
+    std::cout << "Radau PMC converged in iteration: " << n_iter << "; diff in R: " << res_s << std::endl;
+  if (red_dt)
+    std::cout << "Radau PMC iteration: " << n_iter << "; Maximum diff in R: " << res_s << "; Will reduce dt." << std::endl;
   return;
 }
 

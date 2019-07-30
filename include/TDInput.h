@@ -94,6 +94,8 @@ struct TDSetup {
   bool  silence;
   bool  auto_red_dt;
 
+  bool  use_pmc;
+
   int   logistic;
   int   prob_id;
 

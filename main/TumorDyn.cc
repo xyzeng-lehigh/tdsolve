@@ -186,71 +186,111 @@ int main(int argc, char** argv) {
 
           bool sol_conv, red_dt;
 
-          // Each loop corresponds to a dt (could be reduced!)
-          // data_*[0], slope_*[0], and flux_n_u[0] should NOT be modified!
-          while (1) {
-            // Copy data_g, data_h, data_n, and data_v
-            for ( int i = 1; i <= Ns; i++ ) {
-              tdSolve->copy_data(0,i); // Stage i (0) at data_*[i]
-              // flux_n_u and slope_*[nt] should have been computed 
-              // in set_ic or previous iteration
-              tdSolve->copy_aux(0,i);
+          if ( !(tdInput.tdSetup.use_pmc) ) { // Direct solve for a larger system, freeze limiters though
+            // This will setup the matrices if not already done so.
+            tdSolve->setup_rk_lin( rkButcher );  
+
+            // Predictor corrector only on the radius!
+            while (1) {
+              for ( int i = 1; i <= Ns; i++ )
+                tdSolve->copy_data(0,i); // Only data_v and data_r are needed
+              for ( int i = 1; i <= Ns; i++ )
+                tdSolve->downscale_sol(i,i); // Get the primitive stage i (0)
+              tdSolve->update_rad_radau(rkButcher); // Predict data_rp and data_r at all stages
+              for ( int i = 1; i <= Ns; i++ )
+                tdSolve->upscale_sol(i,i); // Update the conservative variables with new data_r
+              int n_iter = -1;
+              tdSolve->check_conv_radius(rkButcher, n_iter, sol_conv, red_dt);
+
+              while (!sol_conv && !red_dt) {
+                tdSolve->update_rk_sol( rkButcher ); // Freeze limiters, and solve for cell species
+              }
+
+              // Either converged or need to reduce dt
+              if (sol_conv) // Converged
+                break;
+              else if ( tdInput.tdSetup.auto_red_dt ) { // Reduce dt
+                tdSolve->reduce_dtn( 0.5 );
+                tdSolve->diagnostic( 0 );
+                continue;
+              }
+              else { // Not converged but no reduce of dt
+                tdSolve->print_warning("Not converged");
+                break;
+              }
             }
 
-            // Step 3 - compute data_r[1] and data_r[2]
-            for ( int i = 1; i <= Ns; i++ )
-              tdSolve->downscale_sol(i,i); // Get the primitive Stage i (0)
-            // Compute data_rp and data_r at all stages
-            tdSolve->update_rad_radau(rkButcher);
-            for ( int i = 1; i <= Ns; i++ )
-              tdSolve->upscale_sol(i,i); // Get the conservative Stage i (0)
-                                         // using the re-calculated data_r[i]
-            // Step 4 - compute the residuals for S_1 and S_2
-            for ( int i = 1; i <= Ns; i++ )
-              tdSolve->compute_rhs(rkButcher.stage(i-1), i); // Stored in resd_*[i]
-            // Step 5 - evaluate full residual to check convergence
-            int  n_iter = -1;
-            tdSolve->check_conv_radau(rkButcher, n_iter, sol_conv, red_dt);
+            // Legacy issue, the solution at t_{n+1} needs to be 
+            // stored at data_*[1]
+            tdSolve->copy_data(2,1);
+          }
+          else { // Predictor/multi-corrector
+            // Each loop corresponds to a dt (could be reduced!)
+            // data_*[0], slope_*[0], and flux_n_u[0] should NOT be modified!
+            while (1) {
+              // Copy data_g, data_h, data_n, and data_v
+              for ( int i = 1; i <= Ns; i++ ) {
+                tdSolve->copy_data(0,i); // Stage i (0) at data_*[i]
+                // flux_n_u and slope_*[nt] should have been computed 
+                // in set_ic or previous iteration
+                tdSolve->copy_aux(0,i);
+              }
 
-            while (!sol_conv && !red_dt) {
-              // Step 1 - Implicit solve for new iterates
-              for ( int i = 1; i <= Ns; i++ )
-                tdSolve->update_sol(i-1,rkButcher,0,i); // Update S_i
-              // Step 2 - update the velocities
-              //        - and flux_n_u and lim_muscl
-              for ( int i = 1; i <= Ns; i++ )
-                tdSolve->update_vel(rkButcher.stage(i-1), i); // V_i
               // Step 3 - compute data_r[1] and data_r[2]
               for ( int i = 1; i <= Ns; i++ )
-                tdSolve->downscale_sol(i,i);
+                tdSolve->downscale_sol(i,i); // Get the primitive Stage i (0)
+              // Compute data_rp and data_r at all stages
               tdSolve->update_rad_radau(rkButcher);
               for ( int i = 1; i <= Ns; i++ )
-                tdSolve->upscale_sol(i,i);
+                tdSolve->upscale_sol(i,i); // Get the conservative Stage i (0)
+                                           // using the re-calculated data_r[i]
               // Step 4 - compute the residuals for S_1 and S_2
               for ( int i = 1; i <= Ns; i++ )
-                tdSolve->compute_rhs(rkButcher.stage(i-1), i); // S_i
-              // Step 5 - compute non-cell species if needed
-              // Step 6 - evaluate full residual to check convergence
+                tdSolve->compute_rhs(rkButcher.stage(i-1), i); // Stored in resd_*[i]
+              // Step 5 - evaluate full residual to check convergence
+              int  n_iter = -1;
               tdSolve->check_conv_radau(rkButcher, n_iter, sol_conv, red_dt);
-            }
 
-            // Either converged or need to reduce dt
-            if (sol_conv) // Converged
-              break;
-            else if ( tdInput.tdSetup.auto_red_dt ) { // Reduce dt
-              tdSolve->reduce_dtn( 0.5 );
-              tdSolve->diagnostic( 0 );
-              continue;
+              while (!sol_conv && !red_dt) {
+                // Step 1 - Implicit solve for new iterates
+                for ( int i = 1; i <= Ns; i++ )
+                  tdSolve->update_sol(i-1,rkButcher,0,i); // Update S_i
+                // Step 2 - update the velocities
+                //        - and flux_n_u and lim_muscl
+                for ( int i = 1; i <= Ns; i++ )
+                  tdSolve->update_vel(rkButcher.stage(i-1), i); // V_i
+                // Step 3 - compute data_r[1] and data_r[2]
+                for ( int i = 1; i <= Ns; i++ )
+                  tdSolve->downscale_sol(i,i);
+                tdSolve->update_rad_radau(rkButcher);
+                for ( int i = 1; i <= Ns; i++ )
+                  tdSolve->upscale_sol(i,i);
+                // Step 4 - compute the residuals for S_1 and S_2
+                for ( int i = 1; i <= Ns; i++ )
+                  tdSolve->compute_rhs(rkButcher.stage(i-1), i); // S_i
+                // Step 5 - compute non-cell species if needed
+                // Step 6 - evaluate full residual to check convergence
+                tdSolve->check_conv_radau(rkButcher, n_iter, sol_conv, red_dt);
+              }
+
+              // Either converged or need to reduce dt
+              if (sol_conv) // Converged
+                break;
+              else if ( tdInput.tdSetup.auto_red_dt ) { // Reduce dt
+                tdSolve->reduce_dtn( 0.5 );
+                tdSolve->diagnostic( 0 );
+                continue;
+              }
+              else { // Not converged but no reduce of dt
+                tdSolve->print_warning("Not converged");
+                break;
+              }
             }
-            else { // Not converged but no reduce of dt
-              tdSolve->print_warning("Not converged");
-              break;
-            }
+            // Legacy issue, the solution at t_{n+1} needs to be 
+            // stored at data_*[1]
+            tdSolve->copy_data(2,1);
           }
 
-          // Legacy issue, the solution at t_{n+1} needs to be 
-          // stored at data_*[1]
-          tdSolve->copy_data(2,1);
         }
         break;
       default: // First-order

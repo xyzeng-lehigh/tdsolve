@@ -49,6 +49,9 @@ class TDSolve {
     virtual void update_sol(const int rkns, RKButcher& rkButcher, const int fr, const int to) {};
     virtual void update_vel(const DType alpha, const int nt) {};
 
+    virtual void setup_rk_lin( RKButcher& rkButcher ) {};
+    virtual void update_rk_sol( RKButcher& rkButcher, const bool diagnos=false ) {};
+
     bool nextIter(void) {
       iter++;
       return !reach_term_now;
@@ -61,6 +64,7 @@ class TDSolve {
     void eval_rad_radau_fval(HVEC&, const RKButcher&, const DType*, const HVEC&);
     void eval_rad_radau_hess(HMAT&, const RKButcher&, const DType*, const HVEC&);
     void check_conv_radau(const RKButcher&, int&, bool&, bool&, const bool diagnos=false);
+    void check_conv_radius(const RKButcher&, int&, bool&, bool&, const bool diagnos=false);
 
     void scale_dtn(const DType scale) { dtn *= scale; }
     void reduce_dtn(const DType scale);
@@ -149,6 +153,14 @@ class TDSolve {
     LinVec*   rhs;
     LinVec*   res;
     LinSolve* linSolve;
+
+    // Linear solver for Radau RK for cell species
+    LinMat*   matRK;
+    LinMat*   prcRK;
+    LinVec*   solRK;
+    LinVec*   rhsRK;
+    LinVec*   resRK;
+    LinSolve* linSolveRK;
 
     // Linear solver for A
     LinMat*   mat_a;

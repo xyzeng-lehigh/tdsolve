@@ -415,6 +415,97 @@ void TDSolveFVMMod::update_vel(const DType alpha, const int nt) {
   return;
 }
 
+void TDSolveFVMMod::setup_rk_lin( RKButcher& rkButcher ) {
+  if ( linSolveRK == NULL ) {
+    // So many copies of each cell number solution is needed
+    int Ns = rkButcher.getNstage();
+    // Ns stages, 3 species, Nx cells (intervals)
+    setupLinSolve( matRK, prcRK, solRK, rhsRK, resRK, linSolveRK, Ns*3*Nx );
+  }
+  return;
+}
+
+void TDSolveFVMMod::update_rk_sol( RKButcher& rkButcher, const bool diagnos ) {
+  // data_r[i] and data_rp[i] are already computed
+  
+  // Number of RK stages
+  // Ordering:
+  // 1-g, 1-h, 1-n, 2-g, 2-h, 2-h, ..., s-g, s-h, s-n
+  int Ns = rkButcher.getNstage();
+  // Reset a few variables
+  rhsRK->reset( 0.0 );
+  matRK->reset( 0.0 );
+  solRK->reset( 0.0 );
+  *lim_s[0] = 0.0; *lim_s[1] = 0.0; // PPM limiter
+  *lim_muscl[0] = 0.0;              // MUSCL limiter
+
+  // Step 1. Preparation -- rescaling, frozen limiters, etc.
+  // Solve for the primitive variables
+
+  // *lim_s[0] and *lim_s[1] (PPM limiters) to be frozen,
+  // which requires the conservative variables
+  compute_flux_r_ppm_lims( 0 );
+
+  downscale_var( *data_g[0], *data_g[0], x_c, Nx, data_r[0]);
+  downscale_var( *data_h[0], *data_h[0], x_c, Nx, data_r[0]);
+  downscale_var( *data_n[0], *data_n[0], x_c, Nx, data_r[0]);
+
+  // *lim_muscl[0] to be frozen throughout the Newton solve,
+  // which requires primitive variables
+  if ( tdSetup->scell == 2 ) // MUSCL in space
+    compute_flux_muscl_lims( 0 );
+
+  // data_u[1] ~ data_u[s]
+  for ( int n = 1; n <= Ns; n++ )
+    compute_vel_u( n, tsol + rkButcher.stage(n-1)*dtn, n ); 
+
+  // Step 2. Newton-Rhapson -- solutions are stored in data_*[1]~data_*[s]
+
+  // 2.1 Initialization
+  for ( int n = 1; n <= Ns; n++ ) {
+    *data_g[n] = *data_g[0]; 
+    *data_h[n] = *data_h[0];
+    *data_n[n] = *data_n[0];
+  }
+  copy_rk_data_to_sol( solRK, rkButcher );
+  int nr_iter = 0;
+  eval_rk_radau_fval( rhsRK, rkButcher );
+
+  // 2.2 Newton-Rhapson iterates
+  while ( rhsRK->getNorm() > 1e-12 ) {
+    if ( diagnos ) {
+      cout << "TDSolveFVMMod::update_rk_sol -- iteration " << nr_iter << std::endl;
+      cout << "\tResidual: " << rhsRK->getNorm() << std::endl;
+    }
+    // Update the Jacobian
+    eval_rk_radau_fjac( matRK, rkButcher );
+    // Solve for the difference between iterates
+    linSolveRK->solve(); // Solve fjac solRK = fval
+    // Update the iterates
+    add_sol_to_rk_data( -1.0, solRK, rkButcher );
+    // Copy date to the initial guess for the next iteration
+    copy_rk_data_to_sol( solRK, rkButcher );
+    // Evaluate the residual and prepare for convergence check
+    eval_rk_radau_fval( rhsRK, rkButcher );
+    // Update the velocity
+    update_vel_primitive( rkButcher );
+    nr_iter++;
+  }
+
+  // Scale back the old solutions
+  upscale_var( *data_g[0], *data_g[0], x_c, Nx, data_r[0]);
+  upscale_var( *data_h[0], *data_h[0], x_c, Nx, data_r[0]);
+  upscale_var( *data_n[0], *data_n[0], x_c, Nx, data_r[0]);
+  // Scale back the new solutions using the new radius
+  for ( int i = 1; i <= Ns; i++ ) {
+    upscale_var( *data_g[i], *data_g[i], x_c, Nx, data_r[i] );
+    upscale_var( *data_h[i], *data_h[i], x_c, Nx, data_r[i] );
+    upscale_var( *data_n[i], *data_n[i], x_c, Nx, data_r[i] );
+  }
+
+  return;
+}
+
 void TDSolveFVMMod::copy_aux(const int fr, const int to) {
   *data_u[to]   = *data_u[fr];
   *flux_n_u[to] = *flux_n_u[fr];
@@ -3693,5 +3784,419 @@ void TDSolveFVMMod::update_sol_radau_imp_muscl( const int rkns,
   upscale_var(*data_n[to],*data_n[to],x_c,Nx,data_r[to]);
 
   return;
+}
+
+void TDSolveFVMMod::copy_rk_data_to_sol( LinVec*& vec, RKButcher& rkButcher ) {
+  int Ns = rkButcher.getNstage();
+  VComp comp(1,0.0);
+  for ( int n = 0; n < Ns; n++ ) {
+    int offset = 3 * Nx * n;
+    // Stage n+1, data_g
+    for ( int i = 0; i < Nx; i++ )
+      vec->set( offset+i, comp=(*data_g[n+1])[i] );
+    // Stage n+1, data_h
+    offset += Nx;
+    for ( int i = 0; i < Nx; i++ )
+      vec->set( offset+i, comp=(*data_h[n+1])[i] );
+    // Stage n+1, data_n
+    offset += Nx;
+    for ( int i = 0; i < Nx; i++ )
+      vec->set( offset+i, comp=(*data_n[n+1])[i] );
+  }
+  return;
+}
+
+void TDSolveFVMMod::add_sol_to_rk_data(
+    const DType scale, LinVec*& vec, RKButcher& rkButcher ) {
+  int Ns = rkButcher.getNstage();
+  VComp comp(1,0.0);
+  for ( int n = 0; n < Ns; n++ ) {
+    int offset = 3 * Nx * n;
+    // Stage n+1, data_g
+    for ( int i = 0; i < Nx; i++ ) 
+      (*data_g[n+1])[i] -= scale * (vec->get(offset+i)).get( 0 );
+    // Stage n+1, data_h
+    offset += Nx;
+    for ( int i = 0; i < Nx; i++ ) 
+      (*data_h[n+1])[i] -= scale * (vec->get(offset+i)).get( 0 );
+    // Stage n+1, data_n
+    offset += Nx;
+    for ( int i = 0; i < Nx; i++ ) 
+      (*data_n[n+1])[i] -= scale * (vec->get(offset+i)).get( 0 );
+  }
+  return;
+}
+
+void TDSolveFVMMod::eval_rk_radau_fval( LinVec*& vec, RKButcher& rkButcher ) {
+  // data_*[0]~data_*[s] should be primitive now
+  vec->reset( 0.0 );
+  int Ns = rkButcher.getNstage();
+
+  DType r2n = data_r[0] * data_r[0];
+  
+  VComp comp(1,0.0);
+
+  // Part 1, non-dtn term
+  for ( int n = 1; n <= Ns; n++ ) {
+    DType r2stage = data_r[n] * data_r[n];
+    DType ratio = r2n/r2stage;
+    int offset = 3 * Nx * (n-1);
+    // Stage n, data_g
+    for ( int i = 0; i < Nx; i++ ) {
+      comp = (*data_g[n])[i] - ratio * (*data_g[0])[i];
+      vec->set( offset+i, comp );
+    }
+    // Stage n, data_h
+    offset += Nx;
+    for ( int i = 0; i < Nx; i++ ) {
+      comp = (*data_h[n])[i] - ratio * (*data_h[0])[i];
+      vec->set( offset+i, comp );
+    }
+    // Stage n, data_n
+    offset += Nx;
+    for ( int i = 0; i < Nx; i++ ) {
+      comp = (*data_n[n])[i] - ratio * (*data_n[0])[i];
+      vec->set( offset+i, comp );
+    }
+  }
+
+  // Part 2, dtn terms
+  
+  // 2.1, compute the residuals for each current stage
+  //      this will require flux_n_u[n] and slope_*[n] be computed already
+  //      Results will be stored in resd_*[n], n=1,...,s.
+  for ( int n = 1; n <= Ns; n++ )
+    compute_rhs_primitive( rkButcher.stage(n-1), n );
+
+  // 2.2, sum into vec
+  for ( int n = 1; n <= Ns; n++ ) {
+    for ( int m = 1; m <= Ns; m++ ) {
+      downscale_var( *resd_g[m], *resd_g[m], x_c, Nx, data_r[n] );
+      downscale_var( *resd_h[m], *resd_h[m], x_c, Nx, data_r[n] );
+      downscale_var( *resd_n[m], *resd_n[m], x_c, Nx, data_r[n] );
+    }
+
+    int offset = 3 * Nx * (n-1);
+    
+    // Stage n, data_g
+    for ( int i = 0; i < Nx; i++ ) {
+      comp = vec->get( offset+i );
+      for ( int m = 1; m <= Ns; m++ )
+        comp -= dtn * rkButcher.get(n-1,m-1) * (*resd_g[m])[i];
+      vec->set( offset+i, comp );
+    }
+
+    // Stage n, data_h
+    offset += Nx;
+    for ( int i = 0; i < Nx; i++ ) {
+      comp = vec->get( offset+i );
+      for ( int m = 1; m <= Ns; m++ )
+        comp -= dtn * rkButcher.get(n-1,m-1) * (*resd_h[m])[i];
+      vec->set( offset+i, comp );
+    }
+
+    // Stage n, data_h
+    offset += Nx;
+    for ( int i = 0; i < Nx; i++ ) {
+      comp = vec->get( offset+i );
+      for ( int m = 1; m <= Ns; m++ )
+        comp -= dtn * rkButcher.get(n-1,m-1) * (*resd_n[m])[i];
+      vec->set( offset+i, comp );
+    }
+
+    for ( int m = 1; m <= Ns; m++ ) {
+      upscale_var( *resd_g[m], *resd_g[m], x_c, Nx, data_r[n] );
+      upscale_var( *resd_h[m], *resd_h[m], x_c, Nx, data_r[n] );
+      upscale_var( *resd_n[m], *resd_n[m], x_c, Nx, data_r[n] );
+    }
+  }
+
+  return;
+}
+
+void TDSolveFVMMod::compute_rhs_primitive(const DType alpha, const int nt) {
+  // Compute flux_n_u[nt] and slope_*[nt]
+  compute_cells_fluxes_u_primitive( nt, tsol+alpha*dtn, nt );
+  // Compute flux_*_v[0]
+  compute_cells_fluxes_v_primitive( nt, nt ); 
+  // Compute flux_*_r[0] and flux_*[0]
+  compute_cells_fluxes_r_primitive( nt, nt ); 
+  // Store the resuduals at resd_*[nt]
+  compute_rhs_common_primitive( nt );
+  return;
+}
+
+void TDSolveFVMMod::compute_cells_fluxes_u_primitive(
+    const int nt, const DType tsol_loc, const int u_nt) {
+
+  DType n_bc = calc_n_bc( tsol_loc );
+
+  // Slopes
+  { // Left boundary
+    (*slope_g[u_nt])[0] = 0.0;
+    (*slope_h[u_nt])[0] = 0.0;
+    (*slope_n[u_nt])[0] = 0.0;
+  }
+  for ( int i = 1; i < Nx-1; i++ ) {
+    (*slope_g[u_nt])[i] = (*lim_muscl[0])[i] * 
+      ((*data_g[nt])[i+1]-(*data_g[nt])[i])/dx;
+    (*slope_h[u_nt])[i] = (*lim_muscl[0])[i] * 
+      ((*data_h[nt])[i+1]-(*data_h[nt])[i])/dx;
+    (*slope_n[u_nt])[i] = (*lim_muscl[0])[i] * 
+      ((*data_n[nt])[i+1]-(*data_n[nt])[i])/dx;
+  }
+  { // Right boundary
+    (*slope_g[u_nt])[Nx-1] = 0.0;
+    (*slope_h[u_nt])[Nx-1] = 0.0;
+    (*slope_n[u_nt])[Nx-1] = 0.0;
+  }
+
+  // Fluxes
+  { // Left boundary
+    (*flux_n_u[u_nt])[0] = 0.0;
+  }
+  for ( int i = 1; i < Nx; i++ ) {
+    DType loc_r  = x_f[i] * data_r[nt];
+    DType loc_r2 = loc_r * loc_r;
+
+    DType loc_vel_u = (*data_u[u_nt])[i]/data_r[nt];
+    if ( loc_vel_u >= 0.0 )
+      (*flux_n_u[u_nt])[i] = loc_r2 * loc_vel_u * (
+          (*data_n[nt])[i-1]+0.5*dx*(*slope_n[u_nt])[i-1] );
+    else
+      (*flux_n_u[u_nt])[i] = loc_r2 * loc_vel_u * (
+          (*data_n[nt])[i]-0.5*dx*(*slope_n[u_nt])[i] );
+  }
+  { // Right boundary
+    DType loc_vel_u = (*data_u[u_nt])[Nx]/data_r[nt];
+    DType loc_r = x_f[Nx]*data_r[nt];
+    (*flux_n_u[u_nt])[Nx] = loc_r * loc_r * loc_vel_u * 
+      ((loc_vel_u>=0.0) ? (*data_n[nt])[Nx-1]+0.5*dx*(*slope_n[u_nt])[Nx-1] : n_bc );
+  }
+
+  return;
+}
+
+void TDSolveFVMMod::compute_cells_fluxes_v_primitive(const int nt, const int slp_nt) {
+  // Fluxes
+  { // Left boundary
+    (*flux_g_v[0])[0] = 0.0;
+    (*flux_h_v[0])[0] = 0.0;
+    (*flux_n_v[0])[0] = 0.0;
+  }
+  for ( int i = 1; i < Nx; i++ ) {
+    DType loc_r  = x_f[i] * data_r[nt];
+    DType loc_r2 = loc_r * loc_r;
+
+    DType loc_vel_v = (*data_v[nt])[i]/data_r[nt];
+    if ( loc_vel_v >= 0.0 ) {
+      (*flux_g_v[0])[i] = loc_r2 * loc_vel_v * (
+          (*data_g[nt])[i-1]+0.5*dx*(*slope_g[slp_nt])[i-1] );
+      (*flux_h_v[0])[i] = loc_r2 * loc_vel_v * (
+          (*data_h[nt])[i-1]+0.5*dx*(*slope_h[slp_nt])[i-1] );
+      (*flux_n_v[0])[i] = loc_r2 * loc_vel_v * (
+          (*data_n[nt])[i-1]+0.5*dx*(*slope_n[slp_nt])[i-1] );
+    }
+    else {
+      (*flux_g_v[0])[i] = loc_r2 * loc_vel_v * (
+          (*data_g[nt])[i]-0.5*dx*(*slope_g[slp_nt])[i] );
+      (*flux_h_v[0])[i] = loc_r2 * loc_vel_v * (
+          (*data_h[nt])[i]-0.5*dx*(*slope_h[slp_nt])[i] );
+      (*flux_n_v[0])[i] = loc_r2 * loc_vel_v * (
+          (*data_n[nt])[i]-0.5*dx*(*slope_n[slp_nt])[i] );
+    }
+  }
+  { // Right boundary
+    (*flux_g_v[0])[Nx] = 0.0;
+    (*flux_h_v[0])[Nx] = 0.0;
+    (*flux_n_v[0])[Nx] = 0.0;
+  }
+
+  return;
+}
+
+void TDSolveFVMMod::compute_cells_fluxes_r_primitive(const int nt, const int rp_nt) {
+  DType dror = data_rp[rp_nt]/data_r[nt];
+
+  const DType sot = 7.0/12.0;
+  const DType oot = 1.0/12.0;
+
+  // N -> x^2R^2N
+  upscale_var( *data_g[nt], *data_g[nt], x_c, Nx, data_r[nt]);
+  upscale_var( *data_h[nt], *data_h[nt], x_c, Nx, data_r[nt]);
+  upscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt]);
+
+  // x^2R^2N -> x^3R^2N, etc.
+  upscale_var(*data_g[nt],*data_g[nt],x_c,Nx,1.0,1);
+  upscale_var(*data_h[nt],*data_h[nt],x_c,Nx,1.0,1);
+  upscale_var(*data_n[nt],*data_n[nt],x_c,Nx,1.0,1);
+
+  // Step 3 -- compute the fluxes
+  // Left boundary
+  {
+    (*flux_g_r[0])[0] = 0.0;
+    (*flux_h_r[0])[0] = 0.0;
+    (*flux_n_r[0])[0] = 0.0;
+  }
+  for ( int i = 1; i < Nx; i++ ) {
+    DType loc_vel_r = - dror;
+    DType lim_l = (*lim_s[1])[i-1];
+    DType lim_r = (*lim_s[0])[i];
+    //DType lim_l = 1.0;
+    //DType lim_r = 1.0;
+    if ( loc_vel_r >= 0.0 ) {
+      (*flux_g_r[0])[i] = loc_vel_r * ( (1.0-lim_l) * (*data_g[nt])[i-1] + lim_l*(*flux_g[0])[i] );
+      (*flux_h_r[0])[i] = loc_vel_r * ( (1.0-lim_l) * (*data_h[nt])[i-1] + lim_l*(*flux_h[0])[i] );
+      (*flux_n_r[0])[i] = loc_vel_r * ( (1.0-lim_l) * (*data_n[nt])[i-1] + lim_l*(*flux_n[0])[i] );
+    }
+    else {
+      (*flux_g_r[0])[i] = loc_vel_r * ( (1.0-lim_r) * (*data_g[nt])[i] + lim_r*(*flux_g[0])[i] );
+      (*flux_h_r[0])[i] = loc_vel_r * ( (1.0-lim_r) * (*data_h[nt])[i] + lim_r*(*flux_h[0])[i] );
+      (*flux_n_r[0])[i] = loc_vel_r * ( (1.0-lim_r) * (*data_n[nt])[i] + lim_r*(*flux_n[0])[i] );
+    }
+  }
+  // Right boundary
+  {
+    (*flux_g_r[0])[Nx] = 0.0;
+    (*flux_h_r[0])[Nx] = 0.0;
+    (*flux_n_r[0])[Nx] = 0.0;
+  }
+
+  // x^3R^2N -> x^2R^2N, etc.
+  downscale_var(*data_g[nt],*data_g[nt],x_c,Nx,1.0,1);
+  downscale_var(*data_h[nt],*data_h[nt],x_c,Nx,1.0,1);
+  downscale_var(*data_n[nt],*data_n[nt],x_c,Nx,1.0,1);
+
+  // x^2R^2N -> N
+  downscale_var( *data_g[nt], *data_g[nt], x_c, Nx, data_r[nt]);
+  downscale_var( *data_h[nt], *data_h[nt], x_c, Nx, data_r[nt]);
+  downscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt]);
+
+  for ( int i = 0; i < Nx+1; i++ ) {
+    (*flux_g[0])[i] = (*flux_g_v[0])[i]+(*flux_g_r[0])[i];
+    (*flux_h[0])[i] = (*flux_h_v[0])[i]+(*flux_h_r[0])[i];
+    (*flux_n[0])[i] = (*flux_n_v[0])[i]+(*flux_n_r[0])[i]+(*flux_n_u[rp_nt])[i];
+  }
+
+  return;
+}
+
+void TDSolveFVMMod::compute_rhs_common_primitive(const int nt) {
+  DType lambda  = tdCoef->lambda;
+  DType q       = tdCoef->q;
+  DType delta_h = tdCoef->delta_h;
+  DType delta_n = tdCoef->delta_n;
+
+  // mu = mu(mu_coef-mu_slp*x^p)
+  DType mu      = tdCoef->mu;
+  DType mu_slp  = tdCoef->mu_slp;
+  DType mu_coef = tdCoef->mu_coef;
+  DType p       = tdCoef->p;
+
+  DType dror = data_rp[nt]/data_r[nt];
+
+  upscale_var( *data_g[nt], *data_g[nt], x_c, Nx, data_r[nt]);
+  upscale_var( *data_h[nt], *data_h[nt], x_c, Nx, data_r[nt]);
+  upscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt]);
+
+  // Source terms
+  for ( int i = 0; i < Nx; i++ ) {
+    DType loc_lambda = ( q == 0.0 ) ? lambda : lambda * pow(x_c[i],q);
+    DType loc_mu = ( p == 0.0 ) ? mu * ( mu_coef - mu_slp ) : mu * ( mu_coef - mu_slp * pow(x_c[i],p) ); 
+    (*resd_g[nt])[i] = loc_lambda * (*data_g[nt])[i] - loc_mu * (*data_g[nt])[i] - dror * (*data_g[nt])[i];
+    (*resd_h[nt])[i] = loc_mu * (*data_g[nt])[i] - delta_h * (*data_h[nt])[i] - dror * (*data_h[nt])[i];
+    (*resd_n[nt])[i] = - delta_n * (*data_n[nt])[i] - dror * (*data_n[nt])[i]; 
+  }
+
+  downscale_var( *data_g[nt], *data_g[nt], x_c, Nx, data_r[nt]);
+  downscale_var( *data_h[nt], *data_h[nt], x_c, Nx, data_r[nt]);
+  downscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt]);
+
+  for ( int i = 0; i < Nx; i++ ) {
+    (*resd_g[nt])[i] -= ( (*flux_g[0])[i+1] - (*flux_g[0])[i] ) / dx;
+    (*resd_h[nt])[i] -= ( (*flux_h[0])[i+1] - (*flux_h[0])[i] ) / dx;
+    (*resd_n[nt])[i] -= ( (*flux_n[0])[i+1] - (*flux_n[0])[i] ) / dx;
+  }
+
+  return;
+}
+
+void TDSolveFVMMod::eval_rk_radau_fjac( LinMat*& lmat, RKButcher& rkButcher ) {
+  // data_*[0]~data_*[s] should be primitive now
+  lmat->reset( 0.0 );
+  int Ns = rkButcher.getNstage();
+  int Nlen = 3 * Nx * Ns;
+
+  Entry elem(1,0.0);
+
+  // Part 1, non-dtn term (identity)
+  for ( int i = 0; i < Nlen; i++ )
+    lmat->set( i, i, elem=1.0 );
+
+  return;
+}
+
+void TDSolveFVMMod::update_vel_primitive( RKButcher& rkButcher ) {
+  int Ns = rkButcher.getNstage();
+  for ( int n = 0; n < Ns; n++ ) {
+    DType alpha = rkButcher.stage(n);
+    // Compute flux_n_u[n+1], could be redundent
+    compute_cells_fluxes_u_primitive( n+1, tsol+alpha*dtn, n+1 );
+    switch ( tdSetup->prob_id ) {
+      case 0:  // PDGF
+      case -1:
+      case -2:
+      case -3:
+      case -4:
+        update_vel_int_primitive( n+1, n+1 );
+        break;
+      case 1: // OPN
+        update_vel_int_opn_primitive( n+1, n+1 );
+        break;
+    }
+  }
+  return;
+}
+
+void TDSolveFVMMod::update_vel_int_primitive(const int nt, const int u_nt) {
+  DType lambda  = tdCoef->lambda;
+  DType q       = tdCoef->q;
+  DType delta_h = tdCoef->delta_h;
+  DType delta_n = tdCoef->delta_n;
+
+  (*data_v[nt])[0] = 0.0; // b.c. for velocity at x=0
+
+  upscale_var( *data_g[nt], *data_g[nt], x_c, Nx, data_r[nt]);
+  upscale_var( *data_h[nt], *data_h[nt], x_c, Nx, data_r[nt]);
+  upscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt]);
+  
+  // First do the integration of x^2R(lambda G - delta_h H)
+  for ( int i = 0; i < Nx; i++ ) {
+    DType loc_lambda = ( q == 0.0 ) ? lambda : lambda * pow(x_c[i],q);
+    (*data_v[nt])[i+1] = (*data_v[nt])[i] + dx * ( loc_lambda * (*data_g[nt])[i] - delta_h * (*data_h[nt])[i] - delta_n * (*data_n[nt])[i] ) / data_r[nt];
+  }
+
+  downscale_var( *data_g[nt], *data_g[nt], x_c, Nx, data_r[nt]);
+  downscale_var( *data_h[nt], *data_h[nt], x_c, Nx, data_r[nt]);
+  downscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt]);
+
+  // Remove the advection part due to chemical gradient
+  for ( int i = 1; i < Nx+1; i++ )
+    (*data_v[nt])[i] = ((*data_v[nt])[i] - (*flux_n_u[u_nt])[i]/data_r[nt])/x_f[i]/x_f[i];
+
+  return;
+}
+
+void TDSolveFVMMod::assemble_rk_rhs_g( LinVec*& lrhs, 
+    const int n, RKButcher& rkButcher ) {
+  int nt = n+1;
+}
+
+void TDSolveFVMMod::assemble_rk_rhs_h( LinVec*& lrhs, 
+    const int n, RKButcher& rkButcher ) {
+}
+
+void TDSolveFVMMod::assemble_rk_rhs_n( LinVec*& lrhs, 
+    const int n, RKButcher& rkButcher ) {
 }
 

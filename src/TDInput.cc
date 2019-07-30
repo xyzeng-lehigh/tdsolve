@@ -98,6 +98,8 @@ TDInput::TDInput(void) {
   tdSetup.silence     = false; // Turn off all outputs (on-screen or file)
   tdSetup.auto_red_dt = true;
 
+  tdSetup.use_pmc     = false;
+
   tdLin.Type      = LSYS_TYPE_DIR;
   tdLin.Print     = true;
   tdLin.Iter      = LSYS_ITER_JAC;
@@ -541,6 +543,7 @@ void TDInput::setup_toggles(void) {
   tdToggles["diagnostic_vcoup"]   = &tdSetup.diagn_vcoup;
   tdToggles["silence"]            = &tdSetup.silence;
   tdToggles["auto_reduce_dt"]     = &tdSetup.auto_red_dt;
+  tdToggles["use_pmc"]            = &tdSetup.use_pmc;
   tdToggles["lsysPrint"]          = &tdLin.Print;
   return;
 }
