@@ -43,11 +43,12 @@ TDSolve::TDSolve(TDInput* tdInput_ptr) {
   iter = 0;
 
   // Radau RK
-  matRK = NULL;
-  prcRK = NULL;
-  solRK = NULL;
-  rhsRK = NULL;
-  resRK = NULL;
+  matBlk = NULL;
+  matRK  = NULL;
+  prcRK  = NULL;
+  solRK  = NULL;
+  rhsRK  = NULL;
+  resRK  = NULL;
   linSolveRK = NULL;
 
   // OPN Model
@@ -144,11 +145,12 @@ TDSolve::~TDSolve(void) {
   if (linSolve_a!=NULL) delete linSolve_a;
   
   // Radau RK
-  if (matRK!=NULL) delete matRK;
-  if (prcRK!=NULL) delete prcRK;
-  if (rhsRK!=NULL) delete rhsRK;
-  if (resRK!=NULL) delete resRK;
-  if (solRK!=NULL) delete solRK;
+  if (matBlk!=NULL) delete matBlk;
+  if (matRK!=NULL)  delete matRK;
+  if (prcRK!=NULL)  delete prcRK;
+  if (rhsRK!=NULL)  delete rhsRK;
+  if (resRK!=NULL)  delete resRK;
+  if (solRK!=NULL)  delete solRK;
   if (linSolveRK!=NULL) delete linSolveRK;
 
   // OPN Model
@@ -317,6 +319,9 @@ void TDSolve::update_rad(const int fr, const int to, const int v_nt) {
 
 void TDSolve::update_rad_radau(RKButcher& rkButcher, const bool diagnos) {
   int Ns = rkButcher.getNstage();
+  for ( int i = 1; i <= Ns; i++ )
+    downscale_sol(i,i); // Get the primitive Stage i (0)
+
   // It is supposed that data_r[1] ~ data_r[Ns] are allocated for
   // the 1st ~ Ns-th stages, respectively.
 
@@ -354,6 +359,9 @@ void TDSolve::update_rad_radau(RKButcher& rkButcher, const bool diagnos) {
     diff_r[i+1] = std::fabs(data_r[i+1]-sol[i]); 
     data_r[i+1] = sol[i];
   }
+
+  for ( int i = 1; i <= Ns; i++ )
+    upscale_sol(i,i); // Get the conservative Stage i using the re-calculated data_r[i]
 
   return;
 }

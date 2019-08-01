@@ -155,6 +155,7 @@ class TDSolve {
     LinSolve* linSolve;
 
     // Linear solver for Radau RK for cell species
+    LinMat*   matBlk;
     LinMat*   matRK;
     LinMat*   prcRK;
     LinVec*   solRK;

@@ -421,6 +421,10 @@ void TDSolveFVMMod::setup_rk_lin( RKButcher& rkButcher ) {
     int Ns = rkButcher.getNstage();
     // Ns stages, 3 species, Nx cells (intervals)
     setupLinSolve( matRK, prcRK, solRK, rhsRK, resRK, linSolveRK, Ns*3*Nx );
+    // A temporary matrix for a single stage block
+    matBlk = new LinSqSparseMat;
+    matBlk->setBlckDim(1);
+    matBlk->setEqualSize(3*Nx);
   }
   return;
 }
@@ -444,6 +448,10 @@ void TDSolveFVMMod::update_rk_sol( RKButcher& rkButcher, const bool diagnos ) {
 
   // *lim_s[0] and *lim_s[1] (PPM limiters) to be frozen,
   // which requires the conservative variables
+  // XYZ Note -- in the future this can be modified, such as
+  //             data_v not converge yet, take the minimum
+  //             ove previous stages
+  //             The same strategy applies to muscl_lims
   compute_flux_r_ppm_lims( 0 );
 
   downscale_var( *data_g[0], *data_g[0], x_c, Nx, data_r[0]);
@@ -1982,10 +1990,10 @@ void TDSolveFVMMod::update_mat_muscl_v(const DType multip,
     DType lim_r = (*lim_muscl[0])[1];
 
     if ( loc_v >= 0.0 )
-      coef_v_l  = (dtn/dx) * xf2 * r2nt * loc_v;
+      coef_v_l  = multip * (dtn/dx) * xf2 * r2nt * loc_v;
     else {
-      coef_v_r  = (dtn/dx) * xf2 * r2nt * loc_v * ( 1.0 + 0.5*lim_r );
-      coef_v_rr = (dtn/dx) * xf2 * r2nt * loc_v * ( - 0.5*lim_r );
+      coef_v_r  = multip * (dtn/dx) * xf2 * r2nt * loc_v * ( 1.0 + 0.5*lim_r );
+      coef_v_rr = multip * (dtn/dx) * xf2 * r2nt * loc_v * ( - 0.5*lim_r );
     }
 
     elem = mat->get(0,0); elem += coef_v_l  / xc2_l;  mat->set(0,0,elem);
@@ -2010,12 +2018,12 @@ void TDSolveFVMMod::update_mat_muscl_v(const DType multip,
     DType lim_r = (*lim_muscl[0])[i];
 
     if ( loc_v >= 0.0 ) {
-      coef_v_l  = (dtn/dx) * xf2 * r2nt * loc_v * ( 1.0 - 0.5*lim_l );
-      coef_v_r  = (dtn/dx) * xf2 * r2nt * loc_v * ( 0.5*lim_l );
+      coef_v_l  = multip * (dtn/dx) * xf2 * r2nt * loc_v * ( 1.0 - 0.5*lim_l );
+      coef_v_r  = multip * (dtn/dx) * xf2 * r2nt * loc_v * ( 0.5*lim_l );
     }
     else {
-      coef_v_r  = (dtn/dx) * xf2 * r2nt * loc_v * ( 1.0 + 0.5*lim_r );
-      coef_v_rr = (dtn/dx) * xf2 * r2nt * loc_v * ( - 0.5*lim_r );
+      coef_v_r  = multip * (dtn/dx) * xf2 * r2nt * loc_v * ( 1.0 + 0.5*lim_r );
+      coef_v_rr = multip * (dtn/dx) * xf2 * r2nt * loc_v * ( - 0.5*lim_r );
     }
 
     elem = mat->get(i-1,i-1); elem += coef_v_l  / xc2_l;  mat->set(i-1,i-1,elem);
@@ -2038,11 +2046,11 @@ void TDSolveFVMMod::update_mat_muscl_v(const DType multip,
     DType lim_l = (*lim_muscl[0])[Nx-2];
 
     if ( loc_v >= 0.0 ) {
-      coef_v_l = (dtn/dx) * xf2 * r2nt * loc_v * ( 1.0 - 0.5*lim_l );
-      coef_v_r = (dtn/dx) * xf2 * r2nt * loc_v * ( 0.5*lim_l );
+      coef_v_l = multip * (dtn/dx) * xf2 * r2nt * loc_v * ( 1.0 - 0.5*lim_l );
+      coef_v_r = multip * (dtn/dx) * xf2 * r2nt * loc_v * ( 0.5*lim_l );
     }
     else
-      coef_v_r = (dtn/dx) * xf2 * r2nt * loc_v;
+      coef_v_r = multip * (dtn/dx) * xf2 * r2nt * loc_v;
 
     elem = mat->get(Nx-2,Nx-2); elem += coef_v_l / xc2_l; mat->set(Nx-2,Nx-2,elem);
     elem = mat->get(Nx-2,Nx-1); elem += coef_v_r / xc2_l; mat->set(Nx-2,Nx-1,elem);
@@ -2060,7 +2068,7 @@ void TDSolveFVMMod::update_mat_muscl_v(const DType multip,
     DType coef_v_l = 0.0;
 
     if ( loc_v >= 0.0 )
-      coef_v_l = (dtn/dx) * xf2 * r2nt * loc_v;
+      coef_v_l = multip * (dtn/dx) * xf2 * r2nt * loc_v;
 
     elem = mat->get(Nx-1,Nx-1); elem += coef_v_l / xc2; mat->set(Nx-1,Nx-1,elem);
   }
@@ -4133,6 +4141,14 @@ void TDSolveFVMMod::eval_rk_radau_fjac( LinMat*& lmat, RKButcher& rkButcher ) {
   for ( int i = 0; i < Nlen; i++ )
     lmat->set( i, i, elem=1.0 );
 
+  // Part 2, dtn terms
+  
+  // 2.1, direct partial derivatives in g, h, n
+  for ( int i = 1; i <= Ns; i++ )
+    assemble_rk_mat_dcell( lmat, rkButcher, i );
+
+  // 2.2, partial derivatives in g, h, n through v
+
   return;
 }
 
@@ -4187,16 +4203,404 @@ void TDSolveFVMMod::update_vel_int_primitive(const int nt, const int u_nt) {
   return;
 }
 
-void TDSolveFVMMod::assemble_rk_rhs_g( LinVec*& lrhs, 
-    const int n, RKButcher& rkButcher ) {
-  int nt = n+1;
+void TDSolveFVMMod::update_vel_int_opn_primitive(const int nt, const int u_nt) {
+  DType lambda  = tdCoef->lambda;
+  DType q       = tdCoef->q;
+  DType delta_h = tdCoef->delta_h;
+  DType delta_n = tdCoef->delta_n;
+  DType b       = tdCoef->b;
+  DType b_prime = tdCoef->b_prime;
+  DType omega   = tdCoef->omega;
+
+  (*data_v[nt])[0] = 0.0; // b.c. for velocity at x=0
+
+  upscale_var( *data_g[nt], *data_g[nt], x_c, Nx, data_r[nt]);
+  upscale_var( *data_h[nt], *data_h[nt], x_c, Nx, data_r[nt]);
+  upscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt]);
+
+  downscale_var( *data_p2[nt], *data_p2[nt], x_c, Nx, data_r[nt] );
+
+  // First do the integration of
+  // x^2R[lambda(1+b'P2/(b+P2))*G-delta_h*H-delta_n*N]
+  for ( int i = 0; i < Nx; i++ ) {
+    DType loc_lambda = ( q == 0.0 ) ? lambda : lambda * pow(x_c[i],q);
+
+    DType loc_r = x_c[i] * data_r[nt];
+    DType logistic_term = 1.0; 
+    if ( tdSetup->logistic == 1 )
+      logistic_term = ( 1.0 - (*data_g[nt])[i] / loc_r / loc_r );
+    if ( tdSetup->logistic == 2 )
+      logistic_term = max( 0.0, ( 1.0 - (*data_g[nt])[i] / loc_r / loc_r ) );
+
+    (*data_v[nt])[i+1] = (*data_v[nt])[i] + dx * (
+        loc_lambda * ( 1.0 + (b_prime * (*data_p2[nt])[i])/(b + (*data_p2[nt])[i]) ) * (*data_g[nt])[i] * logistic_term - 
+        delta_h * (*data_h[nt])[i] - delta_n * (*data_n[nt])[i] -
+        omega * (*data_g[nt])[i] * (*data_n[nt])[i] / loc_r / loc_r ) / data_r[nt]; // G, H, and M have not been upscaled
+  }
+
+  downscale_var( *data_g[nt], *data_g[nt], x_c, Nx, data_r[nt]);
+  downscale_var( *data_h[nt], *data_h[nt], x_c, Nx, data_r[nt]);
+  downscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt]);
+
+  upscale_var( *data_p2[nt], *data_p2[nt], x_c, Nx, data_r[nt] );
+
+  // Remove the advection part due to chemical gradient
+  for ( int i = 1; i < Nx+1; i++ )
+    (*data_v[nt])[i] = ((*data_v[nt])[i] - (*flux_n_u[u_nt])[i]/data_r[nt])/x_f[i]/x_f[i];
+
+  return;
 }
 
-void TDSolveFVMMod::assemble_rk_rhs_h( LinVec*& lrhs, 
-    const int n, RKButcher& rkButcher ) {
+void TDSolveFVMMod::assemble_rk_mat_dcell( LinMat*& lmat, RKButcher& rkButcher, const int nt ) {
+  // Suppose the differential part of the dae is f(t,y,z) and the algebraic part z=g(t)y
+  // This function will add dtn x a_{ns,nt-1}(df/dy)|_{y=y[nt]} to lmat for all ns =0,...,s-1
+  int Ns = rkButcher.getNstage();
+  const int BSize = 3*Nx;
+  const int offset_c = (nt-1)*BSize;
+
+  Entry  elem( 1, 0.0 ), loc_elem( 1, 0.0 );
+  
+  // Step 1. Compute (df/dy)|_{y=y[nt]} and store it in matBlk
+  matBlk->reset( 0.0 );
+  assemble_matblock_cells_g( nt, matBlk );
+  assemble_matblock_cells_h( nt, matBlk );
+  assemble_matblock_cells_n( nt, matBlk );
+
+  // Step 2. Assembe mat to the corresponding column of lmat
+  // We'll utilize the sparseness of mat
+  for ( int n = 0; n < Ns; n++ ) {
+    int   offset_r = n*BSize;
+    DType rk_coef  = dtn * rkButcher.get(n,nt-1);
+    DType r2n = data_r[n+1]*data_r[n+1];
+    for ( std::map<sm_idx,Entry>::iterator it = matBlk->it_beg();
+          it != matBlk->it_end(); it++ ) {
+      int loc_i = (*it).first.i;
+      int loc_j = (*it).first.j;
+      loc_elem  = (*it).second;
+      int i = loc_i % Nx; // Actual cell number in row
+      DType x2n = r2n * x_c[i] * x_c[i];
+      elem = lmat->get( offset_r+loc_i, offset_c+loc_j );
+      elem -= rk_coef * loc_elem / x2n;
+      lmat->set( offset_r+loc_i, offset_c+loc_j, elem );
+    }
+  }
+
+  return;
 }
 
-void TDSolveFVMMod::assemble_rk_rhs_n( LinVec*& lrhs, 
-    const int n, RKButcher& rkButcher ) {
+void TDSolveFVMMod::assemble_matblock_cells_g( const int nt, LinMat*& matblk ) {
+  DType lambda = tdCoef->lambda;
+  DType q      = tdCoef->q;
+
+  // mu = mu(mu_coef-mu_slp*x^p)
+  DType mu      = tdCoef->mu;
+  DType mu_slp  = tdCoef->mu_slp;
+  DType mu_coef = tdCoef->mu_coef;
+  DType p       = tdCoef->p;
+
+  DType dror = data_rp[nt]/data_r[nt];
+  DType r2nt = data_r[nt]*data_r[nt];
+
+  Entry elem( 1, 0.0 );
+
+  const int offset_r = 0; // offset for g
+  const int offset_c_g = 0;
+  //const int offset_c_h = Nx;   // Not needed for data_g 
+  //const int offset_c_n = 2*Nx; // Not needed for data_g
+
+  // Part 1. Contribution of data_g in mat for g
+
+  // 1.1 Source term
+  for ( int i = 0; i < Nx; i++ ) {
+    DType loc_lambda = ( q == 0.0 ) ? lambda : lambda * pow(x_c[i],q);
+    DType loc_mu = ( p == 0.0 ) ? mu * ( mu_coef - mu_slp ) : mu * ( mu_coef - mu_slp * pow(x_c[i],p) ); 
+    DType x2n = r2nt * x_c[i] * x_c[i];
+    elem = matblk->get( offset_r+i, offset_c_g+i );
+    elem += x2n * (loc_lambda - loc_mu - dror);
+    matblk->set( offset_r+i, offset_c_g+i, elem );
+  }
+
+  // 1.2 Advective flux 
+  update_matblock_advective( offset_r, offset_c_g, matblk, data_v, nt, false );
+
+  // 1.3 Geometric flux
+  update_matblock_geometric( offset_r, offset_c_g, matblk, nt );
+
+  return;
+}
+
+void TDSolveFVMMod::assemble_matblock_cells_h( const int nt, LinMat*& matblk ) {
+  DType delta_h = tdCoef->delta_h;
+
+  // mu = mu(mu_coef-mu_slp*x^p)
+  DType mu      = tdCoef->mu;
+  DType mu_slp  = tdCoef->mu_slp;
+  DType mu_coef = tdCoef->mu_coef;
+  DType p       = tdCoef->p;
+
+  DType dror = data_rp[nt]/data_r[nt];
+  DType r2nt = data_r[nt]*data_r[nt];
+
+  Entry elem( 1, 0.0 );
+  const int offset_r = Nx; // offset for h
+  const int offset_c_g = 0;
+  const int offset_c_h = Nx;
+  //const int offset_c_n = 2*Nx; // Not needed for data_g
+
+  // Part 1. Contribution of data_g in mat for h (source term)
+  for ( int i = 0; i < Nx; i++ ) {
+    DType loc_mu = ( p == 0.0 ) ? mu * ( mu_coef - mu_slp ) : mu * ( mu_coef - mu_slp * pow(x_c[i],p) ); 
+    DType x2n = r2nt * x_c[i] * x_c[i];
+    elem = matblk->get( offset_r+i, offset_c_g+i );
+    elem += x2n * loc_mu; 
+    matblk->set( offset_r+i, offset_c_g+i, elem );
+  }
+
+  // Part 2. Contribution of data_h in mat for h
+
+  // 2.1 Source term
+  for ( int i = 0; i < Nx; i++ ) {
+    DType x2n = r2nt * x_c[i] * x_c[i];
+    elem = matblk->get( offset_r+i, offset_c_h+i );
+    elem += x2n * ( - delta_h - dror );
+    matblk->set( offset_r+i, offset_c_h+i, elem );
+  }
+
+  // 2.2 Advective flux
+  update_matblock_advective( offset_r, offset_c_h, matblk, data_v, nt, false );
+
+  // 2.3 Geometric flux
+  update_matblock_geometric( offset_r, offset_c_h, matblk, nt );
+
+  return;
+}
+
+void TDSolveFVMMod::assemble_matblock_cells_n( const int nt, LinMat*& matblk ) {
+}
+
+void TDSolveFVMMod::update_matblock_advective( const int offset_r, const int offset_c, LinMat*& matblk, HVEC**& vel, const int nt, const bool rbc ) {
+  DType dror = data_rp[nt]/data_r[nt];
+  DType r2nt = data_r[nt]*data_r[nt];
+
+  Entry elem( 1, 0.0 );
+
+  // Cell face at x_f[1]
+  {
+    DType xf2   = x_f[1]*x_f[1];
+
+    DType loc_v = (*vel[nt])[1]/data_r[nt];
+    DType coef_v_l  = 0.0;
+    DType coef_v_r  = 0.0;
+    DType coef_v_rr = 0.0;
+    DType lim_r = (*lim_muscl[0])[1];
+
+    if ( loc_v >= 0.0 )
+      coef_v_l  = (1.0/dx) * xf2 * r2nt * loc_v;
+    else {
+      coef_v_r  = (1.0/dx) * xf2 * r2nt * loc_v * ( 1.0 + 0.5*lim_r );
+      coef_v_rr = (1.0/dx) * xf2 * r2nt * loc_v * ( - 0.5*lim_r );
+    }
+
+    elem = mat->get(offset_r+0,offset_c+0); elem -= coef_v_l;  mat->set(offset_r+0,offset_c+0,elem);
+    elem = mat->get(offset_r+0,offset_c+1); elem -= coef_v_r;  mat->set(offset_r+0,offset_c+1,elem);
+    elem = mat->get(offset_r+0,offset_c+2); elem -= coef_v_rr; mat->set(offset_r+0,offset_c+2,elem);
+    
+    elem = mat->get(offset_r+1,offset_c+0); elem += coef_v_l;  mat->set(offset_r+1,offset_c+0,elem);
+    elem = mat->get(offset_r+1,offset_c+1); elem += coef_v_r;  mat->set(offset_r+1,offset_c+1,elem);
+    elem = mat->get(offset_r+1,offset_c+2); elem += coef_v_rr; mat->set(offset_r+1,offset_c+2,elem);
+  }
+  // Interior cell faces
+  for ( int i = 2; i < Nx-1; i++ ) {
+    DType xf2   = x_f[i]*x_f[i];
+
+    DType loc_v = (*vel[nt])[i]/data_r[nt];
+    DType coef_v_l  = 0.0;
+    DType coef_v_r  = 0.0;
+    DType coef_v_rr = 0.0;
+    DType lim_l = (*lim_muscl[0])[i-1];
+    DType lim_r = (*lim_muscl[0])[i];
+
+    if ( loc_v >= 0.0 ) {
+      coef_v_l  = (1.0/dx) * xf2 * r2nt * loc_v * ( 1.0 - 0.5*lim_l );
+      coef_v_r  = (1.0/dx) * xf2 * r2nt * loc_v * ( 0.5*lim_l );
+    }
+    else {
+      coef_v_r  = (1.0/dx) * xf2 * r2nt * loc_v * ( 1.0 + 0.5*lim_r );
+      coef_v_rr = (1.0/dx) * xf2 * r2nt * loc_v * ( - 0.5*lim_r );
+    }
+
+    elem = mat->get(offset_r+i-1,offset_c+i-1); elem -= coef_v_l;  mat->set(offset_r+i-1,offset_c+i-1,elem);
+    elem = mat->get(offset_r+i-1,offset_c+i);   elem -= coef_v_r;  mat->set(offset_r+i-1,offset_c+i,  elem);
+    elem = mat->get(offset_r+i-1,offset_c+i+1); elem -= coef_v_rr; mat->set(offset_r+i-1,offset_c+i+1,elem);
+
+    elem = mat->get(offset_r+i,offset_c+i-1); elem += coef_v_l;  mat->set(offset_r+i,offset_c+i-1,elem);
+    elem = mat->get(offset_r+i,offset_c+i);   elem += coef_v_r;  mat->set(offset_r+i,offset_c+i,  elem);
+    elem = mat->get(offset_r+i,offset_c+i+1); elem += coef_v_rr; mat->set(offset_r+i,offset_c+i+1,elem);
+  }
+  // Cell face x_f[Nx-1]
+  {
+    DType xf2   = x_f[Nx-1]*x_f[Nx-1];
+
+    DType loc_v = (*vel[nt])[Nx-1]/data_r[nt];
+    DType coef_v_l = 0.0;
+    DType coef_v_r = 0.0;
+    DType lim_l = (*lim_muscl[0])[Nx-2];
+
+    if ( loc_v >= 0.0 ) {
+      coef_v_l = (1.0/dx) * xf2 * r2nt * loc_v * ( 1.0 - 0.5*lim_l );
+      coef_v_r = (1.0/dx) * xf2 * r2nt * loc_v * ( 0.5*lim_l );
+    }
+    else
+      coef_v_r = (1.0/dx) * xf2 * r2nt * loc_v;
+
+    elem = mat->get(offset_r+Nx-2,offset_c+Nx-2); elem -= coef_v_l; mat->set(offset_r+Nx-2,offset_c+Nx-2,elem);
+    elem = mat->get(offset_r+Nx-2,offset_c+Nx-1); elem -= coef_v_r; mat->set(offset_r+Nx-2,offset_c+Nx-1,elem);
+
+    elem = mat->get(offset_r+Nx-1,offset_c+Nx-2); elem += coef_v_l; mat->set(offset_r+Nx-1,offset_c+Nx-2,elem);
+    elem = mat->get(offset_r+Nx-1,offset_c+Nx-1); elem += coef_v_r; mat->set(offset_r+Nx-1,offset_c+Nx-1,elem);
+  }
+
+  // Cell face x_f[Nx]
+  if (rbc) {
+    DType xf2 = x_f[Nx]*x_f[Nx];
+
+    DType loc_v = (*vel[nt])[Nx]/data_r[nt];
+    DType coef_v_l = 0.0;
+
+    if ( loc_v >= 0.0 )
+      coef_v_l = (1.0/dx) * xf2 * r2nt * loc_v;
+
+    elem = mat->get(offset_r+Nx-1,offset_c+Nx-1); elem -= coef_v_l; mat->set(offset_r+Nx-1,offset_c+Nx-1,elem);
+  }
+
+  return;
+}
+
+void TDSolveFVMMod::update_matblock_geometric( const int offset_r, 
+    const int offset_c, LinMat*& matblk, const int nt ) {
+  DType dror = data_rp[nt]/data_r[nt];
+  DType r2nt = data_r[nt]*data_r[nt];
+
+  Entry elem(1,0.0);
+
+  DType sot = 7.0/12.0;
+  DType oot = 1.0/12.0;
+
+  // Cell face at x_f[1]
+  {
+    DType xf2   = x_f[1]*x_f[1];
+
+    DType xc3_l  = x_c[0]*x_c[0]*x_c[0];
+    DType xc3_r  = x_c[1]*x_c[1]*x_c[1];
+    DType xc3_rr = x_c[2]*x_c[2]*x_c[2];
+
+    DType loc_r = - dror;
+    DType lim_r_l = (*lim_s[1])[0];
+    DType lim_r_r = (*lim_s[0])[1];
+    DType coef_r_l  = 0.0;
+    DType coef_r_r  = 0.0;
+    DType coef_r_rr = 0.0;
+
+    if ( loc_r >= 0.0 ) {
+      coef_r_l  = (1.0/dx) * r2nt * loc_r * xc3_l  * ( (1.0-lim_r_l) + lim_r_l*(sot+oot) );
+      coef_r_r  = (1.0/dx) * r2nt * loc_r * xc3_r  * ( lim_r_l*sot );
+      coef_r_rr = (1.0/dx) * r2nt * loc_r * xc3_rr * ( -lim_r_l*oot );
+    }
+    else {
+      coef_r_l  = (1.0/dx) * r2nt * loc_r * xc3_l  * ( lim_r_r*(sot+oot) );
+      coef_r_r  = (1.0/dx) * r2nt * loc_r * xc3_r  * ( (1.0-lim_r_r) + lim_r_r*sot );
+      coef_r_rr = (1.0/dx) * r2nt * loc_r * xc3_rr * ( -lim_r_r*oot );
+    }
+
+    elem = mat->get(offset_r+0,offset_c+0); elem -= coef_r_l;  mat->set(offset_r+0,offset_c+0,elem);
+    elem = mat->get(offset_r+0,offset_c+1); elem -= coef_r_r;  mat->set(offset_r+0,offset_c+1,elem);
+    elem = mat->get(offset_r+0,offset_c+2); elem -= coef_r_rr; mat->set(offset_r+0,offset_c+2,elem);
+
+    elem = mat->get(offset_r+1,offset_c+0); elem += coef_r_l;  mat->set(offset_r+1,offset_c+0,elem);
+    elem = mat->get(offset_r+1,offset_c+1); elem += coef_r_r;  mat->set(offset_r+1,offset_c+1,elem);
+    elem = mat->get(offset_r+1,offset_c+2); elem += coef_r_rr; mat->set(offset_r+1,offset_c+2,elem);
+  }
+  // Interior cell faces
+  for ( int i = 2; i < Nx-1; i++ ) {
+    DType xf2   = x_f[i]*x_f[i];
+
+    DType xc3_ll = x_c[i-2]*x_c[i-2]*x_c[i-2];
+    DType xc3_l  = x_c[i-1]*x_c[i-1]*x_c[i-1];
+    DType xc3_r  = x_c[i]*x_c[i]*x_c[i];
+    DType xc3_rr = x_c[i+1]*x_c[i+1]*x_c[i+1];
+
+    DType loc_r = -dror;
+    DType lim_r_l = (*lim_s[1])[i-1];
+    DType lim_r_r = (*lim_s[0])[i];
+    DType coef_r_ll = 0.0;
+    DType coef_r_l  = 0.0;
+    DType coef_r_r  = 0.0;
+    DType coef_r_rr = 0.0;
+
+    if ( loc_r >= 0.0 ) {
+      coef_r_ll = (1.0/dx) * r2nt * loc_r * xc3_ll * ( -lim_r_l*oot );
+      coef_r_l  = (1.0/dx) * r2nt * loc_r * xc3_l  * ( (1.0-lim_r_l) + lim_r_l*sot );
+      coef_r_r  = (1.0/dx) * r2nt * loc_r * xc3_r  * ( lim_r_l*sot );
+      coef_r_rr = (1.0/dx) * r2nt * loc_r * xc3_rr * ( -lim_r_l*oot );
+    }
+    else {
+      coef_r_ll = (1.0/dx) * r2nt * loc_r * xc3_ll * ( -lim_r_r*oot );
+      coef_r_l  = (1.0/dx) * r2nt * loc_r * xc3_l  * ( lim_r_r*sot );
+      coef_r_r  = (1.0/dx) * r2nt * loc_r * xc3_r  * ( (1.0-lim_r_r) + lim_r_r*sot );
+      coef_r_rr = (1.0/dx) * r2nt * loc_r * xc3_rr * ( -lim_r_r*oot );
+    }
+
+    elem = mat->get(offset_r+i-1,offset_c+i-2); elem -= coef_r_ll; mat->set(offset_r+i-1,offset_c+i-2,elem);
+    elem = mat->get(offset_r+i-1,offset_c+i-1); elem -= coef_r_l;  mat->set(offset_r+i-1,offset_c+i-1,elem);
+    elem = mat->get(offset_r+i-1,offset_c+i);   elem -= coef_r_r;  mat->set(offset_r+i-1,offset_c+i,elem);
+    elem = mat->get(offset_r+i-1,offset_c+i+1); elem -= coef_r_rr; mat->set(offset_r+i-1,offset_c+i+1,elem);
+
+    elem = mat->get(offset_r+i,offset_c+i-2);   elem -= coef_r_ll; mat->set(offset_r+i,offset_c+i-2,elem);
+    elem = mat->get(offset_r+i,offset_c+i-1);   elem -= coef_r_l;  mat->set(offset_r+i,offset_c+i-1,elem);
+    elem = mat->get(offset_r+i,offset_c+i);     elem -= coef_r_r;  mat->set(offset_r+i,offset_c+i,elem);
+    elem = mat->get(offset_r+i,offset_c+i+1);   elem -= coef_r_rr; mat->set(offset_r+i,offset_c+i+1,elem);
+  }
+  // Cell face x_f[Nx-1]
+  {
+    DType xf2   = x_f[Nx-1]*x_f[Nx-1];
+
+    DType xc3_l3 = x_c[Nx-4]*x_c[Nx-4]*x_c[Nx-4];
+    DType xc3_ll = x_c[Nx-3]*x_c[Nx-3]*x_c[Nx-3];
+    DType xc3_l  = x_c[Nx-2]*x_c[Nx-2]*x_c[Nx-2];
+    DType xc3_r  = x_c[Nx-1]*x_c[Nx-1]*x_c[Nx-1];
+
+    DType loc_r = -dror;
+    DType lim_r_l = (*lim_s[1])[Nx-2];
+    DType lim_r_r = (*lim_s[0])[Nx-1];
+    DType coef_r_l3 = 0.0;
+    DType coef_r_ll = 0.0;
+    DType coef_r_l  = 0.0;
+    DType coef_r_r  = 0.0;
+
+    if ( loc_r >= 0.0 ) {
+      coef_r_l3 = (1.0/dx) * r2nt * loc_r * xc3_l3 * ( lim_r_l*oot );
+      coef_r_ll = (1.0/dx) * r2nt * loc_r * xc3_ll * ( -lim_r_l*5.0*oot );
+      coef_r_l  = (1.0/dx) * r2nt * loc_r * xc3_l  * ( (1.0-lim_r_l) + lim_r_l*13.0*oot );
+      coef_r_r  = (1.0/dx) * r2nt * loc_r * xc3_r  * ( lim_r_l*3.0*oot );
+    }
+    else {
+      coef_r_l3 = (1.0/dx) * r2nt * loc_r * xc3_l3 * ( lim_r_r*oot );
+      coef_r_ll = (1.0/dx) * r2nt * loc_r * xc3_ll * ( -lim_r_r*5.0*oot );
+      coef_r_l  = (1.0/dx) * r2nt * loc_r * xc3_l  * ( lim_r_r*13.0*oot );
+      coef_r_r  = (1.0/dx) * r2nt * loc_r * xc3_r  * ( (1.0-lim_r_r) + lim_r_r*3.0*oot );
+    }
+
+    elem = mat->get(offset_r+Nx-2,offset_c+Nx-4); elem += coef_r_l3; mat->set(offset_r+Nx-2,offset_c+Nx-4,elem);
+    elem = mat->get(offset_r+Nx-2,offset_c+Nx-3); elem += coef_r_ll; mat->set(offset_r+Nx-2,offset_c+Nx-3,elem);
+    elem = mat->get(offset_r+Nx-2,offset_c+Nx-2); elem += coef_r_l;  mat->set(offset_r+Nx-2,offset_c+Nx-2,elem);
+    elem = mat->get(offset_r+Nx-2,offset_c+Nx-1); elem += coef_r_r;  mat->set(offset_r+Nx-2,offset_c+Nx-1,elem);
+
+    elem = mat->get(offset_r+Nx-1,offset_c+Nx-4); elem -= coef_r_l3; mat->set(offset_r+Nx-1,offset_c+Nx-4,elem);
+    elem = mat->get(offset_r+Nx-1,offset_c+Nx-3); elem -= coef_r_ll; mat->set(offset_r+Nx-1,offset_c+Nx-3,elem);
+    elem = mat->get(offset_r+Nx-1,offset_c+Nx-2); elem -= coef_r_l;  mat->set(offset_r+Nx-1,offset_c+Nx-2,elem);
+    elem = mat->get(offset_r+Nx-1,offset_c+Nx-1); elem -= coef_r_r;  mat->set(offset_r+Nx-1,offset_c+Nx-1,elem);
+  }
+
+  return;
 }
 

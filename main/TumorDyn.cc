@@ -194,16 +194,18 @@ int main(int argc, char** argv) {
             while (1) {
               for ( int i = 1; i <= Ns; i++ )
                 tdSolve->copy_data(0,i); // Only data_v and data_r are needed
-              for ( int i = 1; i <= Ns; i++ )
-                tdSolve->downscale_sol(i,i); // Get the primitive stage i (0)
-              tdSolve->update_rad_radau(rkButcher); // Predict data_rp and data_r at all stages
-              for ( int i = 1; i <= Ns; i++ )
-                tdSolve->upscale_sol(i,i); // Update the conservative variables with new data_r
+              // Predict data_rp and data_r at all stages
+              tdSolve->update_rad_radau(rkButcher); 
               int n_iter = -1;
               tdSolve->check_conv_radius(rkButcher, n_iter, sol_conv, red_dt);
 
               while (!sol_conv && !red_dt) {
-                tdSolve->update_rk_sol( rkButcher ); // Freeze limiters, and solve for cell species
+                // Freeze limiters, and solve for cell species given data_rp and data_r
+                tdSolve->update_rk_sol(rkButcher); 
+                // Update data_rp and data_r according to the new data_v
+                tdSolve->update_rad_radau(rkButcher);
+                // Check if the data_r has converged
+                tdSolve->check_conv_radius(rkButcher, n_iter, sol_conv, red_dt);
               }
 
               // Either converged or need to reduce dt
@@ -237,13 +239,8 @@ int main(int argc, char** argv) {
               }
 
               // Step 3 - compute data_r[1] and data_r[2]
-              for ( int i = 1; i <= Ns; i++ )
-                tdSolve->downscale_sol(i,i); // Get the primitive Stage i (0)
               // Compute data_rp and data_r at all stages
               tdSolve->update_rad_radau(rkButcher);
-              for ( int i = 1; i <= Ns; i++ )
-                tdSolve->upscale_sol(i,i); // Get the conservative Stage i (0)
-                                           // using the re-calculated data_r[i]
               // Step 4 - compute the residuals for S_1 and S_2
               for ( int i = 1; i <= Ns; i++ )
                 tdSolve->compute_rhs(rkButcher.stage(i-1), i); // Stored in resd_*[i]
@@ -260,11 +257,7 @@ int main(int argc, char** argv) {
                 for ( int i = 1; i <= Ns; i++ )
                   tdSolve->update_vel(rkButcher.stage(i-1), i); // V_i
                 // Step 3 - compute data_r[1] and data_r[2]
-                for ( int i = 1; i <= Ns; i++ )
-                  tdSolve->downscale_sol(i,i);
                 tdSolve->update_rad_radau(rkButcher);
-                for ( int i = 1; i <= Ns; i++ )
-                  tdSolve->upscale_sol(i,i);
                 // Step 4 - compute the residuals for S_1 and S_2
                 for ( int i = 1; i <= Ns; i++ )
                   tdSolve->compute_rhs(rkButcher.stage(i-1), i); // S_i

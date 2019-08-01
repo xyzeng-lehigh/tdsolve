@@ -150,11 +150,16 @@ class TDSolveFVMMod : public TDSolveFVM {
 
     void update_vel_primitive( RKButcher& rkButcher );
     void update_vel_int_primitive(const int nt, const int u_nt=0);
-    void update_vel_int_opn_primitive(const int nt, const int u_nt=0) {}
+    void update_vel_int_opn_primitive(const int nt, const int u_nt=0);
 
-    void assemble_rk_rhs_g(LinVec*& vec, const int n, RKButcher& rkButcher);
-    void assemble_rk_rhs_h(LinVec*& vec, const int n, RKButcher& rkButcher);
-    void assemble_rk_rhs_n(LinVec*& vec, const int n, RKButcher& rkButcher);
+    void assemble_rk_mat_dcell( LinMat*& lmat, RKButcher& rkButcher, const int nt );
+    void assemble_matblock_cells_g( const int nt, LinMat*& matblk );
+    void assemble_matblock_cells_h( const int nt, LinMat*& matblk );
+    void assemble_matblock_cells_n( const int nt, LinMat*& matblk );
+
+    void update_matblock_advective( const int offset_r, const int offset_c, LinMat*& matblk, HVEC**& vel, const int nt, const bool rbc=false );
+    void update_matblock_geometric( const int offset_r, const int offset_c, LinMat*& matblk, const int nt );
+
 };
 
 #endif
