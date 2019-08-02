@@ -44,6 +44,8 @@ TDSolve::TDSolve(TDInput* tdInput_ptr) {
 
   // Radau RK
   matBlk = NULL;
+  matFlt = NULL;
+  matSlm = NULL;
   matRK  = NULL;
   prcRK  = NULL;
   solRK  = NULL;
@@ -146,6 +148,8 @@ TDSolve::~TDSolve(void) {
   
   // Radau RK
   if (matBlk!=NULL) delete matBlk;
+  if (matFlt!=NULL) delete matFlt;
+  if (matSlm!=NULL) delete matSlm;
   if (matRK!=NULL)  delete matRK;
   if (prcRK!=NULL)  delete prcRK;
   if (rhsRK!=NULL)  delete rhsRK;

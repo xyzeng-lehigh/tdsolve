@@ -425,6 +425,13 @@ void TDSolveFVMMod::setup_rk_lin( RKButcher& rkButcher ) {
     matBlk = new LinSqSparseMat;
     matBlk->setBlckDim(1);
     matBlk->setEqualSize(3*Nx);
+    // Temporary matrices for the chain rule in df/dv
+    matFlt = new LinSparseMat;
+    matFlt->setBlckDim(1);
+    matFlt->setSize(Nx,3*Nx);
+    matSlm = new LinSparseMat;
+    matSlm->setBlckDim(1);
+    matSlm->setSize(3*Nx,Nx);
   }
   return;
 }
@@ -4148,6 +4155,8 @@ void TDSolveFVMMod::eval_rk_radau_fjac( LinMat*& lmat, RKButcher& rkButcher ) {
     assemble_rk_mat_dcell( lmat, rkButcher, i );
 
   // 2.2, partial derivatives in g, h, n through v
+  for ( int i = 1; i <= Ns; i++ )
+    assemble_rk_mat_dvel( lmat, rkButcher, i );
 
   return;
 }
@@ -4258,7 +4267,7 @@ void TDSolveFVMMod::assemble_rk_mat_dcell( LinMat*& lmat, RKButcher& rkButcher, 
   const int BSize = 3*Nx;
   const int offset_c = (nt-1)*BSize;
 
-  Entry  elem( 1, 0.0 ), loc_elem( 1, 0.0 );
+  Entry elem( 1, 0.0 ), loc_elem( 1, 0.0 );
   
   // Step 1. Compute (df/dy)|_{y=y[nt]} and store it in matBlk
   matBlk->reset( 0.0 );
@@ -4267,7 +4276,7 @@ void TDSolveFVMMod::assemble_rk_mat_dcell( LinMat*& lmat, RKButcher& rkButcher, 
   assemble_matblock_cells_n( nt, matBlk );
 
   // Step 2. Assembe mat to the corresponding column of lmat
-  // We'll utilize the sparseness of mat
+  //         We'll utilize the sparseness of mat
   for ( int n = 0; n < Ns; n++ ) {
     int   offset_r = n*BSize;
     DType rk_coef  = dtn * rkButcher.get(n,nt-1);
@@ -4376,6 +4385,34 @@ void TDSolveFVMMod::assemble_matblock_cells_h( const int nt, LinMat*& matblk ) {
 }
 
 void TDSolveFVMMod::assemble_matblock_cells_n( const int nt, LinMat*& matblk ) {
+  DType delta_n = tdCoef->delta_n;
+  
+  DType dror = data_rp[nt]/data_r[nt];
+  DType r2nt = data_r[nt]*data_r[nt];
+
+  Entry elem( 1, 0.0 );
+  const int offset_r = 2*Nx; // offset for n
+  //const int offset_c_g = 0;  // Not needed for data_n
+  //const int offset_c_h = Nx; // Not needed for data_n
+  const int offset_c_n = 2*Nx;
+
+  // Part 1. Contribution of data_n in mat for n
+  // Since this is the Jacobian, there is no incoming n_bc
+
+  // 1.1 Source term
+  for ( int i = 0; i < Nx; i++ ) {
+    DType x2n = r2nt * x_c[i] * x_c[i];
+    elem = matblk->get( offset_r+i, offset_c_n+i );
+    elem += x2n * ( - delta_n - dror );
+    matblk->set( offset_r+i, offset_c_n+i, elem );
+  }
+
+  // 1.2 Advective flux
+  update_matblock_advective( offset_r, offset_c_n, matblk, data_v, nt, false );
+  update_matblock_advective( offset_r, offset_c_n, matblk, data_u, nt, true  );
+
+  // 1.3 Geometric flux
+  update_matblock_geometric( offset_r, offset_c_n, matblk, nt );
 }
 
 void TDSolveFVMMod::update_matblock_advective( const int offset_r, const int offset_c, LinMat*& matblk, HVEC**& vel, const int nt, const bool rbc ) {
@@ -4599,6 +4636,213 @@ void TDSolveFVMMod::update_matblock_geometric( const int offset_r,
     elem = mat->get(offset_r+Nx-1,offset_c+Nx-3); elem -= coef_r_ll; mat->set(offset_r+Nx-1,offset_c+Nx-3,elem);
     elem = mat->get(offset_r+Nx-1,offset_c+Nx-2); elem -= coef_r_l;  mat->set(offset_r+Nx-1,offset_c+Nx-2,elem);
     elem = mat->get(offset_r+Nx-1,offset_c+Nx-1); elem -= coef_r_r;  mat->set(offset_r+Nx-1,offset_c+Nx-1,elem);
+  }
+
+  return;
+}
+
+void TDSolveFVMMod::assemble_rk_mat_dvel( LinMat*& lmat, RKButcher& rkButcher, const int nt ) {
+  // Suppose the differential part of the dae is f(t,y,z) and the algebraic part z=g(t)y
+  // This function will add dtn x a_{ns,nt-1}(df/dz)g(t[nt])|_{y=y[nt]} to lmat for all ns = 0,...,s-1
+  int Ns = rkButcher.getNstage();
+  // df/dz is BSize x Nx ((*data_v[nt])[0] is excluded)
+  // dz/dy is Nx x BSize
+  const int BSize = 3*Nx;
+  const int offset_c = (nt-1)*BSize;
+
+  Entry elem( 1, 0.0 ), loc_elem( 1, 0.0 );
+
+  // Step 1. Compute df/dz and store it in matSlm
+  matSlm->reset( 0.0 );
+  // These will recompute the slopes, which may be redundent
+  assemble_matblock_dv( nt, matSlm, 0,    data_g, slope_g );
+  assemble_matblock_dv( nt, matSlm, Nx,   data_h, slope_h );
+  assemble_matblock_dv( nt, matSlm, 2*Nx, data_n, slope_n );
+
+  // Step 2. Compute dz/dy and store it in matFlt
+  matFlt->reset( 0.0 );
+  // Note -- meanwile, OPN is not implemented yet
+  assemble_matblock_dvel_dg( nt, matFlt );
+  assemble_matblock_dvel_dh( nt, matFlt );
+  assemble_matblock_dvel_dn( nt, matFlt );
+  
+  // Step 3. Assemble mat = matSlm * matFlt to the corresponding column of lmat
+  //         Although we use sparse matrices, matFlt and hence mat is not really sparse
+  matSlm->xMat( matFlt, matBlk );
+  for ( int n = 0; n < Ns; n++ ) {
+    int   offset_r = n*BSize;
+    DType rk_coef  = dtn * rkButcher.get(n,nt-1);
+    DType r2n = data_r[n+1]*data_r[n+1];
+    for ( std::map<sm_idx,Entry>::iterator it = matBlk->it_beg();
+          it != matBlk->it_end(); it++ ) {
+      int loc_i = (*it).first.i;
+      int loc_j = (*it).first.j;
+      loc_elem = (*it).second;
+      int i = loc_i % Nx; // Actual cell number in row
+      DType x2n = r2n * x_c[i] * x_c[i];
+      elem = lmat->get( offset_r+loc_i, offset_c+loc_j );
+      elem -= rk_coef * loc_elem / x2n;
+      lmat->set( offset_r+loc_i, offset_c+loc_j, elem );
+    }
+  }
+
+  return;
+}
+
+void TDSolveFVMMod::assemble_matblock_dv( const int nt, LinMat*& matslm, 
+    const int offset_r, HVEC**& data, HVEC**& slope ) {
+  // Equation at row offset_r+i, i=0,1,...,Nx-1
+  // will use data_v[i+1] (column i) and data_v[i] (column i-1, if i>=1).
+  
+  Entry elem( 1, 0.0 );
+
+  // Part 1. Compute the slopes
+  (*slope[nt])[0] = 0.0;
+  for ( int i = 1; i < Nx-1; i++ )
+    (*slope[nt])[i] = (*lim_muscl[0])[i] * ((*data[nt])[i+1]-(*data[nt])[i]) / dx;
+  (*slope[nt])[Nx-1] = 0.0;
+
+  // Part 2. Compute the advected cells
+  for ( int i = 1; i < Nx; i++ ) { // V_i
+    DType loc_coef = x_f[i] * x_f[i] * data_r[nt];
+
+    DType loc_v = (*data_v[nt])[i];
+    DType adv_cell;
+    if ( loc_v >= 0.0 )
+      adv_cell = loc_coef * ( (*data[nt])[i-1]+0.5*dx*(*slope_g[nt])[i-1] );
+    else
+      adv_cell = loc_coef * ( (*data[nt])[i]-0.5*dx*(*slope_g[nt])[i] );
+
+    elem = matslm->get(offset_r+i-1,i-1); elem -= adv_cell/dx; matslm->set(offset_r+i-1,i-1,elem);
+    elem = matslm->get(offset_r+i,  i-1); elem += adv_cell/dx; matslm->set(offset_r+i,  i-1,elem);
+  }
+
+  return;
+}
+
+void TDSolveFVMMod::assemble_matblock_dvel_dg( const int nt, LinMat*& matflt ) {
+  DType lambda  = tdCoef->lambda;
+  DType q       = tdCoef->q;
+
+  const int offset_c = 0; // Offset for data_g
+  Entry elem( 1, 0.0 );
+
+  // Part 1. Source term
+  for ( int i = 0; i < Nx; i++ ) { // V_{i+1}
+    DType xf2 = x_f[i+1] * x_f[i+1];
+    for ( int j = 0; j <= i; j++ ) { // G_{j+1/2}
+      DType xc2 = x_c[j] * x_c[j];
+      DType loc_lambda = ( q == 0.0 ) ? lambda : lambda * pow(x_c[j],q);
+      elem = dx * (xc2/xf2) * data_r[nt] * loc_lambda;
+      matflt->set( i, offset_c+j, elem );
+    }
+  }
+
+  return;
+}
+
+void TDSolveFVMMod::assemble_matblock_dvel_dh( const int nt, LinMat*& matflt ) {
+  DType delta_h = tdCoef->delta_h;
+
+  const int offset_c = Nx; // Offset for data_h
+  Entry elem( 1, 0.0 );
+
+  // Part 1. Source term
+  for ( int i = 0; i < Nx; i++ ) { // V_{i+1}
+    DType xf2 = x_f[i+1] * x_f[i+1];
+    for ( int j = 0; j <= i; j++ ) { // G_{j+1/2}
+      DType xc2 = x_c[j] * x_c[j];
+      elem = dx * (xc2/xf2) * data_r[nt] * ( - delta_h );
+      matflt->set( i, offset_c+j, elem );
+    }
+  }
+
+  return;
+}
+
+void TDSolveFVMMod::assemble_matblock_dvel_dn( const int nt, LinMat*& matflt ) {
+  DType delta_n = tdCoef->delta_n;
+
+  const int offset_c = 2*Nx; // Offset for data_n
+  Entry elem( 1, 0.0 );
+
+  // Part 1. Source term
+  for ( int i = 0; i < Nx; i++ ) { // V_{i+1}
+    DType xf2 = x_f[i+1] * x_f[i+1];
+    for ( int j = 0; j <= i; j++ ) { // N_{j+1/2}
+      DType xc2 = x_c[j] * x_c[j];
+      elem = dx * (xc2/xf2) * data_r[nt] * ( - delta_n );
+      matflt->set( i, offset_c+j, elem );
+    }
+  }
+
+  // Part 2. Flux due to data_u
+  // V_1
+  {
+    DType loc_v = (*data_u[nt])[1];
+    DType coef_l  = 0.0;
+    DType coef_r  = 0.0;
+    DType coef_rr = 0.0;
+    DType lim_r = (*lim_muscl[0])[1];
+    if ( loc_v >= 0.0 )
+      coef_l  = (1.0/dx) * loc_v;
+    else {
+      coef_r  = (1.0/dx) * loc_v * ( 1.0 + 0.5*lim_r );
+      coef_rr = (1.0/dx) * loc_v * ( - 0.5*lim_r );
+    }
+
+    elem = matflt->get(0,offset_c+0); elem -= coef_l;  matflt->set(0,offset_c+0,elem);
+    elem = matflt->get(0,offset_c+1); elem -= coef_r;  matflt->set(0,offset_c+1,elem);
+    elem = matflt->get(0,offset_c+2); elem -= coef_rr; matflt->set(0,offset_c+2,elem);
+  }
+  // Interior V
+  for ( int i = 1; i < Nx-2; i++ ) {
+    DType loc_v = (*data_u[nt])[i+1];
+    DType coef_l  = 0.0;
+    DType coef_r  = 0.0;
+    DType coef_rr = 0.0;
+    DType lim_l = (*lim_muscl[0])[i];
+    DType lim_r = (*lim_muscl[0])[i+1];
+
+    if ( loc_v >= 0.0 ) {
+      coef_l  = (1.0/dx) * loc_v * ( 1.0 - 0.5*lim_l );
+      coef_r  = (1.0/dx) * loc_v * ( 0.5*lim_l );
+    }
+    else {
+      coef_r  = (1.0/dx) * loc_v * ( 1.0 + 0.5*lim_r );
+      coef_rr = (1.0/dx) * loc_v * ( - 0.5*lim_r );
+    }
+
+    elem = matflt->get(i,offset_c+i);   elem -= coef_l;  matflt->set(i,offset_c+i,  elem);
+    elem = matflt->get(i,offset_c+i+1); elem -= coef_r;  matflt->set(i,offset_c+i+1,elem);
+    elem = matflt->get(i,offset_c+i+2); elem -= coef_rr; matflt->set(i,offset_c+i+2,elem);
+  }
+  // V_{Nx-1}
+  {
+    DType loc_v = (*data_u[nt])[Nx-1];
+    DType coef_l = 0.0;
+    DType coef_r = 0.0;
+    DType lim_l = (*lim_muscl[0])[Nx-2];
+
+    if ( loc_v >= 0.0 ) {
+      coef_l = (1.0/dx) * loc_v * ( 1.0 - 0.5*lim_l );
+      coef_r = (1.0/dx) * loc_v * ( 0.5*lim_l );
+    }
+    else
+      coef_r = (1.0/dx) * loc_v;
+
+    elem = matflt->get(Nx-2,offset_c+Nx-2); elem -= coef_l; matflt->set(Nx-2,offset_c+Nx-2,elem);
+    elem = matflt->get(Nx-2,offset_c+Nx-1); elem -= coef_r; matflt->set(Nx-2,offset_c+Nx-1,elem);
+  }
+  // V_{Nx}
+  {
+    DType loc_v = (*data_u[nt])[Nx];
+    DType coef_l = 0.0;
+
+    if ( loc_v >= 0.0 )
+      coef_l = (1.0/dx) * loc_v;
+
+    elem = matflt->get(Nx-1,offset_c+Nx-1); elem -= coef_l; matflt->set(Nx-1,offset_c+Nx-1,elem);
   }
 
   return;

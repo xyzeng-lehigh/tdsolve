@@ -160,6 +160,14 @@ class TDSolveFVMMod : public TDSolveFVM {
     void update_matblock_advective( const int offset_r, const int offset_c, LinMat*& matblk, HVEC**& vel, const int nt, const bool rbc=false );
     void update_matblock_geometric( const int offset_r, const int offset_c, LinMat*& matblk, const int nt );
 
+    void assemble_rk_mat_dvel( LinMat*& lmat, RKButcher& rkButcher, const int nt );
+
+    void assemble_matblock_dv( const int nt, LinMat*& matslm, const int offset, HVEC**& data, HVEC**& slope );
+
+    void assemble_matblock_dvel_dg( const int nt, LinMat*& matflt );
+    void assemble_matblock_dvel_dh( const int nt, LinMat*& matflt );
+    void assemble_matblock_dvel_dn( const int nt, LinMat*& matflt );
+
 };
 
 #endif
