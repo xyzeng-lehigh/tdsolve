@@ -197,21 +197,25 @@ int main(int argc, char** argv) {
               // Predict data_rp and data_r at all stages
               tdSolve->update_rad_radau(rkButcher); 
               int n_iter = -1;
-              tdSolve->check_conv_radius(rkButcher, n_iter, sol_conv, red_dt);
+              tdSolve->check_conv_radius(rkButcher, n_iter, sol_conv, red_dt, true);
 
               while (!sol_conv && !red_dt) {
                 // Freeze limiters, and solve for cell species given data_rp and data_r
-                tdSolve->update_rk_sol(rkButcher); 
-                // Update data_rp and data_r according to the new data_v
-                tdSolve->update_rad_radau(rkButcher);
-                // Check if the data_r has converged
-                tdSolve->check_conv_radius(rkButcher, n_iter, sol_conv, red_dt);
+                if (tdSolve->update_rk_sol(rkButcher)) { // Newton iteration converged
+                  // Update data_rp and data_r according to the new data_v
+                  tdSolve->update_rad_radau(rkButcher);
+                  // Check if the data_r has converged
+                  tdSolve->check_conv_radius(rkButcher, n_iter, sol_conv, red_dt, true);
+                }
+                else {
+                  sol_conv = false; red_dt = true;
+                }
               }
 
               // Either converged or need to reduce dt
               if (sol_conv) // Converged
                 break;
-              else if ( tdInput.tdSetup.auto_red_dt ) { // Reduce dt
+              else if (tdInput.tdSetup.auto_red_dt) { // Reduce dt
                 tdSolve->reduce_dtn( 0.5 );
                 tdSolve->diagnostic( 0 );
                 continue;
@@ -284,6 +288,43 @@ int main(int argc, char** argv) {
             tdSolve->copy_data(2,1);
           }
 
+        }
+      case 100: // Test first-order fully backward Euler
+        {
+          int Ns = 1;
+          RKButcher rkButcher(Ns);
+          rkButcher.get(0,0) = 1.0;
+          
+          bool sol_conv, red_dt;
+
+          tdSolve->setup_rk_lin( rkButcher );
+          
+          while (1) {
+            tdSolve->copy_data(0,1);
+            tdSolve->update_rad_radau(rkButcher);
+            int n_iter = -1;
+            tdSolve->check_conv_radius(rkButcher,n_iter,sol_conv,red_dt);
+            while (!sol_conv && !red_dt) {
+              if (tdSolve->update_rk_sol(rkButcher)) {
+                tdSolve->update_rad_radau(rkButcher);
+                tdSolve->check_conv_radius(rkButcher,n_iter,sol_conv,red_dt);
+              }
+              else {
+                sol_conv = false; red_dt = true;
+              }
+            }
+            if (sol_conv)
+              break;
+            else if (tdInput.tdSetup.auto_red_dt) {
+              tdSolve->reduce_dtn( 0.5 );
+              tdSolve->diagnostic( 0 );
+              continue;
+            }
+            else {
+              tdSolve->print_warning("Not converged");
+              break;
+            }
+          }
         }
         break;
       default: // First-order

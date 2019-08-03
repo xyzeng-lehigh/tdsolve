@@ -75,6 +75,10 @@ TDInput::TDInput(void) {
   tdSetup.vTol   = 1e-6;  // Iteration tolerance for tIter=-1
   tdSetup.nrmPow = -1;    // Vector norm used to compute convergence errors
   tdSetup.vOnly  = true;  // Check only V for convergence
+
+  tdSetup.ntTol  = 1e-6; // Newton tolerance
+  tdSetup.ntIter = 50;    // Maximum iteration number for Newton
+
   tdSetup.Tinit  = 0.0;
   tdSetup.Tterm  = 1.0;
   tdSetup.Rterm  = 6.0;
@@ -493,6 +497,7 @@ void TDInput::setup_parameters(void) {
   tdParameters["x_r"]             = &tdMesh.x_r;
   tdParameters["cfl"]             = &tdSetup.cfl;
   tdParameters["vel_iter_tol"]    = &tdSetup.vTol;
+  tdParameters["newton_tol"]      = &tdSetup.ntTol;
   tdParameters["Tinit"]           = &tdSetup.Tinit;
   tdParameters["Tterm"]           = &tdSetup.Tterm;
   tdParameters["Rterm"]           = &tdSetup.Rterm;
@@ -520,6 +525,7 @@ void TDInput::setup_options(void) {
   tdOptions["time_method"]   = &tdSetup.tmeth;
   tdOptions["vel_iter"]      = &tdSetup.vIter;
   tdOptions["norm_pow"]      = &tdSetup.nrmPow;
+  tdOptions["newton_iter"]   = &tdSetup.ntIter;
   tdOptions["frequency"]     = &tdSetup.freq;
   tdOptions["max_iter"]      = &tdSetup.maxit;
   tdOptions["dr_option"]     = &tdSetup.dr_opt;

@@ -78,11 +78,18 @@ struct TDSetup {
   int   ic;
   int   scell, schem, vel, rbc, lbc;
   int   tmeth;
+
+  // PMC for iterates (velocity, radius, etc.)
   bool  vCoup;
   int   vIter; 
   DType vTol;
   int   nrmPow;
   bool  vOnly;
+
+  // Newton iterations
+  DType ntTol;
+  int   ntIter;
+
   DType Tinit, Tterm, Tfreq;
   DType Rterm, Rdead;
   int   freq;

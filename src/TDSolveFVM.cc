@@ -359,6 +359,10 @@ void TDSolveFVM::alloc(void) {
       Ndata = 3;
       use_resd = true;
       break;
+    case 100:
+      Ndata = 2;
+      use_resd = true;
+      break;
   }
 
   alloc_array_full( data_g, Nx, Ndata );

@@ -22,7 +22,7 @@ class TDSolveFVMMod : public TDSolveFVM {
     void update_vel(const DType alpha, const int nt);
 
     void setup_rk_lin( RKButcher& rkButcher );
-    void update_rk_sol( RKButcher& rkButcher, const bool diagnos=false );
+    bool update_rk_sol( RKButcher& rkButcher, const bool diagnos=false );
 
     void copy_aux(const int fr, const int to);
 

@@ -50,7 +50,7 @@ class TDSolve {
     virtual void update_vel(const DType alpha, const int nt) {};
 
     virtual void setup_rk_lin( RKButcher& rkButcher ) {};
-    virtual void update_rk_sol( RKButcher& rkButcher, const bool diagnos=false ) {};
+    virtual bool update_rk_sol( RKButcher& rkButcher, const bool diagnos=false ) {return true;};
 
     bool nextIter(void) {
       iter++;
