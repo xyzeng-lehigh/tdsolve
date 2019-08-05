@@ -1613,6 +1613,8 @@ void TDSolveFVMMod::update_cells_orig_imp_muscl(const int fr, const int to, cons
 
 void TDSolveFVMMod::compute_flux_muscl_lims(const int nt) {
 
+  bool no_lim_g, no_lim_h, no_lim_n, no_lim_theta;
+  bool zero_lim_g, zero_lim_h, zero_lim_n, zero_lim_theta;
   // Limiters for the velocity associated with u and with v
   { // Left boundary
     (*lim_g[0])[0] = 0.0;
@@ -1622,24 +1624,44 @@ void TDSolveFVMMod::compute_flux_muscl_lims(const int nt) {
   }
   for ( int i = 1; i < Nx-1; i++ ) {
     DType loc_lim_g = LimFun_Minmod(
-        (*data_g[nt])[i] - (*data_g[nt])[i-1], (*data_g[nt])[i+1] - (*data_g[nt])[i] );
+        (*data_g[nt])[i] - (*data_g[nt])[i-1], (*data_g[nt])[i+1] - (*data_g[nt])[i], no_lim_g, zero_lim_g );
     DType loc_lim_h = LimFun_Minmod(
-        (*data_h[nt])[i] - (*data_h[nt])[i-1], (*data_h[nt])[i+1] - (*data_h[nt])[i] );
+        (*data_h[nt])[i] - (*data_h[nt])[i-1], (*data_h[nt])[i+1] - (*data_h[nt])[i], no_lim_h, zero_lim_h );
     DType loc_lim_n = LimFun_Minmod(
-        (*data_n[nt])[i] - (*data_n[nt])[i-1], (*data_n[nt])[i+1] - (*data_n[nt])[i] );
+        (*data_n[nt])[i] - (*data_n[nt])[i-1], (*data_n[nt])[i+1] - (*data_n[nt])[i], no_lim_n, zero_lim_n );
     DType loc_lim_theta = 1.0;
     if ( tdSetup->slim_tot ) {
       DType loc_theta[3];
       loc_theta[0] = (*data_g[nt])[i-1] + (*data_h[nt])[i-1] + (*data_n[nt])[i-1];
       loc_theta[1] = (*data_g[nt])[i] + (*data_h[nt])[i] + (*data_n[nt])[i];
       loc_theta[2] = (*data_g[nt])[i+1] + (*data_h[nt])[i+1] + (*data_n[nt])[i+1];
-      loc_lim_theta = LimFun_Minmod(loc_theta[1]-loc_theta[0], loc_theta[2]-loc_theta[1]);
+      loc_lim_theta = LimFun_Minmod(loc_theta[1]-loc_theta[0], loc_theta[2]-loc_theta[1], no_lim_theta, zero_lim_theta);
     }
 
-    (*lim_g[0])[i] = loc_lim_g;
-    (*lim_h[0])[i] = loc_lim_h;
-    (*lim_n[0])[i] = loc_lim_n;
-    (*lim_muscl[0])[i] = min( min(loc_lim_g,loc_lim_h), min(loc_lim_n,loc_lim_theta) );
+    if ( tdSetup->slim_tot ) {
+      if ( zero_lim_g || zero_lim_h || zero_lim_n || zero_lim_theta ) {
+        (*lim_g[0])[i] = 0.0; (*lim_h[0])[i] = 0.0; (*lim_n[0])[i] = 0.0;
+        (*lim_muscl[0])[i] = 0.0;
+      }
+      else {
+        (*lim_muscl[0])[i] = 1.0;
+        (*lim_g[0])[i] = loc_lim_g; if ( !no_lim_g ) (*lim_muscl[0])[i] = min( (*lim_muscl[0])[i], loc_lim_g );
+        (*lim_h[0])[i] = loc_lim_h; if ( !no_lim_g ) (*lim_muscl[0])[i] = min( (*lim_muscl[0])[i], loc_lim_h );
+        (*lim_n[0])[i] = loc_lim_n; if ( !no_lim_g ) (*lim_muscl[0])[i] = min( (*lim_muscl[0])[i], loc_lim_n );
+        if ( !no_lim_theta ) (*lim_muscl[0])[i] = min( (*lim_muscl[0])[i], loc_lim_theta );
+      }
+    }
+    else {
+      if ( zero_lim_g || zero_lim_h || zero_lim_n ) {
+        (*lim_g[0])[i] = 0.0; (*lim_h[0])[i] = 0.0; (*lim_n[0])[i] = 0.0;
+      }
+      else {
+        (*lim_muscl[0])[i] = 1.0;
+        (*lim_g[0])[i] = loc_lim_g; if ( !no_lim_g ) (*lim_muscl[0])[i] = min( (*lim_muscl[0])[i], loc_lim_g );
+        (*lim_h[0])[i] = loc_lim_h; if ( !no_lim_g ) (*lim_muscl[0])[i] = min( (*lim_muscl[0])[i], loc_lim_h );
+        (*lim_n[0])[i] = loc_lim_n; if ( !no_lim_g ) (*lim_muscl[0])[i] = min( (*lim_muscl[0])[i], loc_lim_n );
+      }
+    }
   }
   { // Right boundary
     (*lim_g[0])[Nx-1] = 0.0;
@@ -2664,6 +2686,7 @@ void TDSolveFVMMod::update_chem_imp( const int fr, const int to,
 
 void TDSolveFVMMod::compute_flux_chem_muscl_lims(const int nt, HVEC**& data, HVEC**& lim, const int N_loc, const DType* xc_loc, const DType* xf_loc, const int rbc, const DType bc_val) {
   DType r2nt = data_r[nt] * data_r[nt];
+  bool no_lim, zero_lim;
   // Left boundary
   (*lim[0])[0] = 0.0;
   // Interior cells
@@ -2676,7 +2699,7 @@ void TDSolveFVMMod::compute_flux_chem_muscl_lims(const int nt, HVEC**& data, HVE
     DType data_loc_c = (*data[nt])[i]  *xc2_c*r2nt;
     DType data_loc_r = (*data[nt])[i+1]*xc2_r*r2nt;
 
-    (*lim[0])[i] = LimFun_Minmod( data_loc_c-data_loc_l, data_loc_r-data_loc_c );
+    (*lim[0])[i] = LimFun_Minmod( data_loc_c-data_loc_l, data_loc_r-data_loc_c, no_lim, zero_lim );
   }
   // Right boundary
   if ( rbc == 1 ) { // Flux boundary
@@ -3292,6 +3315,26 @@ DType TDSolveFVMMod::calc_n_bc( const DType tsol_loc ) {
     n_bc = 1.0 - std::exp(-3.0*v_par*tsol_loc) * ( 1.0-n_bc );
   }
   return n_bc;
+}
+
+DType TDSolveFVMMod::LimFun_Minmod(DType dval_l, DType dval_r, bool& no_lim, bool& zero_lim) {
+  no_lim = std::fabs(dval_l) + std::fabs(dval_r) < 2.0*TOL_ZERO;
+  zero_lim = false;
+  if (!no_lim) {
+    if ( std::fabs(dval_l)<=TOL_ZERO || std::fabs(dval_r)<=TOL_ZERO || dval_l*dval_r < 0.0 ) {
+      zero_lim = true;
+      return 0.0;
+    }
+    else 
+      return min(dval_l/dval_r, 1.0);
+  }
+  else {
+    return 1.0;
+  }
+  //if ( dval_l * dval_r <= 0.0 )
+  //  return 0.0;
+  //else
+  //  return min(dval_l/dval_r, 1.0);
 }
 
 DType TDSolveFVMMod::LimFun_PPM_BC(DType dval_c, DType dval_r) {

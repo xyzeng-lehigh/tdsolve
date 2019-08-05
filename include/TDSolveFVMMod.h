@@ -120,12 +120,7 @@ class TDSolveFVMMod : public TDSolveFVM {
     DType calc_n_bc( const DType tsol_loc );
 
     // The minmod limiter
-    DType LimFun_Minmod(DType dval_l, DType dval_r) {
-      if ( dval_l * dval_r <= 0.0 )
-        return 0.0;
-      else
-        return min(dval_l/dval_r, 1.0);
-    }
+    DType LimFun_Minmod(DType dval_l, DType dval_r, bool& no_lim, bool& zero_lim); 
 
     // The PPM limiter
     DType LimFun_PPM_BC(DType dval_c, DType dval_r); 

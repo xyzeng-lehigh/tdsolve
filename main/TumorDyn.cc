@@ -289,6 +289,7 @@ int main(int argc, char** argv) {
           }
 
         }
+        break;
       case 100: // Test first-order fully backward Euler
         {
           int Ns = 1;
