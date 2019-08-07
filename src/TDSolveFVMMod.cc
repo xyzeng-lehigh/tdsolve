@@ -586,6 +586,10 @@ void TDSolveFVMMod::update_vel(const int fr, const int to, const DType shift_dt,
   else { // Original fluxes
     switch ( tdSetup->prob_id ) {
       case 0:  // PDGF
+      case -1:
+      case -2:
+      case -3:
+      case -4:
         update_vel_int_orig( fr );
         break;
       case 1:  // OPN
