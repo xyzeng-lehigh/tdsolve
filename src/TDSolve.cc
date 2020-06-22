@@ -290,7 +290,7 @@ void TDSolve::average_sol(const DType coef_1, const int fr_1,
 }
 
 void TDSolve::diagnostic(const int nt) {
-  if ( tdSetup->silence ) return;
+  if ( tdSetup->silence_screen ) return;
   fprintf( stdout, "Iter %3d: Time %6.8f; Time step %6.8f; CFL %2.4f; Radius %6.8f; Front-velocity %6.8f.\n",
       iter, tsol, dtn, cur_cfl, data_r[nt], data_rp[0] );
   return;

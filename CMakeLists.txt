@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.9)
 #set(CMAKE_C_COMPILER "gcc")
 #set(CMAKE_CXX_COMPILER "g++")
 project(TDSolve)
@@ -20,7 +20,19 @@ include_directories(include)
 
 # Add source files
 file(GLOB SOURCES "main/TumorDyn.cc" "src/*.cc")
-#file(GLOB PARSOURCES "main/ParAnal.cc" "src/*.cc")
+file(GLOB PARSOURCES "main/ParAnal.cc" "src/*.cc")
+
+# Executable
+add_executable(TumorDynRun ${SOURCES})
+add_executable(ParAnalRun ${PARSOURCES})
+
+# LAPACK and BLAS
+find_package(BLAS REQUIRED)
+find_package(LAPACK REQUIRED)
+include_directories(${BLAS_INCLUDE_DIR} ${LAPACK_INCLUDE_DIR})
+target_link_libraries(TumorDynRun ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 
 # Configure file that pass CMake settings to the source
 #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fopenmp")
@@ -34,13 +46,12 @@ file(GLOB SOURCES "main/TumorDyn.cc" "src/*.cc")
 #  message("ERROR: OpenMP could not be found.")
 #endif(OPENMP_FOUND)
 
-# Executable
-add_executable(TumorDynRun ${SOURCES})
-#add_executable(ParAnalRun ${PARSOURCES})
+# OpenMP support (avaiable after CMake 3.9)
+find_package(OPENMP)
+if(OpenMP_CXX_FOUND)
+  target_link_libraries(ParAnalRun OpenMP::OpenMP_CXX)
+  #target_link_libraries(ParAnalRun PUBLIC OpenMP::OpenMP_CXX)
+endif()
 
-# LAPACK and BLAS
-find_package(BLAS REQUIRED)
-find_package(LAPACK REQUIRED)
-include_directories(${BLAS_INCLUDE_DIR} ${LAPACK_INCLUDE_DIR})
-#target_link_libraries(ParAnalRun ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
-target_link_libraries(TumorDynRun ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
+target_link_libraries(ParAnalRun ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
+

@@ -126,7 +126,7 @@ class MAT3 {
 		VEC3 data[3];
 	public:
 		void print(void) {
-			register int i;
+			int i;
 			for (i=0; i<3; i++)
 				printf("%10.20f\t%10.20f\t%10.20f\n",data[i][0],data[i][1],data[i][2]); 
 			printf("\n");
@@ -134,13 +134,13 @@ class MAT3 {
 		}
 
 		MAT3() {
-			register int i,j;
+			int i,j;
 			for (i=0; i<3; i++)
 				for (j=0; j<3; j++)
 					data[i][j]=0.0;
 		}
 		MAT3(DType in_val) {
-			register int i,j;
+			int i,j;
 			for (i=0; i<3; i++)
 				for (j=0; j<3; j++)
 					data[i][j]=in_val;
@@ -153,12 +153,12 @@ class MAT3 {
 		}
 		MAT3(const VEC3& in_data) {
 			MAT3(0.0);
-			register int i;
+			int i;
 			for (i=0; i<3; i++)
 				data[i][i]=in_data[i];
 		}
 		MAT3 (const MAT3& in_mat) {
-			register int i,j;
+			int i,j;
 			for (i=0; i<3; i++)
 				for (j=0; j<3; j++)
 					data[i][j] = in_mat[i][j];
@@ -175,56 +175,56 @@ class MAT3 {
 		}
 
 		void operator= (DType in_data) {
-			register int i,j;
+			int i,j;
 			for (i=0;i<3;i++)
 				for (j=0;j<3;j++)
 					data[i][j] = in_data;
 			return;
 		}
 		void operator= (const MAT3& in_data) {
-			register int i,j;
+			int i,j;
 			for (i=0;i<3;i++)
 				for (j=0;j<3;j++)
 					data[i][j]=in_data[i][j];
 			return;
 		}
 		void operator+= (const MAT3& in_data) {
-			register int i,j;
+			int i,j;
 			for (i=0;i<3;i++)
 				for (j=0;j<3;j++)
 					data[i][j]+=in_data[i][j];
 			return;
 		}
 		void operator+= (DType in_data) {
-			register int i,j;
+			int i,j;
 			for (i=0;i<3;i++)
 				for (j=0;j<3;j++)
 					data[i][j]+=in_data;
 			return;
 		}
 		void operator-= (const MAT3& in_data) {
-			register int i,j;
+			int i,j;
 			for (i=0;i<3;i++)
 				for (j=0;j<3;j++)
 					data[i][j]-=in_data[i][j];
 			return;
 		}
 		void operator-= (DType in_data) {
-			register int i,j;
+			int i,j;
 			for (i=0;i<3;i++)
 				for (j=0;j<3;j++)
 					data[i][j]-=in_data;
 			return;
 		}
 		void operator*= (DType in_data) {
-			register int i,j;
+			int i,j;
 			for (i=0;i<3;i++)
 				for (j=0;j<3;j++)
 					data[i][j]*=in_data;
 			return;
 		}
 		void operator/= (DType in_data) {
-			register int i,j;
+			int i,j;
 			for (i=0;i<3;i++)
 				for (j=0;j<3;j++)
 					data[i][j]/=in_data;
@@ -239,7 +239,7 @@ class MAT3 {
 
 		MAT3 trans(void) {
 			MAT3 temp;
-			register int i,j;
+			int i,j;
 			for (i=0;i<3;i++)
 				for (j=0;j<3;j++)
 					temp[i][j] = data[j][i];
@@ -395,7 +395,7 @@ class MAT4 {
 		VEC4 data[4];
 	public:
 		void print(void) {
-			register int i;
+			int i;
 			for (i=0; i<4; i++)
 				printf("%10.20f\t%10.20f\t%10.20f\t%10.20f\n",data[i][0],data[i][1],data[i][2],data[i][3]); 
 			printf("\n");
@@ -403,13 +403,13 @@ class MAT4 {
 		}
 
 		MAT4() {
-			register int i,j;
+			int i,j;
 			for (i=0; i<4; i++)
 				for (j=0; j<4; j++)
 					data[i][j]=0.0;
 		}
 		MAT4(DType in_val) {
-			register int i,j;
+			int i,j;
 			for (i=0; i<4; i++)
 				for (j=0; j<4; j++)
 					data[i][j]=in_val;
@@ -423,12 +423,12 @@ class MAT4 {
 		}
 		MAT4(const VEC4& in_data) {
 			MAT4(0.0);
-			register int i;
+			int i;
 			for (i=0; i<4; i++)
 				data[i][i]=in_data[i];
 		}
 		MAT4(const MAT4& in_mat) {
-			register int i,j;
+			int i,j;
 			for (i=0; i<4; i++)
 				for (j=0; j<4; j++)
 					data[i][j] = in_mat[i][j];
@@ -445,56 +445,56 @@ class MAT4 {
 		}
 
 		void operator= (DType in_data) {
-			register int i,j;
+			int i,j;
 			for (i=0;i<4;i++)
 				for (j=0;j<4;j++)
 					data[i][j] = in_data;
 			return;
 		}
 		void operator= (const MAT4& in_data) {
-			register int i,j;
+			int i,j;
 			for (i=0;i<4;i++)
 				for (j=0;j<4;j++)
 					data[i][j]=in_data[i][j];
 			return;
 		}
 		void operator+= (const MAT4& in_data) {
-			register int i,j;
+			int i,j;
 			for (i=0;i<4;i++)
 				for (j=0;j<4;j++)
 					data[i][j]+=in_data[i][j];
 			return;
 		}
 		void operator+= (DType in_data) {
-			register int i,j;
+			int i,j;
 			for (i=0;i<4;i++)
 				for (j=0;j<4;j++)
 					data[i][j]+=in_data;
 			return;
 		}
 		void operator-= (const MAT4& in_data) {
-			register int i,j;
+			int i,j;
 			for (i=0;i<4;i++)
 				for (j=0;j<4;j++)
 					data[i][j]-=in_data[i][j];
 			return;
 		}
 		void operator-= (DType in_data) {
-			register int i,j;
+			int i,j;
 			for (i=0;i<4;i++)
 				for (j=0;j<4;j++)
 					data[i][j]-=in_data;
 			return;
 		}
 		void operator*= (DType in_data) {
-			register int i,j;
+			int i,j;
 			for (i=0;i<4;i++)
 				for (j=0;j<4;j++)
 					data[i][j]*=in_data;
 			return;
 		}
 		void operator/= (DType in_data) {
-			register int i,j;
+			int i,j;
 			for (i=0;i<4;i++)
 				for (j=0;j<4;j++)
 					data[i][j]/=in_data;
@@ -506,7 +506,7 @@ class MAT4 {
 			int indx[3];
 			DType result = 0.0;
 			DType mult = 0.0;
-			register int i,j,k;
+			int i,j,k;
 			for (k=0; k<4; k++) {
 				switch (k) {
 					case 0:
@@ -538,7 +538,7 @@ class MAT4 {
 
 		MAT4 trans(void) {
 			MAT4 temp;
-			register int i,j;
+			int i,j;
 			for (i=0;i<4;i++)
 				for (j=0;j<4;j++)
 					temp[i][j] = data[j][i];

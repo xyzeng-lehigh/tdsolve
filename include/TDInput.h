@@ -98,7 +98,8 @@ struct TDSetup {
   int   dr_opt, r_opt;
   bool  slim_tot;
   bool  diagn_vcoup;
-  bool  silence;
+  bool  silence_screen;
+  bool  silence_output;
   bool  auto_red_dt;
 
   bool  use_pmc;
@@ -164,7 +165,6 @@ class TDInput {
     ~TDInput(void);
     
     void  setInputFile(const char*);
-    void  parse_old(void);
     void  parse(void);
 };
 

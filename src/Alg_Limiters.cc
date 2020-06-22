@@ -18,7 +18,7 @@ VEC3 Alg_LimSlope_Linear(VEC3 U_c, VEC3 U_l, VEC3 U_r, DType dx_c, DType dx_l, D
 	if (dx_r==-1)
 		dx_r = dx_c;
 
-	register int i;
+	int i;
 	VEC3 slope;
 	for (i=0; i<3; i++) {
 		slope[i] = ALG_LIMSLOPE_LINEAR_L*2.0*(U_c[i]-U_l[i])/(dx_c+dx_l)+
@@ -34,7 +34,7 @@ VEC4 Alg_LimSlope_Linear(VEC4 U_c, VEC4 U_l, VEC4 U_r, DType dx_c, DType dx_l, D
 	if (dx_r==-1)
 		dx_r = dx_c;
 
-	register int i;
+	int i;
 	VEC4 slope;
 	for (i=0; i<4; i++) {
 		slope[i] = ALG_LIMSLOPE_LINEAR_L*2.0*(U_c[i]-U_l[i])/(dx_c+dx_l)+
@@ -80,7 +80,7 @@ VEC3 Alg_LimSlope_Minmod(VEC3 U_c, VEC3 U_l, VEC3 U_r, DType dx_c, DType dx_l, D
 	if (coef_b==-1)
 		coef_b = 2.0*dx_c/(dx_c+dx_r);
 
-	register int i;
+	int i;
 	VEC3 slope;
 	for (i=0; i<3; i++) {
 		if (U_r[i]>U_c[i])
@@ -106,7 +106,7 @@ VEC4 Alg_LimSlope_Minmod(VEC4 U_c, VEC4 U_l, VEC4 U_r, DType dx_c, DType dx_l, D
 	if (coef_b==-1)
 		coef_b = 2.0*dx_c/(dx_c+dx_r);
 
-	register int i;
+	int i;
 	VEC4 slope;
 	for (i=0; i<4; i++) {
 		if (U_r[i]>U_c[i])
@@ -158,7 +158,7 @@ VEC3 Alg_LimSlope_Superbee(VEC3 U_c, VEC3 U_l, VEC3 U_r, DType dx_c, DType dx_l,
 	if (coef_b==-1)
 		coef_b = 2.0*dx_c/(dx_c+dx_r);
 
-	register int i;
+	int i;
 	VEC3 slope;
 	for (i=0; i<3; i++) {
 		if (U_r[i]>U_c[i])
@@ -186,7 +186,7 @@ VEC4 Alg_LimSlope_Superbee(VEC4 U_c, VEC4 U_l, VEC4 U_r, DType dx_c, DType dx_l,
 	if (coef_b==-1)
 		coef_b = 2.0*dx_c/(dx_c+dx_r);
 
-	register int i;
+	int i;
 	VEC4 slope;
 	for (i=0; i<4; i++) {
 		if (U_r[i]>U_c[i])
@@ -239,7 +239,7 @@ VEC3 Alg_LimSlope_MC(VEC3 U_c, VEC3 U_l, VEC3 U_r, DType dx_c, DType dx_l, DType
 	if (coef_b==-1)
 		coef_b = 2.0*dx_c/(dx_c+dx_r);
 
-	register int i;
+	int i;
 	VEC3 slope;
 	for (i=0; i<3; i++) {
 		if (U_r[i]>U_c[i])
@@ -267,7 +267,7 @@ VEC4 Alg_LimSlope_MC(VEC4 U_c, VEC4 U_l, VEC4 U_r, DType dx_c, DType dx_l, DType
 	if (coef_b==-1)
 		coef_b = 2.0*dx_c/(dx_c+dx_r);
 
-	register int i;
+	int i;
 	VEC4 slope;
 	for (i=0; i<4; i++) {
 		if (U_r[i]>U_c[i])
@@ -333,7 +333,7 @@ DType Alg_LimSlope_vanLeer(DType U_c, DType U_l, DType U_r, DType dx_c, DType dx
 
 	DType par_theta;		// This can be either the theta described in header
 							// or the inverse of the theta described there.
-	register int k;
+	int k;
 	DType denom_theta, nomtr_theta;
 
 	if (((U_c-U_l)*(U_r-U_c))<0.0)
@@ -427,7 +427,7 @@ VEC3 Alg_LimSlope_vanLeer(VEC3 U_c, VEC3 U_l, VEC3 U_r, DType dx_c, DType dx_l, 
 
 	DType par_theta;		// This can be either the theta described in header
 							// or the inverse of the theta described there
-	register int i, k;
+	int i, k;
 	DType denom_theta, nomtr_theta;
 	VEC3 slope;
 	for (i=0; i<3; i++) {
@@ -524,7 +524,7 @@ VEC4 Alg_LimSlope_vanLeer(VEC4 U_c, VEC4 U_l, VEC4 U_r, DType dx_c, DType dx_l, 
 
 	DType par_theta;		// This can be either the theta described in header
 							// or the inverse of the theta described there
-	register int i, k;
+	int i, k;
 	DType denom_theta, nomtr_theta;
 	VEC4 slope;
 	for (i=0; i<4; i++) {
@@ -675,7 +675,7 @@ VEC3 Alg_LimSlope_vanAlbada(VEC3 U_c, VEC3 U_l, VEC3 U_r, DType dx_c, DType dx_l
 
 	DType par_theta;		// This can be either the theta described in header
 							// or the inverse of the theta described there
-	register int i;
+	int i;
 	VEC3 slope;
 	for (i=0; i<3; i++) {
 		if (((U_c[i]-U_l[i])*(U_r[i]-U_c[i]))<0.0)
@@ -727,7 +727,7 @@ VEC4 Alg_LimSlope_vanAlbada(VEC4 U_c, VEC4 U_l, VEC4 U_r, DType dx_c, DType dx_l
 
 	DType par_theta;		// This can be either the theta described in header
 							// or the inverse of the theta described there
-	register int i;
+	int i;
 	VEC4 slope;
 	for (i=0; i<4; i++) {
 		if (((U_c[i]-U_l[i])*(U_r[i]-U_c[i]))<0.0)
@@ -793,7 +793,7 @@ VEC3 Alg_LimSlope_Berger1(VEC3 U_c, VEC3 U_l, VEC3 U_r, DType dx_c, DType dx_l, 
 
 	DType par_theta;
 	VEC3 slope;
-	register int i;
+	int i;
 	for (i=0; i<3; i++) {
 		if ((U_c[i]-U_l[i])*(U_r[i]-U_c[i])<=0.0)
 			slope[i] = 0.0;
@@ -824,7 +824,7 @@ VEC4 Alg_LimSlope_Berger1(VEC4 U_c, VEC4 U_l, VEC4 U_r, DType dx_c, DType dx_l, 
 
 	DType par_theta;
 	VEC4 slope;
-	register int i;
+	int i;
 	for (i=0; i<4; i++) {
 		if ((U_c[i]-U_l[i])*(U_r[i]-U_c[i])<=0.0)
 			slope[i] = 0.0;
@@ -884,7 +884,7 @@ VEC3 Alg_LimSlope_Berger2(VEC3 U_c, VEC3 U_l, VEC3 U_r, DType dx_c, DType dx_l, 
 
 	DType par_theta;
 	VEC3 slope;
-	register int i;
+	int i;
 	for (i=0; i<3; i++) {
 		if ((U_c[i]-U_l[i])*(U_r[i]-U_c[i])<=0.0)
 			slope[i] = 0.0;
@@ -915,7 +915,7 @@ VEC4 Alg_LimSlope_Berger2(VEC4 U_c, VEC4 U_l, VEC4 U_r, DType dx_c, DType dx_l, 
 
 	DType par_theta;
 	VEC4 slope;
-	register int i;
+	int i;
 	for (i=0; i<4; i++) {
 		if ((U_c[i]-U_l[i])*(U_r[i]-U_c[i])<=0.0)
 			slope[i] = 0.0;

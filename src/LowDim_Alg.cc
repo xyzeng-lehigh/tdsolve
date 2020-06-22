@@ -87,7 +87,7 @@ VEC3 operator/ (const VEC3& input_v, const DType& input_s) {
 
 MAT3 operator+ (const MAT3& input_1, const MAT3& input_2) {
 	MAT3 temp;
-	register int i,j;
+	int i,j;
 	for (i=0;i<3;i++)
 		for (j=0;j<3;j++)
 			temp[i][j]=input_1[i][j]+input_2[i][j];
@@ -96,7 +96,7 @@ MAT3 operator+ (const MAT3& input_1, const MAT3& input_2) {
 
 MAT3 operator+ (const MAT3& input_1) {
 	MAT3 temp;
-	register int i,j;
+	int i,j;
 	for (i=0;i<3;i++)
 		for (j=0;j<3;j++)
 			temp[i][j]=input_1[i][j];
@@ -105,7 +105,7 @@ MAT3 operator+ (const MAT3& input_1) {
 
 MAT3 operator+ (const MAT3& input_v, const DType& input_s) {
 	MAT3 temp;
-	register int i,j;
+	int i,j;
 	for (i=0;i<3;i++)
 		for (j=0;j<3;j++)
 			temp[i][j]=input_v[i][j]+input_s;
@@ -114,7 +114,7 @@ MAT3 operator+ (const MAT3& input_v, const DType& input_s) {
 
 MAT3 operator+ (const DType& input_s, const MAT3& input_v) {
 	MAT3 temp;
-	register int i,j;
+	int i,j;
 	for (i=0;i<3;i++)
 		for (j=0;j<3;j++)
 			temp[i][j]=input_v[i][j]+input_s;
@@ -123,7 +123,7 @@ MAT3 operator+ (const DType& input_s, const MAT3& input_v) {
 
 MAT3 operator- (const MAT3& input_1, const MAT3& input_2) {
 	MAT3 temp;
-	register int i,j;
+	int i,j;
 	for (i=0;i<3;i++)
 		for (j=0;j<3;j++)
 			temp[i][j]=input_1[i][j]-input_2[i][j];
@@ -132,7 +132,7 @@ MAT3 operator- (const MAT3& input_1, const MAT3& input_2) {
 
 MAT3 operator- (const MAT3& input_1) {
 	MAT3 temp;
-	register int i,j;
+	int i,j;
 	for (i=0;i<3;i++)
 		for (j=0;j<3;j++)
 			temp[i][j]=-input_1[i][j];
@@ -141,7 +141,7 @@ MAT3 operator- (const MAT3& input_1) {
 
 MAT3 operator- (const MAT3& input_v, const DType& input_s) {
 	MAT3 temp;
-	register int i,j;
+	int i,j;
 	for (i=0;i<3;i++)
 		for (j=0;j<3;j++)
 			temp[i][j]=input_v[i][j]-input_s;
@@ -150,7 +150,7 @@ MAT3 operator- (const MAT3& input_v, const DType& input_s) {
 
 MAT3 operator- (const DType& input_s, const MAT3& input_v) {
 	MAT3 temp;
-	register int i,j;
+	int i,j;
 	for (i=0;i<3;i++)
 		for (j=0;j<3;j++)
 			temp[i][j]=input_s-input_v[i][j];
@@ -159,7 +159,7 @@ MAT3 operator- (const DType& input_s, const MAT3& input_v) {
 
 MAT3 operator* (const DType& input_s, const MAT3& input_v) {
 	MAT3 temp;
-	register int i,j;
+	int i,j;
 	for (i=0;i<3;i++)
 		for (j=0;j<3;j++)
 			temp[i][j] = input_s*input_v[i][j];
@@ -168,7 +168,7 @@ MAT3 operator* (const DType& input_s, const MAT3& input_v) {
 
 MAT3 operator* (const MAT3& input_v, const DType& input_s) {
 	MAT3 temp;
-	register int i,j;
+	int i,j;
 	for (i=0;i<3;i++)
 		for (j=0;j<3;j++)
 			temp[i][j] = input_s*input_v[i][j];
@@ -177,7 +177,7 @@ MAT3 operator* (const MAT3& input_v, const DType& input_s) {
 
 MAT3 operator/ (const MAT3& input_v, const DType& input_s) {
 	MAT3 temp;
-	register int i,j;
+	int i,j;
 	for (i=0;i<3;i++)
 		for (j=0;j<3;j++)
 			temp[i][j] = input_v[i][j]/input_s;
@@ -186,7 +186,7 @@ MAT3 operator/ (const MAT3& input_v, const DType& input_s) {
 
 VEC3 operator* (const MAT3& mat_l, const VEC3& vec_r) {
 	VEC3 temp;
-	register int i,j;
+	int i,j;
 	for (i=0; i<3; i++)
 		for (j=0; j<3; j++)
 			temp[i] += mat_l[i][j]*vec_r[j];
@@ -195,7 +195,7 @@ VEC3 operator* (const MAT3& mat_l, const VEC3& vec_r) {
 
 MAT3 operator* (const MAT3& mat_l, const MAT3& mat_r) {
 	MAT3 temp;
-	register int i,j,k;
+	int i,j,k;
 	for (i=0; i<3; i++)
 		for (j=0; j<3; j++)
 			for (k=0; k<3; k++)
@@ -217,7 +217,7 @@ MAT4 MAT4::inv(void) {
 	int idxi[3];
 	int idxj[3];
 	MAT3 temp;
-	register int i,j,k,l;
+	int i,j,k,l;
 	for (i=0; i<4; i++) {
 		switch (i) {
 			case 0:
@@ -342,7 +342,7 @@ VEC4 operator/ (const VEC4& input_v, const DType& input_s) {
 
 MAT4 operator+ (const MAT4& input_1, const MAT4& input_2) {
 	MAT4 temp;
-	register int i,j;
+	int i,j;
 	for (i=0;i<4;i++)
 		for (j=0;j<4;j++)
 			temp[i][j]=input_1[i][j]+input_2[i][j];
@@ -351,7 +351,7 @@ MAT4 operator+ (const MAT4& input_1, const MAT4& input_2) {
 
 MAT4 operator+ (const MAT4& input_1) {
 	MAT4 temp;
-	register int i,j;
+	int i,j;
 	for (i=0;i<4;i++)
 		for (j=0;j<4;j++)
 			temp[i][j]=input_1[i][j];
@@ -360,7 +360,7 @@ MAT4 operator+ (const MAT4& input_1) {
 
 MAT4 operator+ (const MAT4& input_v, const DType& input_s) {
 	MAT4 temp;
-	register int i,j;
+	int i,j;
 	for (i=0;i<4;i++)
 		for (j=0;j<4;j++)
 			temp[i][j]=input_v[i][j]+input_s;
@@ -369,7 +369,7 @@ MAT4 operator+ (const MAT4& input_v, const DType& input_s) {
 
 MAT4 operator+ (const DType& input_s, const MAT4& input_v) {
 	MAT4 temp;
-	register int i,j;
+	int i,j;
 	for (i=0;i<4;i++)
 		for (j=0;j<4;j++)
 			temp[i][j]=input_v[i][j]+input_s;
@@ -378,7 +378,7 @@ MAT4 operator+ (const DType& input_s, const MAT4& input_v) {
 
 MAT4 operator- (const MAT4& input_1, const MAT4& input_2) {
 	MAT4 temp;
-	register int i,j;
+	int i,j;
 	for (i=0;i<4;i++)
 		for (j=0;j<4;j++)
 			temp[i][j]=input_1[i][j]-input_2[i][j];
@@ -387,7 +387,7 @@ MAT4 operator- (const MAT4& input_1, const MAT4& input_2) {
 
 MAT4 operator- (const MAT4& input_1) {
 	MAT4 temp;
-	register int i,j;
+	int i,j;
 	for (i=0;i<4;i++)
 		for (j=0;j<4;j++)
 			temp[i][j]=-input_1[i][j];
@@ -396,7 +396,7 @@ MAT4 operator- (const MAT4& input_1) {
 
 MAT4 operator- (const MAT4& input_v, const DType& input_s) {
 	MAT4 temp;
-	register int i,j;
+	int i,j;
 	for (i=0;i<4;i++)
 		for (j=0;j<4;j++)
 			temp[i][j]=input_v[i][j]-input_s;
@@ -405,7 +405,7 @@ MAT4 operator- (const MAT4& input_v, const DType& input_s) {
 
 MAT4 operator- (const DType& input_s, const MAT4& input_v) {
 	MAT4 temp;
-	register int i,j;
+	int i,j;
 	for (i=0;i<4;i++)
 		for (j=0;j<4;j++)
 			temp[i][j]=input_s-input_v[i][j];
@@ -414,7 +414,7 @@ MAT4 operator- (const DType& input_s, const MAT4& input_v) {
 
 MAT4 operator* (const DType& input_s, const MAT4& input_v) {
 	MAT4 temp;
-	register int i,j;
+	int i,j;
 	for (i=0;i<4;i++)
 		for (j=0;j<4;j++)
 			temp[i][j] = input_s*input_v[i][j];
@@ -423,7 +423,7 @@ MAT4 operator* (const DType& input_s, const MAT4& input_v) {
 
 MAT4 operator* (const MAT4& input_v, const DType& input_s) {
 	MAT4 temp;
-	register int i,j;
+	int i,j;
 	for (i=0;i<4;i++)
 		for (j=0;j<4;j++)
 			temp[i][j] = input_s*input_v[i][j];
@@ -432,7 +432,7 @@ MAT4 operator* (const MAT4& input_v, const DType& input_s) {
 
 MAT4 operator/ (const MAT4& input_v, const DType& input_s) {
 	MAT4 temp;
-	register int i,j;
+	int i,j;
 	for (i=0;i<4;i++)
 		for (j=0;j<4;j++)
 			temp[i][j] = input_v[i][j]/input_s;
@@ -441,7 +441,7 @@ MAT4 operator/ (const MAT4& input_v, const DType& input_s) {
 
 VEC4 operator* (const MAT4& mat_l, const VEC4& vec_r) {
 	VEC4 temp;
-	register int i,j;
+	int i,j;
 	for (i=0; i<4; i++)
 		for (j=0; j<4; j++)
 			temp[i] += mat_l[i][j]*vec_r[j];
@@ -450,7 +450,7 @@ VEC4 operator* (const MAT4& mat_l, const VEC4& vec_r) {
 
 MAT4 operator* (const MAT4& mat_l, const MAT4& mat_r) {
 	MAT4 temp;
-	register int i,j,k;
+	int i,j,k;
 	for (i=0; i<4; i++)
 		for (j=0; j<4; j++)
 			for (k=0; k<4; k++)

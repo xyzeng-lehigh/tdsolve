@@ -38,6 +38,7 @@ class TDFactory {
     TDSolve* tdSolve;
 
     bool run_pdgf(DType& Tterm, DType& Nperc);
+    bool run_opn(DType& Tterm, DType& Nperc);
 };
 
 #endif

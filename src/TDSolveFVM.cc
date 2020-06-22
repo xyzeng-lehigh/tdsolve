@@ -23,7 +23,7 @@ TDSolveFVM::TDSolveFVM(TDInput* tdInput_ptr) :
   slope_p2 = NULL;
   N_dir    = NULL;
 
-  if ( !(tdSetup->silence) ) {
+  if ( !(tdSetup->silence_output) ) {
     FILE* ot_file = fopen( tdInput->outputFile, "w" );
     if ( tdSetup->prob_id < 0 ) // This is only relevant for FVMMod
       fprintf( ot_file, "Time, time step size, radius, num. point / x_c, G, H, N, 1-G-H-N /newline x_f, V\n");
@@ -230,7 +230,7 @@ void TDSolveFVM::calc_dt(const int nt) {
 
 void TDSolveFVM::output(const int nt) {
   
-  if ( tdSetup->silence ) return;
+  if ( tdSetup->silence_output ) return;
 
   switch ( tdSetup->prob_id ) {
     case 0:
@@ -253,7 +253,7 @@ void TDSolveFVM::output(const int nt) {
 }
 
 void TDSolveFVM::output_pdgf(const int nt) {
-  if ( tdSetup->silence ) return;
+  if ( tdSetup->silence_output ) return;
 
   downscale_var( *data_a[nt], *data_a[nt], x_a_c, Na, data_r[nt] );
 
@@ -299,7 +299,7 @@ void TDSolveFVM::output_pdgf(const int nt) {
 }
 
 void TDSolveFVM::output_opn(const int nt) {
-  if ( tdSetup->silence ) return;
+  if ( tdSetup->silence_output ) return;
 
   downscale_var( *data_a[nt], *data_a[nt], x_a_c, Na, data_r[nt] );
 

@@ -1,12 +1,15 @@
 #include <iostream>
 #include <cstdio>
 #include <cstring>
+#include <iomanip>
+#include <sstream>
 #include <ctime>
 #include <cmath>
 #include <fstream>
 #include <vector>
 #include <map>
 #include <set>
+#include <filesystem>
 
 #include "Data_Type.h"
 #include "Comput_Choices.h"
@@ -26,6 +29,10 @@ char  outputFile[40];
 char  fitMethod[40];
 char  probName[40];
 char* program_name;
+
+bool  simulDataKeep;
+char  simulDataDrct[40];
+char  simulDataBase[40];
 
 void printlogo(void);
 void parse(int*, char**);
@@ -62,7 +69,8 @@ int main(int argc, char** argv) {
   TDInput tdInputBase;
   tdInputBase.setInputFile((const char*)inputFileBase);
   tdInputBase.parse();
-  tdInputBase.tdSetup.silence = true;
+  tdInputBase.tdSetup.silence_screen = true;
+  tdInputBase.tdSetup.silence_output = !simulDataKeep;
 
   // Create an array of input decks
   std::strcpy(delims_var,    " ,=\t");
@@ -129,7 +137,11 @@ void parse(int* argc, char** argv) {
   std::strcpy(fitMethod,"LS2");
   std::strcpy(probName,"PDGF");
   std::strcpy(inputFileData,"regression.dat");
+  simulDataKeep  = false;
+  std::strcpy(simulDataDrct,"data");
+  std::strcpy(simulDataBase,"simul");
   while ((*argc>1)&&(argv[1][0]=='-')) {
+    bool bad_option = false;
     switch (argv[1][1]) {
       case 'd':
         strcpy(inputFileData,argv[2]);
@@ -157,10 +169,28 @@ void parse(int* argc, char** argv) {
       case 'R':
         use_input_ref = ((std::atoi(argv[2])) != 0);
         break;
+      case 'S':
+        switch (argv[1][2]) {
+          case 'b':
+            strcpy(simulDataBase,argv[2]);
+            break;
+          case 'd':
+            strcpy(simulDataDrct,argv[2]);
+            break;
+          case 'k':
+            simulDataKeep = ((std::atoi(argv[2])) != 0);
+            break;
+          default:
+            bad_option = true;
+            break;
+        }
       default:
-        printf("Bad option %s\n",argv[1]);
-        usage();
+        bad_option = true;
         break;
+    }
+    if (bad_option) {
+      printf("Bad option %s\n",argv[1]);
+      usage();
     }
     ++argv; ++argv;
     --(*argc); --(*argc);
@@ -168,6 +198,12 @@ void parse(int* argc, char** argv) {
   if ((*argc)>1) {
     printf("Unknown or too many parameters.\n");
     usage();
+  }
+  if (simulDataKeep) {
+    if (std::filesystem::exists(simulDataDrct)) {
+      std::filesystem::remove_all(simulDataDrct);
+    }
+    std::filesystem::create_directory(simulDataDrct);
   }
   return;
 }
@@ -185,6 +221,9 @@ void usage(void) {
   printf("  -p    Specify the parametric input file name\n");
   printf("  -r    Specify the output reference values\n");
   printf("  -R    Toggle of using reference value for inputs\n");
+  printf("  -Sb   Base name for sub-folder of single-simulation files\n");
+  printf("  -Sd   Directory to put simulation files\n");
+  printf("  -Sk   Option to keep simulation files\n");
   printf("\n");
   exit(1);
 }
@@ -292,6 +331,7 @@ void create_factories(std::vector<TDFactory*>& factories, const TDInput& input_b
   int f_count = 0;
   do {
     TDInput* tdInput = new TDInput(input_base);
+    string subfolder = string(simulDataDrct) + "/" + simulDataBase;
     std::map< std::string, DType > fac_pars;
     fac_pars.clear();
     int cur_i = 0;
@@ -306,6 +346,26 @@ void create_factories(std::vector<TDFactory*>& factories, const TDInput& input_b
       std::advance(it_val,cur_idx[cur_i]);
       tdInput->set_parameter(*it, *it_val);
       fac_pars[*it] = *it_val;
+
+      if ( std::strcmp( probName, "PDGF" ) == 0 )
+        tdInput->set_option("prob_id",0);
+      if ( std::strcmp( probName, "OPN" ) == 0 )
+        tdInput->set_option("prob_id",1);
+
+      std::stringstream stream;
+      if ( *it_val > 1000 )
+        stream << std::scientific << std::setprecision(2) << *it_val;
+      else
+        stream << std::fixed << std::setprecision(2) << *it_val;
+      subfolder += "_" + *it + stream.str();
+    }
+
+    if (simulDataKeep) {
+      std::filesystem::create_directory(subfolder);
+      string simul_sol_file = subfolder+"/sol.dat";
+      string simul_rad_file = subfolder+"/rad.dat";
+      std::strcpy(tdInput->outputFile,simul_sol_file.c_str());
+      std::strcpy(tdInput->radiusFile,simul_rad_file.c_str());
     }
     
     TDFactory* tdFactory = new TDFactory(tdInput,probName);

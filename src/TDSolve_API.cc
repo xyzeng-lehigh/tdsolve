@@ -30,7 +30,8 @@ TDFactory::TDFactory(TDInput* tdInput_in, const char* probName_in)  {
       break;
   }
 
-  if ( std::strcmp( probName, "PDGF" ) == 0 ) {
+  if ( std::strcmp( probName, "PDGF" ) == 0 ||
+       std::strcmp( probName, "OPN" ) == 0 ) {
     okeys.insert("Tterm");
     okeys.insert("Nperc");
   }
@@ -56,6 +57,13 @@ bool TDFactory::run(void) {
     sols["Nperc"] = Nperc;
   }
 
+  if ( std::strcmp( probName, "OPN" ) == 0 ) {
+    DType Tterm, Nperc;
+    success = run_opn(Tterm, Nperc);
+    sols["Tterm"] = Tterm;
+    sols["Nperc"] = Nperc;
+  }
+
   return success;
 }
 
@@ -73,7 +81,7 @@ bool TDFactory::run_pdgf(DType& Tterm, DType& Nperc) {
           while (1) {
             vcoup_conv = tdSolve->update_sol(0,1); // BE or FE
             if ( !vcoup_conv ) {
-              tdSolve->reduce_dtn( 0.5 );
+              tdSolve->reduce_dtn(0.5);
               tdSolve->diagnostic(0);
               continue;
             }
@@ -112,6 +120,51 @@ bool TDFactory::run_pdgf(DType& Tterm, DType& Nperc) {
               tdSolve->scale_dtn( 1.0/alpha );
               break;
             }
+          }
+        }
+        break;
+      default: // First-order
+        tdSolve->update_sol(0,1);
+        break;
+    }
+    tdSolve->output(0);
+    tdSolve->copy_data(1,0);
+    tdSolve->calc_dt(0);
+    tdSolve->diagnostic(0);
+  }
+
+  tdSolve->update_vel(0,1,0.0,true);
+  tdSolve->output(0);
+
+  bool run_success = tdSolve->check_Rterm(0);
+  if ( run_success ) {
+    Tterm = tdSolve->get_tsol();
+    Nperc = tdSolve->get_nperc(0);
+  }
+
+  return run_success;
+}
+
+bool TDFactory::run_opn(DType& Tterm, DType& Nperc) {
+  tdSolve->setup();
+  tdSolve->set_ic();
+  tdSolve->calc_dt(0);
+  tdSolve->diagnostic(0);
+
+  while ( tdSolve->nextIter() ) {
+    switch ( tdInput->tdSetup.tmeth ) {
+      case 0: // First-order
+        {
+          bool vcoup_conv;
+          while (1) {
+            vcoup_conv = tdSolve->update_sol(0,1);
+            if ( !vcoup_conv ) {
+              tdSolve->reduce_dtn(0.5);
+              tdSolve->diagnostic(0);
+              continue;
+            }
+            else
+              break;
           }
         }
         break;

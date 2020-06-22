@@ -6,7 +6,7 @@ using namespace std;
 
 TDSolveFDM::TDSolveFDM(TDInput* tdInput_ptr) : 
   TDSolve(tdInput_ptr) {
-  if ( !(tdSetup->silence) ) {
+  if ( !(tdSetup->silence_output) ) {
     FILE* ot_file = fopen( tdInput->outputFile, "w" );
     fprintf( ot_file, "Time, time step size, num. point / x, G, H, N, A, V\n");
     fclose(ot_file);
@@ -50,7 +50,7 @@ void TDSolveFDM::set_ic(void) {
 
   update_vel(0,0,0.0);
 
-  if ( !(tdSetup->silence) ) {
+  if ( !(tdSetup->silence_output) ) {
     FILE* ot_file = fopen( tdInput->radiusFile, "w" );
     fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\n", tsol, data_r[0], (*data_v[0])[Nx]);
     fclose(ot_file);
@@ -1005,7 +1005,7 @@ void TDSolveFDM::calc_dt(const int nt) {
 }
 
 void TDSolveFDM::output(const int nt) {
-  if ( tdSetup->silence ) return;
+  if ( tdSetup->silence_output ) return;
 
   FILE* ot_file = fopen( tdInput->radiusFile, "a" );
   fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\n", tsol, data_r[nt], (*data_v[nt])[Nx] );
