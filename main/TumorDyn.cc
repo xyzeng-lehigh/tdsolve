@@ -11,6 +11,7 @@
 #include "TDSolveFDM.h"
 #include "TDSolveFVM.h"
 #include "TDSolveFVMMod.h"
+#include "TDSolveSacado.h"
 #include "RK_Coef.h"
 using namespace std;
 
@@ -41,8 +42,11 @@ int main(int argc, char** argv) {
     case 2:
       tdSolve = new TDSolveFVMMod(&tdInput);
       break;
+    case 3:
+      tdSolve = new TDSolveSacado(&tdInput);
+      break;
     default:
-      tdSolve = new TDSolveFVM(&tdInput);
+      tdSolve = new TDSolveSacado(&tdInput);
       break;
   }
 

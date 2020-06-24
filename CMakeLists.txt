@@ -32,6 +32,26 @@ find_package(LAPACK REQUIRED)
 include_directories(${BLAS_INCLUDE_DIR} ${LAPACK_INCLUDE_DIR})
 target_link_libraries(TumorDynRun ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
 
+# Trilinos
+SET(CMAKE_PREFIX_PATH ${Trilinos_DIR} ${CMAKE_PREFIX_PATH})
+SET(CMAKE_PREFIX_PATH ${Trilinos_PATH} ${CMAKE_PREFIX_PATH})
+find_package(Trilinos REQUIRED)
+# Trilinos 12.7 has many duplicates and causes problem in ld on some Linux systems
+list(REMOVE_DUPLICATES Trilinos_LIBRARIES)
+list(REMOVE_DUPLICATES Trilinos_TPL_INCLUDE_DIRS)
+list(REMOVE_DUPLICATES Trilinos_TPL_LIBRARIES)
+include_directories(${Trilinos_INCLUDE_DIRS})
+include_directories(${Trilinos_TPL_INCLUDE_DIRS})
+MESSAGE("\nFound Trilinos!  Here are the details: ")
+MESSAGE("   Trilinos_DIR = ${Trilinos_DIR}")
+MESSAGE("   Trilinos_VERSION = ${Trilinos_VERSION}")
+MESSAGE("   Trilinos_PACKAGE_LIST = ${Trilinos_PACKAGE_LIST}")
+MESSAGE("End of Trilinos details\n")
+set(CMAKE_CXX_FLAGS "${Trilinos_CXX_COMPILER_FLAGS} ${CMAKE_CXX_FLAGS}")
+string (REPLACE ";" " " CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+
+target_link_libraries(TumorDynRun ${Trilinos_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
+
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 
 # Configure file that pass CMake settings to the source
@@ -47,11 +67,12 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 #endif(OPENMP_FOUND)
 
 # OpenMP support (avaiable after CMake 3.9)
-find_package(OPENMP)
+find_package(OpenMP)
 if(OpenMP_CXX_FOUND)
   target_link_libraries(ParAnalRun OpenMP::OpenMP_CXX)
   #target_link_libraries(ParAnalRun PUBLIC OpenMP::OpenMP_CXX)
 endif()
 
 target_link_libraries(ParAnalRun ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
+target_link_libraries(ParAnalRun ${Trilinos_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
 
