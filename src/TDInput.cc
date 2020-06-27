@@ -68,6 +68,9 @@ TDInput::TDInput(void) {
   tdSetup.rbc    = 0;
   tdSetup.tmeth  = 1;     // 0 - forward Euler
                           // 1 - RK2
+  tdSetup.assemb = 0;     // 0 - explicit (no Jacobian at all)
+                          // 1 - loose implicit
+                          // 2 - full implicit
   tdSetup.vCoup  = false; // The next two options are relevant
                           // if vCoup == true
   tdSetup.vIter  = 10;    // -1  -- iterate until converge
@@ -258,6 +261,7 @@ void TDInput::setup_options(void) {
   tdOptions["lbc"]           = &tdSetup.lbc;
   tdOptions["rbc"]           = &tdSetup.rbc;
   tdOptions["time_method"]   = &tdSetup.tmeth;
+  tdOptions["assemble"]      = &tdSetup.assemb;
   tdOptions["vel_iter"]      = &tdSetup.vIter;
   tdOptions["norm_pow"]      = &tdSetup.nrmPow;
   tdOptions["newton_iter"]   = &tdSetup.ntIter;

@@ -29,27 +29,39 @@ class TDSolveSacado : public TDSolve {
     void update_vel(const int fr, const int to, const DType shift_dt=0.0, const bool last_iter=false);
 
   protected:
+    // Variable names
+    std::vector<std::string> cellnames;   // All cell species name
+    std::vector<std::string> cellnames_u; // Cell species subject to infiltration
+    std::vector<std::string> velnames;    // All velocity names
+    std::vector<std::string> chemnames;   // All chemoattractant/OPN names
+    std::map<std::string, int> varsizes;
+
     // Independent variables
     typedef std::vector<Sacado::Fad::DFad<DType>> SacadoIndVarArray;
     std::map<std::string, SacadoIndVarArray> S_data_var;
     std::map<std::string, int> S_data_offset;
-    std::map<std::string, int> S_data_size;
     int S_data_num;
+    // HVEC version
+    std::map<std::string, HVEC**> H_data_var;
+    std::map<std::string, HVEC**> H_data_res;
 
     // Dependent variables
     typedef Sacado::Fad::DFad<DType> SacadoDepVar;
     typedef std::vector<SacadoDepVar> SacadoDepVarArray;
     typedef std::map<std::string, SacadoDepVarArray> SacadoDepVarMap;
+    typedef std::map<std::string, SacadoDepVarMap> SacadoDepVarMapMap;
     // Velocities 
     SacadoDepVarMap S_data_vel;
     // Cell numbers
-    HVEC** data_inc;  // Incompressibility violation
-    SacadoDepVarMap S_flux_cell;
-    SacadoDepVarMap S_flux_cell_v;
-    SacadoDepVarMap S_flux_cell_r;
-    SacadoDepVarMap S_flux_cell_u;
-    SacadoDepVarMap S_lim_ppm_cell[2];
-    SacadoDepVarArray S_lim_ppm_sync[2];
+    HVEC** data_inc; // Incompressibility violation
+    SacadoDepVar       S_data_r;
+    SacadoDepVar       S_data_rp;
+    SacadoDepVarMap    S_flux_cell;
+    SacadoDepVarMap    S_flux_cell_r;
+    SacadoDepVarMapMap S_flux_cell_v;
+    SacadoDepVarMap    S_srce_cell;
+    SacadoDepVarMap    S_lim_ppm_cell[2];
+    SacadoDepVarArray  S_lim_ppm_sync[2];
     //std::vector<Sacado::Fad::DFad<DType>> S_lim_cell_sync; // MUSCL
     //SacadoDepVarMap S_slope_cell; // MUSCL
 
@@ -57,27 +69,64 @@ class TDSolveSacado : public TDSolve {
     SacadoDepVarMap S_flux_chem;
     //std::map<std::string, std::vector<Sacado::Fad::DFad<DType>>> S_slope_chem; // MUSCL or PPM
     //std::map<std::string, std::vector<Sacado::Fad::DFad<DType>>> S_slope_p;
+    
+    // Source term function handles
+    typedef void (TDSolveSacado::*fCalcSrce)(SacadoDepVarArray&,const DType,const bool);
+    std::map<std::string, fCalcSrce> F_calcSrceMap;
 
     // Initial condition for three cell numbers
     void setic_unif_cell(DType val_g, DType val_h, DType val_n, int nt=0);
     void setic_expd_chem(DType multip, DType decay, int Na, int nt=0);
 
-    // Setup Sacado arrays
+    // Alloc/deallocate additional arrays
+    void alloc_hvec_res(void);
+
+    // Alloc Sacado arrays
     void alloc_sacado_ind(void); // Independent variables
     void alloc_sacado_ind_array(std::string, const int);
     void alloc_sacado_dep(void); // Dependent variables
     void alloc_sacado_dep_array(SacadoDepVarArray&, const int);
 
+    // Alloc functions
+    void alloc_functions(void);
+
     // Other Sacado utilities
     void set_sacado_ind(const int);
     void set_sacado_ind_array(std::string, HVEC&);
-    void set_sacado_ind_array(std::string, DType);
+    void set_sacado_r(const int);
+    void set_from_sacado_ind(const int);
+    void set_from_sacado_ind_array(std::string, HVEC&);
+    void set_from_sacado_r(const int);
+    void set_from_sacado_v(const int);
+    void reset_sacado_dep_array(SacadoDepVarArray&);
 
   private:
     void calc_total_inc_viol(const int nt);
     void compute_vel_u(const DType tsol_loc);
     void compute_vel_u_pres(const DType tsol_loc);
     void compute_vel_u_chem(void);
+
+    void compute_vel_v(void);
+
+    void compute_cells_varflux(std::string velname, std::string cellname, const DType tsol_loc, const bool rbc=false);
+    void compute_cells_varflux_upw(SacadoDepVarArray& s_vel, SacadoIndVarArray& s_var, SacadoDepVarArray& s_flux, const DType* rdata=NULL);
+
+    void compute_rp(void);
+
+    void compute_source(const DType tsol_loc, const bool geom_term=true);
+    void calc_srce_geom(SacadoIndVarArray& s_var, SacadoDepVarArray& s_srce, DType* coord);
+    void calc_srce_g_base(SacadoDepVarArray& s_srce, const DType tsol_loc, const bool geom_term=true);
+    void calc_srce_h_base(SacadoDepVarArray& s_srce, const DType tsol_loc, const bool geom_term=true);
+    void calc_srce_n_base(SacadoDepVarArray& s_srce, const DType tsol_loc, const bool geom_term=true);
+    void calc_srce_g_pdgf(SacadoDepVarArray& s_srce, const DType tsol_loc, const bool geom_term=true);
+    void calc_srce_h_pdgf(SacadoDepVarArray& s_srce, const DType tsol_loc, const bool geom_term=true);
+    void calc_srce_n_pdgf(SacadoDepVarArray& s_srce, const DType tsol_loc, const bool geom_term=true);
+    void calc_srce_g_opn(SacadoDepVarArray& s_srce, const DType tsol_loc, const bool geom_term=true);
+    void calc_srce_h_opn(SacadoDepVarArray& s_srce, const DType tsol_loc, const bool geom_term=true);
+    void calc_srce_n_opn(SacadoDepVarArray& s_srce, const DType tsol_loc, const bool geom_term=true);
+
+    // Other functions
+    DType calc_n_bc( const DType tsol_loc );
 
 };
 
