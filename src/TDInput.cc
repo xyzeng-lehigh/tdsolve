@@ -96,6 +96,7 @@ TDInput::TDInput(void) {
                       // 2, dx dependent, dR = (1/1-dx^2/4)V
   tdSetup.r_opt  = 0; // 0, default, R_{n+1} = R_n + dt*V
                       // 1, consistent, R_{n+1}^2 = R_n^2 + 2*dt*R_n*dR
+  tdSetup.jac_lim  = false;
   tdSetup.slim_tot = false;
   tdSetup.logistic = 0;
   tdSetup.prob_id  = 0;  // 0, default, single chemotaxis
@@ -284,6 +285,7 @@ void TDInput::setup_toggles(void) {
   tdToggles["use_treatmentBC_P1"] = &tdCoef.treatP1BC;
   tdToggles["vel_couple"]         = &tdSetup.vCoup;
   tdToggles["v_conv_only"]        = &tdSetup.vOnly;
+  tdToggles["Jacobian_limiter"]   = &tdSetup.jac_lim;
   tdToggles["lim_sync_tot"]       = &tdSetup.slim_tot;
   tdToggles["diagnostic_vcoup"]   = &tdSetup.diagn_vcoup;
   tdToggles["silence_screen"]     = &tdSetup.silence_screen;

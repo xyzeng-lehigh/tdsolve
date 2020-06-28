@@ -97,6 +97,7 @@ struct TDSetup {
   int   maxit;
   DType dTinit, dTgrow;
   int   dr_opt, r_opt;
+  bool  jac_lim;
   bool  slim_tot;
   bool  diagn_vcoup;
   bool  silence_screen;

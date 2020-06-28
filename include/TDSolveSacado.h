@@ -62,6 +62,7 @@ class TDSolveSacado : public TDSolve {
     SacadoDepVarMap    S_flux_cell_r;
     SacadoDepVarMapMap S_flux_cell_v;
     SacadoDepVarMap    S_srce_cell;
+    SacadoDepVarMap    S_rec_ppm_cell;
     SacadoDepVarMap    S_lim_ppm_cell[2];
     SacadoDepVarArray  S_lim_ppm_sync[2];
     //std::vector<Sacado::Fad::DFad<DType>> S_lim_cell_sync; // MUSCL
@@ -103,11 +104,12 @@ class TDSolveSacado : public TDSolve {
     void set_from_sacado_r(const int);
     void set_from_sacado_v(const int);
     void reset_sacado_ind_array(void);
-    void reset_sacado_ind_array(SacadoIndVarArray&);
+    void reset_sacado_ind_array(SacadoIndVarArray&, DType val=0.0);
     void reset_sacado_dep_array(void);
-    void reset_sacado_dep_array(SacadoDepVarMapMap&);
-    void reset_sacado_dep_array(SacadoDepVarMap&);
-    void reset_sacado_dep_array(SacadoDepVarArray&);
+    void reset_sacado_dep_array(SacadoDepVarMapMap&, DType val=0.0);
+    void reset_sacado_dep_array(SacadoDepVarMap&, DType val=0.0);
+    void reset_sacado_dep_array(SacadoDepVarArray&, DType val=0.0);
+    void sum_in_sacado_dep_array(SacadoDepVarArray&, DType, SacadoDepVarArray&);
 
   private:
     void calc_total_inc_viol(const int nt);
@@ -120,10 +122,26 @@ class TDSolveSacado : public TDSolve {
     void compute_cells_varflux(std::string velname, std::string cellname, const DType tsol_loc, const bool rbc=false);
     void compute_cells_varflux_upw(SacadoDepVarArray& s_vel, SacadoIndVarArray& s_var, SacadoDepVarArray& s_flux, const DType* rdata=NULL);
 
+    void compute_cells_vflux(void);
+
+    void LimFun_PPM_BC(DType dval_c, DType dval_r, SacadoDepVar& s_lim); 
+    void LimFun_PPM_BC(SacadoDepVar& s_dval_c, SacadoDepVar& s_dval_r, SacadoDepVar& s_lim); 
+    void LimFun_PPM_INT(DType alpha1, DType alpha2, SacadoDepVar& s_lim_l, SacadoDepVar& s_lim_r);
+    void LimFun_PPM_INT(SacadoDepVar& s_alpha1, SacadoDepVar& s_alpha2, SacadoDepVar& s_lim_l, SacadoDepVar& s_lim_r);
+
+    void compute_cells_rflux(void);
+    void calc_ppm_lim_var(SacadoIndVarArray& s_var, SacadoDepVarArray& s_rec, SacadoDepVarArray& s_lim_l, SacadoDepVarArray& s_lim_r, DType* l_x_c, const bool tosync=false, std::vector<bool>* set_zero=NULL, SacadoDepVarArray* s_alpha=NULL);
+    void calc_ppm_lim_sync(SacadoDepVarArray* s_sync, SacadoDepVarMap* s_lims, std::vector<bool>& set_zero, SacadoDepVarArray* s_alpha);
+    void calc_ppm_flux_var(SacadoIndVarArray& s_var, SacadoDepVarArray& s_rec, SacadoDepVarArray& s_flx, SacadoDepVarArray* s_lim, DType* l_x_c);
+
+    void compute_cells_flux(void);
+
+    void compute_chems_rflux(void);
+
     void compute_rad(const int fr, const int to);
 
     void update_source_geom(void);
-    void calc_srce_geom(SacadoIndVarArray& s_var, SacadoDepVarArray& s_srce, DType* coord);
+    void calc_srce_geom(SacadoIndVarArray& s_var, SacadoDepVarArray& s_srce, DType* l_x_c);
 
     void compute_source_cell_prob(const DType tsol_loc);
     void calc_srce_g_base(SacadoDepVarArray& s_srce, const DType tsol_loc);
