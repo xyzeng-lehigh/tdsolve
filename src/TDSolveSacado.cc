@@ -15,6 +15,8 @@ TDSolveSacado::TDSolveSacado(TDInput* tdInput_ptr) :
   velnames.clear();
   chemnames.clear();
   varsizes.clear();
+  varcoord.clear();
+  varflxcoord.clear();
 
   cellnames.push_back( "G" ); 
   cellnames.push_back( "H" ); 
@@ -27,6 +29,10 @@ TDSolveSacado::TDSolveSacado(TDInput* tdInput_ptr) :
   varcoord.insert(std::pair<std::string,DType*>("G",x_c));
   varcoord.insert(std::pair<std::string,DType*>("H",x_c));
   varcoord.insert(std::pair<std::string,DType*>("N",x_c));
+
+  varflxcoord.insert(std::pair<std::string,DType*>("G",x_f));
+  varflxcoord.insert(std::pair<std::string,DType*>("H",x_f));
+  varflxcoord.insert(std::pair<std::string,DType*>("N",x_f));
 
   cellnames_u.push_back( "N" );
 
@@ -43,6 +49,7 @@ TDSolveSacado::TDSolveSacado(TDInput* tdInput_ptr) :
     chemnames.push_back( "A" ); 
     varsizes.insert(std::pair<std::string,int>("A",Na));
     varcoord.insert(std::pair<std::string,DType*>("A",x_a_c));
+    varflxcoord.insert(std::pair<std::string,DType*>("A",x_a_f));
   }
   if ( tdSetup->prob_id == 1 ) { // OPN
     chemnames.push_back( "A" );  
@@ -56,6 +63,10 @@ TDSolveSacado::TDSolveSacado(TDInput* tdInput_ptr) :
     varcoord.insert(std::pair<std::string,DType*>("A", x_a_c));
     varcoord.insert(std::pair<std::string,DType*>("P1",x_c));
     varcoord.insert(std::pair<std::string,DType*>("P2",x_c));
+
+    varflxcoord.insert(std::pair<std::string,DType*>("A", x_a_f));
+    varflxcoord.insert(std::pair<std::string,DType*>("P1",x_f));
+    varflxcoord.insert(std::pair<std::string,DType*>("P2",x_f));
   }
 
   if ( !(tdSetup->silence_output) ) {
@@ -88,13 +99,18 @@ void TDSolveSacado::setup(void) {
   setupLinSolve( mat, prc, sol, rhs, res, linSolve, Nx );
   
   // PDGF problems
-  if ( tdSetup->prob_id == 0 )
+  if ( tdSetup->prob_id == 0 ) {
     setupLinSolve( mat_a, prc_a, sol_a, rhs_a, res_a, linSolve_a, Na );
+    setup_chem_par( "A", tdCoef->gamma_a, tdCoef->D, "G", tdCoef->alpha_a, tdCoef->beta_a/tdCoef->theta, true );
+  }
 
   // OPN model
   if ( tdSetup->prob_id == 1 ) {
     setupLinSolve( mat_a, prc_a, sol_a, rhs_a, res_a, linSolve_a, Na );
     setupLinSolve( mat_p, prc_p, sol_p, rhs_p, res_p, linSolve_p, Nx );
+    setup_chem_par( "A",  tdCoef->gamma_a, tdCoef->D,   "G", tdCoef->alpha_a, tdCoef->beta_a/tdCoef->theta, false );
+    setup_chem_par( "P1", tdCoef->gamma_1, tdCoef->D_1, "N", tdCoef->alpha_1, tdCoef->beta_1/tdCoef->theta, false );
+    setup_chem_par( "P2", tdCoef->gamma_2, tdCoef->D_2, "N", tdCoef->alpha_2, tdCoef->beta_2/tdCoef->theta, false );
   }
 
   return;
@@ -336,6 +352,8 @@ bool TDSolveSacado::update_sol(const int fr, const int to, const DType shift_dt_
       break;
   }
 
+  // ! All fluxes are on the left-hand side, including the diffusion ones
+  // ! All source terms are on the right-hand side.
   for ( int iter = 0; iter < numIter; iter++ ) {
     // Step 0. Setup the Sacado variables
     reset_sacado_ind_array();
@@ -374,11 +392,15 @@ bool TDSolveSacado::update_sol(const int fr, const int to, const DType shift_dt_
     // 4.2 - S_lim_ppm_cell[i]["X"], i=0,1
     //       S_lim_ppm_sync[i], i=0,1
     //       S_flux_cell_r["X"]
-    //       S_flux_cell
     compute_cells_rflux();
+    // 4.3 - S_flux_cell
     compute_cells_flux();
-    // 4.3 ? S_flux_chem_r["X"]
+    // 4.4 - S_flux_chem_d["X"]
+    compute_chems_dflux();
+    // 4.5 - S_flux_chem_r["X"]
     compute_chems_rflux();
+    // 4.6 - S_flux_chem["X"]
+    compute_chems_flux();
 
   }
 
@@ -416,6 +438,25 @@ void TDSolveSacado::update_vel(const int fr, const int to, const DType shift_dt,
   compute_source_cell_prob( tsol+shift_dt*dtn );
   // Compute the velocity (integral form)
   compute_vel_v();
+  return;
+}
+
+void TDSolveSacado::setup_chem_par( std::string chemname, 
+    const DType decay, const DType diffusion, std::string cellname, 
+    const DType mm_ceil, const DType mm_half, const bool dbc ) {
+  std::map<std::string, ChemPar>::iterator it = chempars.find( chemname );
+  if ( it != chempars.end() ) {
+    std::string error_message = "TDSolveSacado::setup_chem_par - chemoattractant/opn parameter for " + chemname + " has already been setup.\n";
+    throw std::runtime_error( error_message );
+  }
+  ChemPar chemPar;
+  chemPar.decay        = decay;
+  chemPar.diffusion    = diffusion;
+  chemPar.mm_ceil      = mm_ceil;
+  chemPar.mm_half      = mm_half;
+  chemPar.driver       = cellname;
+  chemPar.dirichlet_bc = dbc;
+  chempars.insert( std::pair<std::string, ChemPar>( chemname, chemPar ) );
   return;
 }
 
@@ -558,6 +599,16 @@ void TDSolveSacado::alloc_sacado_dep(void) {
     alloc_sacado_dep_array(S_array, varsizes[*it_name]);
     S_flux_chem.insert( std::pair<std::string, SacadoDepVarArray>(*it_name, S_array) );
   }
+  for ( it_name = chemnames.begin(); it_name != chemnames.end(); it_name++ ) {
+    SacadoDepVarArray S_array;
+    alloc_sacado_dep_array(S_array, varsizes[*it_name]);
+    S_flux_chem_r.insert( std::pair<std::string, SacadoDepVarArray>(*it_name, S_array) );
+  }
+  for ( it_name = chemnames.begin(); it_name != chemnames.end(); it_name++ ) {
+    SacadoDepVarArray S_array;
+    alloc_sacado_dep_array(S_array, varsizes[*it_name]);
+    S_flux_chem_d.insert( std::pair<std::string, SacadoDepVarArray>(*it_name, S_array) );
+  }
   return;
 }
 
@@ -567,17 +618,11 @@ void TDSolveSacado::alloc_functions(void) {
     F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("G", &TDSolveSacado::calc_srce_g_pdgf) );
     F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("H", &TDSolveSacado::calc_srce_h_pdgf) );
     F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("N", &TDSolveSacado::calc_srce_n_pdgf) );
-
-    F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("A", &TDSolveSacado::calc_srce_a_pdgf) );
   }
   else if ( tdSetup->prob_id == 1 ) { // OPN
     F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("G", &TDSolveSacado::calc_srce_g_opn) );
     F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("H", &TDSolveSacado::calc_srce_h_opn) );
     F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("N", &TDSolveSacado::calc_srce_n_opn) );
-
-    F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("A", &TDSolveSacado::calc_srce_a_pdgf) );
-    F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("P1", &TDSolveSacado::calc_srce_p1_opn) );
-    F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("P2", &TDSolveSacado::calc_srce_p2_opn) );
   }
   else {
     F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("G", &TDSolveSacado::calc_srce_g_base) );
@@ -696,6 +741,8 @@ void TDSolveSacado::reset_sacado_dep_array(void) {
   }
   reset_sacado_dep_array( S_srce_chem, 0.0 );
   reset_sacado_dep_array( S_flux_chem, 0.0 );
+  reset_sacado_dep_array( S_flux_chem_r, 0.0 );
+  reset_sacado_dep_array( S_flux_chem_d, 0.0 );
   return;
 }
 
@@ -1103,7 +1150,56 @@ void TDSolveSacado::calc_ppm_flux_var(SacadoIndVarArray& s_var, SacadoDepVarArra
   return;
 }
 
+void TDSolveSacado::compute_chems_dflux(void) {
+  for ( std::vector<std::string>::iterator it = chemnames.begin();
+        it != chemnames.end(); it++ ) {
+    calc_dflux_chem_var( *it );
+  }
+  return;
+}
+
+void TDSolveSacado::calc_dflux_chem_var(std::string chemname) {
+  SacadoIndVarArray& s_var  = S_data_var[chemname];
+  SacadoDepVarArray& s_flux = S_flux_chem_d[chemname];
+  reset_sacado_dep_array(s_flux);
+  DType* l_x_f = varflxcoord[chemname];
+  int    num   = s_var.size();
+  DType dcoef = chempars[chemname].diffusion;
+  bool  dbc   = chempars[chemname].dirichlet_bc;
+
+  // - left boundary
+  {
+    s_flux[0] = 0.0;
+  }
+  // - interior points
+  for ( int i = 1; i < num; i++ ) {
+    s_flux[i] = - dcoef * l_x_f[i] * l_x_f[i] * (s_var[i] - s_var[i-1]) / dx;
+  }
+  // - right boundary
+  {
+    if ( dbc ) // Homogeneous D. b.c.
+      s_flux[num] = - dcoef * l_x_f[num] * l_x_f[num] * (0.0 - s_var[num-1]) / (0.5*dx);
+    else // Homogeneous N. b.c.
+      s_flux[num] = 0.0;
+  }
+
+  return;
+}
+
 void TDSolveSacado::compute_chems_rflux(void) {
+}
+
+void TDSolveSacado::compute_chems_flux(void) {
+  std::vector<std::string>::iterator it;
+  // Diffusive flux
+  for ( it = chemnames.begin(); it != chemnames.end(); it++ ) {
+    sum_in_sacado_dep_array( S_flux_chem[*it], 1.0, S_flux_chem_d[*it] );
+  }
+  // Flux associated with R'
+  for ( it = chemnames.begin(); it != chemnames.end(); it++ ) {
+    sum_in_sacado_dep_array( S_flux_chem[*it], 1.0, S_flux_chem_r[*it] );
+  }
+  return;
 }
 
 void TDSolveSacado::compute_rad(const int fr, const int to) {
@@ -1243,45 +1339,32 @@ void TDSolveSacado::compute_source_chem_prob(const DType tsol_loc) {
   std::vector<std::string>::iterator it_name;
   for ( it_name = chemnames.begin(); it_name != chemnames.end(); it_name++ ) {
     SacadoDepVarArray& s_srce = S_srce_chem[*it_name];
-    (this->*F_calcSrceMap[*it_name])(s_srce, tsol_loc);
+    calc_srce_chem_var( *it_name, tsol_loc );
   }
   return;
 }
 
-void TDSolveSacado::calc_srce_a_pdgf(SacadoDepVarArray& s_srce, const DType tsol_loc) {
+void TDSolveSacado::calc_srce_chem_var(std::string chemname, const DType tsol_loc) {
+  // May need to incorporate the additional source such as injection in ChemPar
+  SacadoDepVarArray& s_srce  = S_srce_chem[chemname];
+  DType*             l_x_c   = varcoord[chemname];
+  ChemPar&           chemPar = chempars[chemname];
+  SacadoIndVarArray& s_chem  = S_data_var[chemname];
+  SacadoIndVarArray& s_cell  = S_data_var[chemPar.driver];
+
   reset_sacado_dep_array(s_srce);
 
-  DType alpha_a = tdCoef->alpha_a;
-  DType beta_a  = tdCoef->beta_a;
-  DType theta   = tdCoef->theta;
-  DType gamma_a = tdCoef->gamma_a;
-  SacadoIndVarArray& s_a = S_data_var["A"];
-  SacadoIndVarArray& s_g = S_data_var["G"];
+  int num_chem = s_chem.size();
+  int num_cell = s_cell.size(); // The driver may have a shorter range than the chemicals
 
-  for ( int i = 0; i < Na; i++ ) {
-    s_srce[i] += x_a_c[i] * x_a_c[i] * S_data_r * S_data_r * ( - gamma_a * s_a[i] );
+  for ( int i = 0; i < num_chem; i++ ) {
+    s_srce[i] += l_x_c[i] * l_x_c[i] * S_data_r * S_data_r * ( - chemPar.decay * s_chem[i] );
   }
 
-  for ( int i = 0; i < Nx; i++ ) {
-    s_srce[i] += x_a_c[i] * x_a_c[i] * S_data_r * S_data_r * 
-      ( ( alpha_a * s_g[i] ) / ( beta_a/theta + s_g[i] ) );
+  for ( int i = 0; i < num_cell; i++ ) {
+    s_srce[i] += l_x_c[i] * l_x_c[i] * S_data_r * S_data_r * 
+      ( ( chemPar.mm_ceil * s_cell[i] ) / ( chemPar.mm_half + s_cell[i] ) );
   }
-
-  return;
-}
-
-void TDSolveSacado::calc_srce_p1_opn(SacadoDepVarArray& s_srce, const DType tsol_loc) {
-  reset_sacado_dep_array(s_srce);
-
-  // To implement
-
-  return;
-}
-
-void TDSolveSacado::calc_srce_p2_opn(SacadoDepVarArray& s_srce, const DType tsol_loc) {
-  reset_sacado_dep_array(s_srce);
-
-  // To implement
 
   return;
 }
@@ -1294,3 +1377,4 @@ DType TDSolveSacado::calc_n_bc( const DType tsol_loc ) {
   }
   return n_bc;
 }
+

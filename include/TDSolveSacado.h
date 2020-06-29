@@ -29,6 +29,14 @@ class TDSolveSacado : public TDSolve {
     void update_vel(const int fr, const int to, const DType shift_dt=0.0, const bool last_iter=false);
 
   protected:
+    struct ChemPar {
+      DType decay;
+      DType diffusion;
+      // Michaelis Mentun coefficients
+      DType mm_ceil, mm_half;
+      std::string driver;
+      bool dirichlet_bc;
+    };
     // Variable names
     std::vector<std::string> cellnames;   // All cell species name
     std::vector<std::string> cellnames_u; // Cell species subject to infiltration
@@ -36,6 +44,8 @@ class TDSolveSacado : public TDSolve {
     std::vector<std::string> chemnames;   // All chemoattractant/OPN names
     std::map<std::string, int> varsizes;
     std::map<std::string, DType*> varcoord;
+    std::map<std::string, DType*> varflxcoord; // Only exist for cells/chems
+    std::map<std::string, ChemPar> chempars;
 
     // Independent variables (cell numbers and chemicals)
     typedef std::vector<Sacado::Fad::DFad<DType>> SacadoIndVarArray;
@@ -71,12 +81,18 @@ class TDSolveSacado : public TDSolve {
     // Chemoattractant/OPN 
     SacadoDepVarMap S_srce_chem;
     SacadoDepVarMap S_flux_chem;
+    SacadoDepVarMap S_flux_chem_r;
+    SacadoDepVarMap S_flux_chem_d;
     //std::map<std::string, std::vector<Sacado::Fad::DFad<DType>>> S_slope_chem; // MUSCL or PPM
     //std::map<std::string, std::vector<Sacado::Fad::DFad<DType>>> S_slope_p;
     
     // Source term function handles
     typedef void (TDSolveSacado::*fCalcSrce)(SacadoDepVarArray&,const DType);
     std::map<std::string, fCalcSrce> F_calcSrceMap;
+
+    // Additional setup functions
+    void setup_chem_par( std::string chemname, const DType decay, const DType diffusion,
+        std::string cellname, const DType mm_ceil, const DType mm_half, const bool dbc );
 
     // Initial condition for three cell numbers
     void setic_unif_cell(DType val_g, DType val_h, DType val_n, int nt=0);
@@ -136,7 +152,12 @@ class TDSolveSacado : public TDSolve {
 
     void compute_cells_flux(void);
 
+    void compute_chems_dflux(void);
+    void calc_dflux_chem_var(std::string chemname);
+
     void compute_chems_rflux(void);
+
+    void compute_chems_flux(void);
 
     void compute_rad(const int fr, const int to);
 
@@ -155,9 +176,7 @@ class TDSolveSacado : public TDSolve {
     void calc_srce_n_opn(SacadoDepVarArray& s_srce, const DType tsol_loc);
 
     void compute_source_chem_prob(const DType tsol_loc);
-    void calc_srce_a_pdgf(SacadoDepVarArray& s_srce, const DType tsol_loc);
-    void calc_srce_p1_opn(SacadoDepVarArray& s_srce, const DType tsol_loc);
-    void calc_srce_p2_opn(SacadoDepVarArray& s_srce, const DType tsol_loc);
+    void calc_srce_chem_var(std::string chemname, const DType tsol_loc);
 
     // Other functions
     DType calc_n_bc( const DType tsol_loc );
