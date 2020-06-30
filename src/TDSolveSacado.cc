@@ -402,6 +402,22 @@ bool TDSolveSacado::update_sol(const int fr, const int to, const DType shift_dt_
     // 4.6 - S_flux_chem["X"]
     compute_chems_flux();
 
+    // Step 5. Compute all residuals for cells and chems
+    // The results are stored in H_data_res
+    // Note that dt is multuplied to the spatial terms
+    reset_residual();
+    compute_cells_residual( fr, to );
+    compute_chems_residual( fr, to );
+
+    // Step 6. Update the solution/iterates
+    if ( assembleJacobian ) {
+      // Assemble the Jacobian, solve for one Newton iteration
+    }
+    else {
+      // This will use data_r instead of S_data_r
+      update_sol_by_res( to );
+    }
+
   }
 
   return true;
@@ -1256,6 +1272,97 @@ void TDSolveSacado::compute_chems_flux(void) {
   // Flux associated with R'
   for ( it = chemnames.begin(); it != chemnames.end(); it++ ) {
     sum_in_sacado_dep_array( S_flux_chem[*it], 1.0, S_flux_chem_r[*it] );
+  }
+  return;
+}
+
+void TDSolveSacado::reset_residual(void) {
+  for ( std::map<std::string,HVEC**>::iterator it = H_data_res.begin();
+        it != H_data_res.end(); it++ ) {
+    *it->second[0] = 0.0;
+  }
+  return;
+}
+
+void TDSolveSacado::compute_cells_residual(const int fr, const int to) {
+  std::vector<std::string>::iterator it;
+  for ( it = cellnames.begin(); it != cellnames.end(); it++ ) {
+    HVEC& h_var = *H_data_var[*it][fr];
+    HVEC& h_res = *H_data_res[*it][0];
+    DType r_fr  = data_r[fr];
+    SacadoIndVarArray& s_var = S_data_var[*it];
+    SacadoDepVarArray& s_flx = S_flux_cell[*it];
+    SacadoDepVarArray& s_src = S_srce_cell[*it];
+    assemble_inertia_var( h_res, r_fr, h_var, S_data_r, s_var, varcoord[*it] );
+    assemble_flux_var( h_res, s_flx );
+    assemble_srce_var( h_res, s_src );
+  }
+  return;
+}
+
+void TDSolveSacado::assemble_inertia_var(HVEC& h_res, DType r_fr, HVEC& h_var, SacadoDepVar& s_r_to, SacadoIndVarArray s_var, DType* l_x_c) {
+  int num = s_var.size();
+  DType        r_fr2 = r_fr * r_fr;
+  SacadoDepVar s_r_to2 = s_r_to * s_r_to;
+  for ( int i = 0; i < num; i++ ) {
+    h_res[i] += l_x_c[i] * l_x_c[i] * ( s_r_to2.val() * s_var[i].val() - r_fr2 * h_var[i] );
+  }
+  return;
+}
+
+void TDSolveSacado::assemble_flux_var(HVEC& h_res, SacadoDepVarArray& s_flx) {
+  int num = s_flx.size() - 1;
+  for ( int i = 0; i < num; i++ ) {
+    h_res[i] += (dtn/dx) * (s_flx[i+1].val() - s_flx[i].val());
+  }
+  return;
+}
+
+void TDSolveSacado::assemble_srce_var(HVEC& h_res, SacadoDepVarArray& s_src) {
+  int num = s_src.size();
+  for ( int i = 0; i < num; i++ ) {
+    h_res[i] -= dtn * s_src[i].val();
+  }
+  return;
+}
+
+void TDSolveSacado::compute_chems_residual(const int fr, const int to) {
+  std::vector<std::string>::iterator it;
+  for ( it = chemnames.begin(); it != chemnames.end(); it++ ) {
+    HVEC& h_var = *H_data_var[*it][fr];
+    HVEC& h_res = *H_data_res[*it][0];
+    DType r_fr  = data_r[fr];
+    SacadoIndVarArray& s_var = S_data_var[*it];
+    SacadoDepVarArray& s_flx = S_flux_chem[*it];
+    SacadoDepVarArray& s_src = S_srce_chem[*it];
+    assemble_inertia_var( h_res, r_fr, h_var, S_data_r, s_var, varcoord[*it] );
+    assemble_flux_var( h_res, s_flx );
+    assemble_srce_var( h_res, s_src );
+  }
+  return;
+}
+
+void TDSolveSacado::update_sol_by_res(const int nt) {
+  std::vector<std::string>::iterator it;
+  for ( it = cellnames.begin(); it != cellnames.end(); it++ ) {
+    HVEC& h_var = *H_data_var[*it][nt];
+    HVEC& h_res = *H_data_res[*it][0];
+    DType h_r   = data_r[nt];
+    update_sol_by_res_var( h_var, h_res, h_r, varcoord[*it], varsizes[*it] );
+  }
+  for ( it = chemnames.begin(); it != chemnames.end(); it++ ) {
+    HVEC& h_var = *H_data_var[*it][nt];
+    HVEC& h_res = *H_data_res[*it][0];
+    DType h_r   = data_r[nt];
+    update_sol_by_res_var( h_var, h_res, h_r, varcoord[*it], varsizes[*it] );
+  }
+  return;
+}
+
+void TDSolveSacado::update_sol_by_res_var(HVEC& h_var, HVEC& h_res, DType h_r, DType* l_x_c, const int num) {
+  DType h_r2 = h_r * h_r;
+  for ( int i = 0; i < num; i++ ) {
+    h_var[i] -= h_res[i]/h_r2/l_x_c[i]/l_x_c[i];
   }
   return;
 }

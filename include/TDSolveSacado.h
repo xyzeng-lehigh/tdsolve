@@ -161,6 +161,16 @@ class TDSolveSacado : public TDSolve {
 
     void compute_chems_flux(void);
 
+    void reset_residual(void);
+    void compute_cells_residual(const int fr, const int to);
+    void assemble_inertia_var(HVEC& h_res, DType r_fr, HVEC& h_var, SacadoDepVar& s_r_to, SacadoIndVarArray s_var, DType* l_x_c);
+    void assemble_flux_var(HVEC& h_res, SacadoDepVarArray& s_flx);
+    void assemble_srce_var(HVEC& h_res, SacadoDepVarArray& s_src);
+    void compute_chems_residual(const int fr, const int to);
+
+    void update_sol_by_res(const int nt);
+    void update_sol_by_res_var(HVEC& h_var, HVEC& h_res, DType h_r, DType* l_x_c, const int num);
+
     void compute_rad(const int fr, const int to);
 
     void update_source_geom(void);
