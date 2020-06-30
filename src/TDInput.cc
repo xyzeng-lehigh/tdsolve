@@ -71,6 +71,7 @@ TDInput::TDInput(void) {
   tdSetup.assemb = 0;     // 0 - explicit (no Jacobian at all)
                           // 1 - loose implicit
                           // 2 - full implicit
+  tdSetup.chmppm = false; // Wether to use PPM for chemical r fluxes
   tdSetup.vCoup  = false; // The next two options are relevant
                           // if vCoup == true
   tdSetup.vIter  = 10;    // -1  -- iterate until converge
@@ -283,6 +284,7 @@ void TDInput::setup_toggles(void) {
   tdToggles.clear();
   tdToggles["use_treatment_P1"]   = &tdCoef.treatP1;
   tdToggles["use_treatmentBC_P1"] = &tdCoef.treatP1BC;
+  tdToggles["chem_r_ppm"]         = &tdSetup.chmppm;
   tdToggles["vel_couple"]         = &tdSetup.vCoup;
   tdToggles["v_conv_only"]        = &tdSetup.vOnly;
   tdToggles["Jacobian_limiter"]   = &tdSetup.jac_lim;

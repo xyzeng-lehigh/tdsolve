@@ -156,6 +156,8 @@ class TDSolveSacado : public TDSolve {
     void calc_dflux_chem_var(std::string chemname);
 
     void compute_chems_rflux(void);
+    void calc_rflux_chem_var_upw(std::string chemname);
+    void calc_rflux_chem_var_ppm(std::string chemname);
 
     void compute_chems_flux(void);
 

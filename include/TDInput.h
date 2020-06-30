@@ -79,6 +79,7 @@ struct TDSetup {
   int   scell, schem, vel, rbc, lbc;
   int   tmeth;
   int   assemb;
+  bool  chmppm;
 
   // PMC for iterates (velocity, radius, etc.)
   bool  vCoup;

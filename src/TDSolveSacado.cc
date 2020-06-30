@@ -1159,34 +1159,92 @@ void TDSolveSacado::compute_chems_dflux(void) {
 }
 
 void TDSolveSacado::calc_dflux_chem_var(std::string chemname) {
-  SacadoIndVarArray& s_var  = S_data_var[chemname];
-  SacadoDepVarArray& s_flux = S_flux_chem_d[chemname];
-  reset_sacado_dep_array(s_flux);
+  SacadoIndVarArray& s_var = S_data_var[chemname];
+  SacadoDepVarArray& s_flx = S_flux_chem_d[chemname];
+  reset_sacado_dep_array(s_flx);
   DType* l_x_f = varflxcoord[chemname];
-  int    num   = s_var.size();
+  int   num   = s_var.size();
   DType dcoef = chempars[chemname].diffusion;
   bool  dbc   = chempars[chemname].dirichlet_bc;
 
   // - left boundary
   {
-    s_flux[0] = 0.0;
+    s_flx[0] = 0.0;
   }
   // - interior points
   for ( int i = 1; i < num; i++ ) {
-    s_flux[i] = - dcoef * l_x_f[i] * l_x_f[i] * (s_var[i] - s_var[i-1]) / dx;
+    s_flx[i] = - dcoef * l_x_f[i] * l_x_f[i] * (s_var[i] - s_var[i-1]) / dx;
   }
   // - right boundary
   {
     if ( dbc ) // Homogeneous D. b.c.
-      s_flux[num] = - dcoef * l_x_f[num] * l_x_f[num] * (0.0 - s_var[num-1]) / (0.5*dx);
+      s_flx[num] = - dcoef * l_x_f[num] * l_x_f[num] * (0.0 - s_var[num-1]) / (0.5*dx);
     else // Homogeneous N. b.c.
-      s_flux[num] = 0.0;
+      s_flx[num] = 0.0;
   }
 
   return;
 }
 
 void TDSolveSacado::compute_chems_rflux(void) {
+  for ( std::vector<std::string>::iterator it = chemnames.begin();
+        it != chemnames.end(); it++ ) {
+    if ( tdSetup->chmppm ) calc_rflux_chem_var_ppm( *it );
+    else calc_rflux_chem_var_upw( *it );
+  }
+  return;
+}
+
+void TDSolveSacado::calc_rflux_chem_var_upw(std::string chemname) {
+  SacadoIndVarArray& s_var = S_data_var[chemname];
+  SacadoDepVarArray& s_flx = S_flux_chem_r[chemname];
+  reset_sacado_dep_array(s_flx);
+  DType* l_x_c = varcoord[chemname];
+  int  num = s_var.size();
+  bool dbc = chempars[chemname].dirichlet_bc;
+  SacadoDepVar loc_vel_r = - S_data_rp * S_data_r;
+
+  // - left boundary
+  {
+    s_flx[0] = 0.0;
+  }
+  // - interior points
+  int offset = ( loc_vel_r >= 0.0 ) ? -1 : 0;
+  for ( int i = 1; i < num; i++ ) {
+    int idx = i + offset;
+    s_flx[i] = loc_vel_r * l_x_c[idx] * l_x_c[idx] * l_x_c[idx] * s_var[idx];
+  }
+  // - right boundary
+  {
+    if ( dbc ) { // Homogeneous D. b.c.
+      if ( loc_vel_r >= 0.0 )
+        s_flx[num] = loc_vel_r * l_x_c[num-1] * l_x_c[num-1] * l_x_c[num-1] * s_var[num-1];
+      else
+        s_flx[num] = 0.0;
+    }
+    else { // Homogeneous N. b.c.
+      DType loc_x = ( loc_vel_r >= 0.0 ) ? l_x_c[num-1] : 2.0*l_x_c[num-1]-l_x_c[num-2];
+      s_flx[num] = loc_vel_r * loc_x * loc_x * loc_x * s_var[num-1];
+    }
+  }
+
+  return;
+}
+
+void TDSolveSacado::calc_rflux_chem_var_ppm(std::string chemname) {
+  SacadoIndVarArray& s_var = S_data_var[chemname];
+  SacadoDepVarArray& s_flx = S_flux_chem_r[chemname];
+
+  SacadoDepVarArray  s_lim[2];
+  SacadoDepVarArray  s_rec;
+  alloc_sacado_dep_array( s_lim[0], s_var.size() );
+  alloc_sacado_dep_array( s_lim[1], s_var.size() );
+  alloc_sacado_dep_array( s_rec, s_var.size() );
+  calc_ppm_lim_var( s_var, s_rec, s_lim[0], s_lim[1], varcoord[chemname], false );
+
+  calc_ppm_flux_var( s_var, s_rec, s_flx, s_lim, varcoord[chemname] );
+
+  return;
 }
 
 void TDSolveSacado::compute_chems_flux(void) {
