@@ -28,7 +28,7 @@ class TDSolve {
     virtual void set_ic(void) = 0;
     virtual void calc_dt(const int nt) = 0;
     virtual void output(const int nt) = 0;
-    void diagnostic(const int nt);
+    virtual void diagnostic(const int nt);
     virtual void alloc(void) = 0;
 
     // The solver centers at tsol

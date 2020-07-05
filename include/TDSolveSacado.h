@@ -19,6 +19,7 @@ class TDSolveSacado : public TDSolve {
 
     void calc_dt(const int nt);
     void output(const int nt);
+    void diagnostic(const int nt);
 
     void alloc(void);
     bool update_sol(const int fr, const int to, const DType shift_dt_fr=0.0, const DType shift_dt_to=1.0);
@@ -112,7 +113,7 @@ class TDSolveSacado : public TDSolve {
 
     // Other Sacado utilities
     void set_sacado_ind(const int);
-    void set_sacado_ind_array(std::string, HVEC&);
+    void set_sacado_ind_array(std::string, const int);
     void set_sacado_r(const int);
     void set_sacado_v(const int);
     void set_from_sacado_ind(const int);
@@ -120,12 +121,14 @@ class TDSolveSacado : public TDSolve {
     void set_from_sacado_r(const int);
     void set_from_sacado_v(const int);
     void reset_sacado_ind_array(void);
-    void reset_sacado_ind_array(SacadoIndVarArray&, DType val=0.0);
+    void reset_sacado_ind_array(SacadoIndVarArray& s_var, const int s_offset, DType val=0.0);
     void reset_sacado_dep_array(void);
     void reset_sacado_dep_array(SacadoDepVarMapMap&, DType val=0.0);
     void reset_sacado_dep_array(SacadoDepVarMap&, DType val=0.0);
     void reset_sacado_dep_array(SacadoDepVarArray&, DType val=0.0);
     void sum_in_sacado_dep_array(SacadoDepVarArray&, DType, SacadoDepVarArray&);
+    void print_sacado_ind_array(SacadoIndVarArray&);
+    void print_sacado_dep_array(SacadoDepVarArray&);
 
   private:
     void calc_total_inc_viol(const int nt);

@@ -74,14 +74,14 @@ TDSolveSacado::TDSolveSacado(TDInput* tdInput_ptr) :
     fprintf( ot_file, "Time Time step size Radius Num. point /newline X_c ");
     for ( std::vector<std::string>::iterator it = cellnames.begin(); 
           it != cellnames.end(); it++ ) 
-      fprintf( ot_file, "%s", *it + " " );
+      fprintf( ot_file, "%s ", it->c_str() );
     for ( std::vector<std::string>::iterator it = chemnames.begin();
           it != chemnames.end(); it++ )
-      fprintf( ot_file, "%s", *it + " " );
+      fprintf( ot_file, "%s ", it->c_str() );
     fprintf( ot_file, "/newline X_f" );
     for ( std::vector<std::string>::iterator it = velnames.begin();
           it != velnames.end(); it++ )
-      fprintf( ot_file, "%s", " " + *it );
+      fprintf( ot_file, " %s", it->c_str() );
     fprintf( ot_file, "\n" );
     fclose( ot_file );
   }
@@ -171,6 +171,7 @@ void TDSolveSacado::set_ic(void) {
     set_sacado_r(0);
     update_vel(0, 1, 0.0, false);
     set_from_sacado_v(0);
+    compute_rad(0, 0);
   }
 
   return;
@@ -188,9 +189,6 @@ void TDSolveSacado::calc_dt(const int nt) {
 
   DType dtn_trial = DTYPE_MAX;
   DType dtn_cfl1  = DTYPE_MAX; // dtn corresponding to CFL 1
-
-  SacadoDepVarArray& s_v = S_data_vel["V"];
-  SacadoDepVarArray& s_u = S_data_vel["U"];
 
   for ( int i = 0; i < Nx+1; i++ ) {
     DType v_max = std::fabs( x_f[i] * S_data_rp.val() / data_r[nt] );
@@ -276,6 +274,13 @@ void TDSolveSacado::output(const int nt) {
   return;
 }
 
+void TDSolveSacado::diagnostic(const int nt) {
+  if ( tdSetup->silence_screen ) return;
+  fprintf( stdout, "Iter %3d: Time %6.8f; Time step %6.8f; CFL %2.4f; Radius %6.8f; Front-velocity %6.8f.\n",
+      iter, tsol, dtn, cur_cfl, data_r[nt], S_data_rp.val() );
+  return;
+}
+
 void TDSolveSacado::alloc(void) {
   Ndata = 3;
   
@@ -284,9 +289,11 @@ void TDSolveSacado::alloc(void) {
   alloc_array_full( data_n, Nx, Ndata ); // M
   alloc_array_full( data_v, Nx+1, Ndata );
 
+  alloc_array_full( data_inc, Nx, 1 );
+
   H_data_var.insert(std::pair<std::string,HVEC**>("G",data_g));
   H_data_var.insert(std::pair<std::string,HVEC**>("H",data_h));
-  H_data_var.insert(std::pair<std::string,HVEC**>("N",data_g));
+  H_data_var.insert(std::pair<std::string,HVEC**>("N",data_n));
 
   S_data_num += Nx;   // _g
   S_data_num += Nx;   // _h
@@ -416,30 +423,20 @@ bool TDSolveSacado::update_sol(const int fr, const int to, const DType shift_dt_
     else {
       // This will use data_r instead of S_data_r
       update_sol_by_res( to );
+      set_from_sacado_v( to );
     }
-
   }
 
   return true;
 }
 
 void TDSolveSacado::copy_data(const int fr, const int to) {
-  *data_g[to]  = *data_g[fr];
-  *data_h[to]  = *data_h[fr];
-  *data_n[to]  = *data_n[fr];
-  *data_v[to]  = *data_v[fr];
-  
-  // PDGF
-  if ( tdSetup->prob_id == 0 )
-    *data_a[to]  = *data_a[fr];
-  
-  // OPN
-  if ( tdSetup->prob_id == 1 ) {
-    *data_a[to]  = *data_a[fr];
-    *data_p1[to] = *data_p1[fr];
-    *data_p2[to] = *data_p2[fr];
+  for ( std::map<std::string,HVEC**>::iterator it = H_data_var.begin();
+        it != H_data_var.end(); it++ ) {
+    *it->second[to] = *it->second[fr];
   }
 
+  *data_v[to] = *data_v[fr];
   data_r[to]  =  data_r[fr];
 
   return;
@@ -658,22 +655,25 @@ void TDSolveSacado::alloc_sacado_dep_array(SacadoDepVarArray& S_array, const int
 }
 
 void TDSolveSacado::set_sacado_ind(const int nt) {
-  set_sacado_ind_array("G", *data_g[nt]);
-  set_sacado_ind_array("H", *data_h[nt]);
-  set_sacado_ind_array("N", *data_n[nt]);
-  set_sacado_ind_array("A", *data_a[nt]);
-  set_sacado_ind_array("P1", *data_p1[nt]);
-  set_sacado_ind_array("P2", *data_p2[nt]);
+  std::vector<std::string>::iterator it;
+  for ( it = cellnames.begin(); it != cellnames.end(); it++ ) {
+    set_sacado_ind_array(*it, nt);
+  }
+  for ( it = chemnames.begin(); it != chemnames.end(); it++ ) {
+    set_sacado_ind_array(*it, nt);
+  }
   return;
 }
 
-void TDSolveSacado::set_sacado_ind_array(std::string name, HVEC& data) {
+void TDSolveSacado::set_sacado_ind_array(std::string name, const int nt) {
   std::map<std::string, SacadoIndVarArray>::iterator it = S_data_var.find( name );
   if ( it == S_data_var.end() ) return;
   SacadoIndVarArray& s_var = it->second;
+  int s_offset = S_data_offset[it->first];
+  HVEC& data = *H_data_var[it->first][nt];
   int num = s_var.size();
   for ( int i = 0; i < num; i++ ) {
-    s_var[i] = data[i];
+    s_var[i] = Sacado::Fad::DFad<DType>(S_data_num,s_offset+i,data[i]);
   }
   return;
 }
@@ -730,14 +730,14 @@ void TDSolveSacado::set_from_sacado_v(const int nt) {
 void TDSolveSacado::reset_sacado_ind_array(void) {
   for ( std::map<std::string, SacadoIndVarArray>::iterator it = S_data_var.begin();
         it != S_data_var.end(); it++ ) {
-    reset_sacado_ind_array( it->second, 0.0 );
+    reset_sacado_ind_array( it->second, S_data_offset[it->first], 0.0 );
   }
   return;
 }
 
-void TDSolveSacado::reset_sacado_ind_array(SacadoIndVarArray& s_var, DType val) {
+void TDSolveSacado::reset_sacado_ind_array(SacadoIndVarArray& s_var, const int s_offset, DType val) {
   for ( int i = 0; i < s_var.size(); i++ ) {
-    s_var[i] = val;
+    s_var[i] = Sacado::Fad::DFad<DType>(S_data_num, s_offset+i, val);
   }
   return;
 }
@@ -790,11 +790,33 @@ void TDSolveSacado::sum_in_sacado_dep_array(SacadoDepVarArray& s_tot, DType mult
   for ( int i = 0; i < num; i++ ) {
     s_tot[i] = s_tot[i] + multip * s_var[i];
   }
+  return;
+}
+
+void TDSolveSacado::print_sacado_ind_array(SacadoIndVarArray& s_var) {
+  int num = s_var.size();
+  cout << "Begin a new independent Sacado array:" << std::endl;
+  for ( int i = 0; i < num; i++ ) {
+    cout << s_var[i] << std::endl;
+  }
+  return;
+}
+
+void TDSolveSacado::print_sacado_dep_array(SacadoDepVarArray& s_var) {
+  int num = s_var.size();
+  cout << "Begin a new dependent Sacado array:" << std::endl;
+  for ( int i = 0; i < num; i++ ) {
+    cout << s_var[i] << std::endl;
+  }
+  return;
 }
 
 void TDSolveSacado::calc_total_inc_viol(const int nt) {
-  for ( int i = 0; i < Nx; i++ )
-    (*data_inc[0])[i] = 1.0 - (*data_g[nt])[i] - (*data_h[nt])[i] - (*data_n[nt])[i];
+  *data_inc[0] = 1.0;
+  for ( std::vector<std::string>::iterator it = cellnames.begin();
+        it != cellnames.end(); it++ ) {
+    *data_inc[0] -= *H_data_var[*it][nt];
+  }
   return;
 }
 
@@ -844,11 +866,10 @@ void TDSolveSacado::compute_vel_u_pres(const DType tsol_loc) {
 
 void TDSolveSacado::compute_vel_u_chem(void) {
   SacadoDepVarArray& s_u = S_data_vel["U"];
-  SacadoIndVarArray& s_r = S_data_var["R"];
   SacadoIndVarArray& s_a = S_data_var["A"];
 
   DType alpha = tdCoef->alpha;
-  SacadoDepVar aor  = alpha/s_r[0];
+  SacadoDepVar aor  = alpha/S_data_r;
 
   for ( int i = 1; i <= Nx; i++ )
     s_u[i] = aor * ( (s_a[i] - s_a[i-1]) / dx );
@@ -904,12 +925,11 @@ void TDSolveSacado::compute_cells_varflux(std::string velname, std::string celln
 
 void TDSolveSacado::compute_cells_varflux_upw(SacadoDepVarArray& s_vel, SacadoIndVarArray& s_var, SacadoDepVarArray& s_flux, const DType* rdata) {
   reset_sacado_dep_array(s_flux);
-  SacadoIndVarArray& s_r = S_data_var["R"];
   // Left boundary
   s_flux[0] = 0.0;
   // Interior points
   for ( int i = 1; i < Nx; i++ ) {
-    SacadoDepVar s_loc_u  = x_f[i] * x_f[i] * s_r[0] * s_vel[i];
+    SacadoDepVar s_loc_u  = x_f[i] * x_f[i] * S_data_r * s_vel[i];
     if ( s_loc_u >= 0.0 )
       s_flux[i] = s_loc_u * s_var[i-1];
     else
@@ -919,7 +939,7 @@ void TDSolveSacado::compute_cells_varflux_upw(SacadoDepVarArray& s_vel, SacadoIn
   if ( rdata == NULL )
     s_flux[Nx] = 0.0;
   else {
-    SacadoDepVar s_loc_u = x_f[Nx] * x_f[Nx] * s_r[0] * s_vel[Nx];
+    SacadoDepVar s_loc_u = x_f[Nx] * x_f[Nx] * S_data_r * s_vel[Nx];
     if ( s_loc_u >= 0.0 )
       s_flux[Nx] = s_loc_u * s_var[Nx-1];
     else
