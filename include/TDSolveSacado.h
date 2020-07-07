@@ -38,6 +38,14 @@ class TDSolveSacado : public TDSolve {
       std::string driver;
       bool dirichlet_bc;
     };
+    struct LSPack {
+      LinMat*   mat;
+      LinMat*   prc;
+      LinVec*   sol;
+      LinVec*   rhs;
+      LinVec*   res;
+      LinSolve* linSolve;
+    };
     // Variable names
     std::vector<std::string> cellnames;   // All cell species name
     std::vector<std::string> cellnames_u; // Cell species subject to infiltration
@@ -47,6 +55,8 @@ class TDSolveSacado : public TDSolve {
     std::map<std::string, DType*> varcoord;
     std::map<std::string, DType*> varflxcoord; // Only exist for cells/chems
     std::map<std::string, ChemPar> chempars;
+    std::map<std::string, LSPack> varlspacks;
+    std::map<int, LSPack> dimlspacks; // Avoid duplicating linear solvers of the same size
 
     // Independent variables (cell numbers and chemicals)
     typedef std::vector<Sacado::Fad::DFad<DType>> SacadoIndVarArray;
@@ -131,6 +141,8 @@ class TDSolveSacado : public TDSolve {
     void print_sacado_dep_array(SacadoDepVarArray&);
 
   private:
+    void setup_new_lin_solve(const int num);
+
     void calc_total_inc_viol(const int nt);
     void compute_vel_u(const DType tsol_loc);
     void compute_vel_u_pres(const DType tsol_loc);
@@ -171,8 +183,11 @@ class TDSolveSacado : public TDSolve {
     void assemble_srce_var(HVEC& h_res, SacadoDepVarArray& s_src);
     void compute_chems_residual(const int fr, const int to);
 
-    void update_sol_by_res(const int nt);
-    void update_sol_by_res_var(HVEC& h_var, HVEC& h_res, DType h_r, DType* l_x_c, const int num);
+    void update_cells_by_res(const int nt);
+    void update_sol_by_res_var_exp(HVEC& h_var, HVEC& h_res, DType h_r, DType* l_x_c, const int num);
+
+    void update_chems_by_res(const int nt);
+    void update_chem_by_res_var_imp(HVEC& h_var, HVEC& h_res, DType h_r, DType* l_x_c, SacadoDepVarArray& s_flx, SacadoDepVarArray& s_src, const int num, const int offset, LSPack& lsPack);
 
     void compute_rad(const int fr, const int to);
 

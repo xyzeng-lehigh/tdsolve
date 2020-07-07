@@ -17,6 +17,9 @@ TDSolveSacado::TDSolveSacado(TDInput* tdInput_ptr) :
   varsizes.clear();
   varcoord.clear();
   varflxcoord.clear();
+  chempars.clear();
+  varlspacks.clear();
+  dimlspacks.clear();
 
   cellnames.push_back( "G" ); 
   cellnames.push_back( "H" ); 
@@ -93,26 +96,63 @@ TDSolveSacado::~TDSolveSacado(void) {
         it != H_data_res.end(); it++ ) {
     erase_array( it->second, 1 );
   }
+  for ( std::map<int,LSPack>::iterator it = dimlspacks.begin();
+        it != dimlspacks.end(); it++ ) {
+    delete it->second.mat;
+    delete it->second.prc;
+    delete it->second.rhs;
+    delete it->second.res;
+    delete it->second.sol;
+    delete it->second.linSolve;
+  }
 }
 
 void TDSolveSacado::setup(void) {
-  setupLinSolve( mat, prc, sol, rhs, res, linSolve, Nx );
+  std::vector<std::string>::iterator it;
+
+  // Setup linear solver for cell numbers if an implicit method is used
+  if ( tdSetup->assemb == 1 || tdSetup->assemb == 2 ) {
+    for ( it = cellnames.begin(); it != cellnames.end(); it++ ) {
+      setup_new_lin_solve( varsizes[*it] );
+      std::map<int,LSPack>::iterator it_ls = dimlspacks.find( varsizes[*it] );
+      varlspacks.insert( std::pair<std::string,LSPack>( *it, it_ls->second ) );
+    }
+  }
+  
+  // Setup linear solver for chemicals
+  for ( it = chemnames.begin(); it != chemnames.end(); it++ ) {
+    setup_new_lin_solve( varsizes[*it] );
+    std::map<int,LSPack>::iterator it_ls = dimlspacks.find( varsizes[*it] );
+    varlspacks.insert( std::pair<std::string,LSPack>( *it, it_ls->second ) );
+  }
+
+  //setupLinSolve( mat, prc, sol, rhs, res, linSolve, Nx );
   
   // PDGF problems
   if ( tdSetup->prob_id == 0 ) {
-    setupLinSolve( mat_a, prc_a, sol_a, rhs_a, res_a, linSolve_a, Na );
+    //setupLinSolve( mat_a, prc_a, sol_a, rhs_a, res_a, linSolve_a, Na );
     setup_chem_par( "A", tdCoef->gamma_a, tdCoef->D, "G", tdCoef->alpha_a, tdCoef->beta_a/tdCoef->theta, true );
   }
 
   // OPN model
   if ( tdSetup->prob_id == 1 ) {
-    setupLinSolve( mat_a, prc_a, sol_a, rhs_a, res_a, linSolve_a, Na );
-    setupLinSolve( mat_p, prc_p, sol_p, rhs_p, res_p, linSolve_p, Nx );
+    //setupLinSolve( mat_a, prc_a, sol_a, rhs_a, res_a, linSolve_a, Na );
+    //setupLinSolve( mat_p, prc_p, sol_p, rhs_p, res_p, linSolve_p, Nx );
     setup_chem_par( "A",  tdCoef->gamma_a, tdCoef->D,   "G", tdCoef->alpha_a, tdCoef->beta_a/tdCoef->theta, true );
     setup_chem_par( "P1", tdCoef->gamma_1, tdCoef->D_1, "N", tdCoef->alpha_1, tdCoef->beta_1/tdCoef->theta, false );
     setup_chem_par( "P2", tdCoef->gamma_2, tdCoef->D_2, "N", tdCoef->alpha_2, tdCoef->beta_2/tdCoef->theta, false );
   }
 
+  return;
+}
+
+void TDSolveSacado::setup_new_lin_solve(const int num) {
+  std::map<int,LSPack>::iterator it = dimlspacks.find( num );
+  if ( it != dimlspacks.end() ) // A linear solver of size num already exist
+    return;
+  LSPack lsPack;
+  setupLinSolve( lsPack.mat, lsPack.prc, lsPack.sol, lsPack.rhs, lsPack.res, lsPack.linSolve, num );
+  dimlspacks.insert( std::pair<int,LSPack>(num,lsPack) );
   return;
 }
 
@@ -422,7 +462,10 @@ bool TDSolveSacado::update_sol(const int fr, const int to, const DType shift_dt_
     }
     else {
       // This will use data_r instead of S_data_r
-      update_sol_by_res( to );
+      // Step 6-1. Explicit updates of cell numbers
+      update_cells_by_res( to );
+      // Step 6-2. Implicit updates of chemicals
+      update_chems_by_res( to );
       set_from_sacado_v( to );
     }
   }
@@ -1363,28 +1406,88 @@ void TDSolveSacado::compute_chems_residual(const int fr, const int to) {
   return;
 }
 
-void TDSolveSacado::update_sol_by_res(const int nt) {
+void TDSolveSacado::update_cells_by_res(const int nt) {
   std::vector<std::string>::iterator it;
   for ( it = cellnames.begin(); it != cellnames.end(); it++ ) {
     HVEC& h_var = *H_data_var[*it][nt];
     HVEC& h_res = *H_data_res[*it][0];
     DType h_r   = data_r[nt];
-    update_sol_by_res_var( h_var, h_res, h_r, varcoord[*it], varsizes[*it] );
-  }
-  for ( it = chemnames.begin(); it != chemnames.end(); it++ ) {
-    HVEC& h_var = *H_data_var[*it][nt];
-    HVEC& h_res = *H_data_res[*it][0];
-    DType h_r   = data_r[nt];
-    update_sol_by_res_var( h_var, h_res, h_r, varcoord[*it], varsizes[*it] );
+    update_sol_by_res_var_exp( h_var, h_res, h_r, varcoord[*it], varsizes[*it] );
   }
   return;
 }
 
-void TDSolveSacado::update_sol_by_res_var(HVEC& h_var, HVEC& h_res, DType h_r, DType* l_x_c, const int num) {
+void TDSolveSacado::update_sol_by_res_var_exp(HVEC& h_var, HVEC& h_res, DType h_r, DType* l_x_c, const int num) {
   DType h_r2 = h_r * h_r;
   for ( int i = 0; i < num; i++ ) {
     h_var[i] -= h_res[i]/h_r2/l_x_c[i]/l_x_c[i];
   }
+  return;
+}
+
+void TDSolveSacado::update_chems_by_res(const int nt) {
+  std::vector<std::string>::iterator it;
+  for ( it = chemnames.begin(); it != chemnames.end(); it++ ) {
+    HVEC& h_var = *H_data_var[*it][nt];
+    HVEC& h_res = *H_data_res[*it][0];
+    DType h_r   = data_r[nt];
+    int s_offset = S_data_offset[*it];
+    update_chem_by_res_var_imp( h_var, h_res, h_r, varcoord[*it], S_flux_chem[*it], S_srce_chem[*it], varsizes[*it], s_offset, varlspacks[*it] );
+  }
+  return;
+}
+
+void TDSolveSacado::update_chem_by_res_var_imp(HVEC& h_var, HVEC& h_res, DType h_r, DType* l_x_c, SacadoDepVarArray& s_flx, SacadoDepVarArray& s_src, const int num, const int s_offset, LSPack& lsPack) {
+  lsPack.mat->reset( 0.0 );
+  lsPack.rhs->reset( 0.0 );
+  lsPack.sol->reset( 0.0 );
+
+  VComp comp(1,0.0);
+  Entry elem(1,0.0);
+
+  // RHS
+  for ( int i = 0; i < num; i++ ) {
+    comp = h_res[i];
+    lsPack.rhs->set(i,comp);
+  }
+  
+  // Matrix
+  // - mass matrix
+  DType s_r_to2 = S_data_r.val() * S_data_r.val();
+  for ( int i = 0; i < num; i++ ) {
+    elem = l_x_c[i] * l_x_c[i] * s_r_to2;
+    lsPack.mat->set(i,i,elem);
+  }
+  // - source terms - assuming no nearby data is needed!
+  for ( int i = 0; i < num; i++ ) {
+    elem = lsPack.mat->get(i,i);
+    elem -= dtn * s_src[i].dx( s_offset+i );
+  }
+  // - fluxes - assuming the stencil within a centered stencil of:
+  // - 3 intervals if upwind flux is used
+  // - 7 intervals if ppm flux is used 
+  int sten = ( tdSetup->chmppm ) ? 3 : 1;
+  for ( int i = 0; i < num; i++ ) {
+    int i_min = max(0,i-sten);
+    int i_max = min(num-1,i+sten);
+    for ( int j = i_min; j <= i_max; j++ ) {
+      elem = lsPack.mat->get(i,j);
+      elem += (dtn/dx) * (s_flx[i+1].dx( s_offset+j )-s_flx[i].dx( s_offset+j ));
+      lsPack.mat->set(i,j,elem);
+    }
+  }
+
+  // Solve the linear system
+  lsPack.linSolve->solve();
+
+  // Fetch and update solution
+  for ( int i = 0; i < num; i++ ) {
+    comp = lsPack.sol->get(i);
+    HVEC vsol(1);
+    vsol = comp.getVal();
+    h_var[i] -= vsol[0];
+  }
+
   return;
 }
 
