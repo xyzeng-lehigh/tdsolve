@@ -13,6 +13,7 @@ Tterm         = 2.0
 Rterm         = 100.0
 Rdead         = 0.01
 Tfreq         = 0.5
+//frequency     = 1
 max_iter      = 100000
 dt_init       = 1.0
 dt_growth     = 1.2

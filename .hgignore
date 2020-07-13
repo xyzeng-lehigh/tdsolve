@@ -10,5 +10,6 @@ ParAnalRun
 *.blg
 *.log
 *.aux
+.DS_Store
 build/**
 debug/**

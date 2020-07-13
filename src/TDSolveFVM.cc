@@ -156,7 +156,7 @@ void TDSolveFVM::copy_data(const int nt_fr, const int nt_to) {
   *data_v[nt_to]  = *data_v[nt_fr];
   
   // Chemotaxis models 
-  if ( tdSetup->prob_id >= 0 )
+  //if ( tdSetup->prob_id >= 0 )
     *data_a[nt_to]  = *data_a[nt_fr];
   
   // OPN model
@@ -265,6 +265,8 @@ void TDSolveFVM::output_pdgf(const int nt) {
         -((*data_a[nt])[Nx]-(*data_a[nt])[Nx-1])/dx/data_r[nt]);
   fclose(ot_file);
 
+  upscale_var( *data_a[nt], *data_a[nt], x_a_c, Na, data_r[nt] );
+
   if ( !reach_term_now ) {
     if ( use_tfreq ) {
       if ( !reach_output_now ) return;
@@ -280,6 +282,7 @@ void TDSolveFVM::output_pdgf(const int nt) {
   downscale_var( *data_g[nt], *data_g[nt], x_c, Nx, data_r[nt] );
   downscale_var( *data_h[nt], *data_h[nt], x_c, Nx, data_r[nt] );
   downscale_var( *data_n[nt], *data_n[nt], x_c, Nx, data_r[nt] );
+  downscale_var( *data_a[nt], *data_a[nt], x_a_c, Na, data_r[nt] );
 
   for ( int i = 0; i < Nx; i++ )
     fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\t%10.20f\t%10.20f\n",
