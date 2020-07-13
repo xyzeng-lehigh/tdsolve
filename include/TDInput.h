@@ -111,6 +111,7 @@ struct TDSetup {
   int   prob_id;
 
   // Test cases
+  int   infil_u;
   DType init_u_par;
 };
 

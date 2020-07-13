@@ -100,8 +100,10 @@ TDInput::TDInput(void) {
   tdSetup.jac_lim  = false;
   tdSetup.slim_tot = false;
   tdSetup.logistic = 0;
-  tdSetup.prob_id  = 0;  // 0, default, single chemotaxis
+  tdSetup.prob_id  = 0;  // -1, model problem
+                         // 0, default, single chemotaxis
                          // 1, OPN
+  tdSetup.infil_u     = 0;
   tdSetup.init_u_par  = 1.0; 
   tdSetup.diagn_vcoup = true;
   tdSetup.silence_screen = false; // Turn off on-screen messages
@@ -273,6 +275,7 @@ void TDInput::setup_options(void) {
   tdOptions["r_option"]      = &tdSetup.r_opt;
   tdOptions["logistic"]      = &tdSetup.logistic;
   tdOptions["prob_id"]       = &tdSetup.prob_id;
+  tdOptions["infiltration"]  = &tdSetup.infil_u;
   tdOptions["lsysPrecPar"]   = &tdLin.PrecPar;
   tdOptions["lsysMaxIter"]   = &tdLin.MaxIter;
   tdOptions["lsysKrylovCap"] = &tdLin.KrylovCap;

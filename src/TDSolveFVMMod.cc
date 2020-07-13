@@ -319,7 +319,7 @@ bool TDSolveFVMMod::update_sol(const int fr, const int to,
     calc_total_diff_model( to );
 
   update_chem_imp( fr, to, shift_dt_fr, shift_dt_to );
-  
+
   update_vel( to, to, shift_dt_to, true ); // Update data_v[to] no updating on radius
 
   return true;

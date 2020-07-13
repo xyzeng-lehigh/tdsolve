@@ -67,6 +67,10 @@ class TDSolveSacado : public TDSolve {
     std::map<std::string, HVEC**> H_data_var;
     std::map<std::string, HVEC**> H_data_res;
 
+    // Infiltration velocity
+    HVEC** data_u;
+    std::map<std::string, HVEC**> H_data_vel;
+
     // Dependent variables
     typedef Sacado::Fad::DFad<DType> SacadoDepVar;
     typedef std::vector<SacadoDepVar> SacadoDepVarArray;
@@ -102,11 +106,11 @@ class TDSolveSacado : public TDSolve {
     std::map<std::string, fCalcSrce> F_calcSrceMap;
 
     // Additional setup functions
-    void setup_chem_par( std::string chemname, const DType decay, const DType diffusion,
-        std::string cellname, const DType mm_ceil, const DType mm_half, const bool dbc );
+    void setup_chem_par(std::string chemname, const DType decay, const DType diffusion,
+        std::string cellname, const DType mm_ceil, const DType mm_half, const bool dbc);
 
     // Initial condition for three cell numbers
-    void setic_unif_cell(DType val_g, DType val_h, DType val_n, int nt=0);
+    void setic_unif_cell(std::string name, DType val, int nt=0);
     void setic_expd_chem(DType multip, DType decay, int Na, int nt=0);
 
     // Alloc/deallocate additional arrays
@@ -129,7 +133,7 @@ class TDSolveSacado : public TDSolve {
     void set_from_sacado_ind(const int);
     void set_from_sacado_ind_array(std::string, HVEC&);
     void set_from_sacado_r(const int);
-    void set_from_sacado_v(const int);
+    void set_from_sacado_vel(std::string, const int);
     void reset_sacado_ind_array(void);
     void reset_sacado_ind_array(SacadoIndVarArray& s_var, const int s_offset, DType val=0.0);
     void reset_sacado_dep_array(void);
@@ -178,7 +182,7 @@ class TDSolveSacado : public TDSolve {
 
     void reset_residual(void);
     void compute_cells_residual(const int fr, const int to);
-    void assemble_inertia_var(HVEC& h_res, DType r_fr, HVEC& h_var, SacadoDepVar& s_r_to, SacadoIndVarArray s_var, DType* l_x_c);
+    void assemble_inertia_var(HVEC& h_res, DType r_fr, HVEC& h_var, DType r_to, SacadoIndVarArray s_var, DType* l_x_c);
     void assemble_flux_var(HVEC& h_res, SacadoDepVarArray& s_flx);
     void assemble_srce_var(HVEC& h_res, SacadoDepVarArray& s_src);
     void compute_chems_residual(const int fr, const int to);
@@ -195,6 +199,7 @@ class TDSolveSacado : public TDSolve {
     void calc_srce_geom(SacadoIndVarArray& s_var, SacadoDepVarArray& s_srce, DType* l_x_c);
 
     void compute_source_cell_prob(const DType tsol_loc);
+    void calc_srce_cell_base(SacadoDepVarArray& s_srce, const DType tsol_loc);
     void calc_srce_g_base(SacadoDepVarArray& s_srce, const DType tsol_loc);
     void calc_srce_h_base(SacadoDepVarArray& s_srce, const DType tsol_loc);
     void calc_srce_n_base(SacadoDepVarArray& s_srce, const DType tsol_loc);
@@ -204,6 +209,8 @@ class TDSolveSacado : public TDSolve {
     void calc_srce_g_opn(SacadoDepVarArray& s_srce, const DType tsol_loc);
     void calc_srce_h_opn(SacadoDepVarArray& s_srce, const DType tsol_loc);
     void calc_srce_n_opn(SacadoDepVarArray& s_srce, const DType tsol_loc);
+    void calc_srce_g_model(SacadoDepVarArray& s_srce, const DType tsol_loc);
+    void calc_srce_n_model(SacadoDepVarArray& s_srce, const DType tsol_loc);
 
     void compute_source_chem_prob(const DType tsol_loc);
     void calc_srce_chem_var(std::string chemname, const DType tsol_loc);

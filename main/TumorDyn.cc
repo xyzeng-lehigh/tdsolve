@@ -79,6 +79,8 @@ int main(int argc, char** argv) {
       tdSolve->calc_dt(0);
       tdSolve->diagnostic(0);
     }
+    tdSolve->update_vel(0,1,0.0,true);
+    tdSolve->output(0);
   }
   else { // A little messy with the old code
     while ( tdSolve->nextIter() ) {
