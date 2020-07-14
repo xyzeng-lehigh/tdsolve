@@ -21,7 +21,6 @@ dt_growth     = 1.2
 outputDataFile  = sol.dat
 radiusDataFile  = rad.dat
 
-vel_couple    = 0
 init_u_par    = 0.5
 n_bc          = 0.5
 ic            = 0

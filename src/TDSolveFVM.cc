@@ -704,7 +704,7 @@ void TDSolveFVM::update_cells_upw(const int fr, const int to) {
 
   DType dror = (*data_v[fr])[Nx]/data_r[fr];
   DType aorr = alpha/data_r[fr]/data_r[fr];
-
+  
   // Source terms
   for ( int i = 0; i < Nx; i++ ) {
     DType loc_lambda = ( q == 0.0 ) ? lambda : lambda * pow(x_c[i],q);
@@ -1353,7 +1353,8 @@ void TDSolveFVM::update_chem_upw_be(const int fr, const int to) {
   DType gamma_a = tdCoef->gamma_a;
   DType theta   = tdCoef->theta;
 
-  DType dror = (*data_v[fr])[Nx]/data_r[fr];
+  //DType dror = (*data_v[fr])[Nx]/data_r[fr];
+  DType dror = data_rp[0]/data_r[to];
 
   downscale_var( *data_a[fr], *data_a[fr], x_a_c, Na, data_r[fr] );
 
@@ -1370,6 +1371,14 @@ void TDSolveFVM::update_chem_upw_be(const int fr, const int to) {
     comp /= loc_r_to*loc_r_to;
     rhs_a->set(i,comp);
   }
+
+  //cout << " XYZ RHS: " << std::endl;
+  //for ( int i = 0; i < Na; i++ ) {
+  //  comp = rhs_a->get(i);
+  //  HVEC vsol(1);
+  //  vsol = comp.getVal();
+  //  cout << "    " << i << ": " << vsol[0] << std::endl;
+  //}
 
   // Matrix
   Entry elem(1,0.0);

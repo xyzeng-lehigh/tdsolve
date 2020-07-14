@@ -111,7 +111,8 @@ class TDSolveSacado : public TDSolve {
 
     // Initial condition for three cell numbers
     void setic_unif_cell(std::string name, DType val, int nt=0);
-    void setic_expd_chem(DType multip, DType decay, int Na, int nt=0);
+    void setic_expd_chem(DType multip, DType decay, int nt=0);
+    void setic_polyexp_chem(DType poly_0, DType poly_2, int nt=0);
 
     // Alloc/deallocate additional arrays
     void alloc_hvec_res(void);
@@ -165,18 +166,18 @@ class TDSolveSacado : public TDSolve {
     void LimFun_PPM_INT(SacadoDepVar& s_alpha1, SacadoDepVar& s_alpha2, SacadoDepVar& s_lim_l, SacadoDepVar& s_lim_r);
 
     void compute_cells_rflux(void);
-    void calc_ppm_lim_var(SacadoIndVarArray& s_var, SacadoDepVarArray& s_rec, SacadoDepVarArray& s_lim_l, SacadoDepVarArray& s_lim_r, DType* l_x_c, const bool tosync=false, std::vector<bool>* set_zero=NULL, SacadoDepVarArray* s_alpha=NULL);
+    void calc_ppm_lim_var(SacadoIndVarArray& s_var, SacadoDepVarArray& s_rec, SacadoDepVarArray& s_lim_l, SacadoDepVarArray& s_lim_r, DType* l_x_c, const int nt=-1, const bool tosync=false, std::vector<bool>* set_zero=NULL, SacadoDepVarArray* s_alpha=NULL);
     void calc_ppm_lim_sync(SacadoDepVarArray* s_sync, SacadoDepVarMap* s_lims, std::vector<bool>& set_zero, SacadoDepVarArray* s_alpha);
-    void calc_ppm_flux_var(SacadoIndVarArray& s_var, SacadoDepVarArray& s_rec, SacadoDepVarArray& s_flx, SacadoDepVarArray* s_lim, DType* l_x_c);
+    void calc_ppm_flux_var(SacadoIndVarArray& s_var, SacadoDepVarArray& s_rec, SacadoDepVarArray& s_flx, SacadoDepVarArray* s_lim, DType* l_x_c, const int nt=-1);
 
     void compute_cells_flux(void);
 
     void compute_chems_dflux(void);
     void calc_dflux_chem_var(std::string chemname);
 
-    void compute_chems_rflux(void);
-    void calc_rflux_chem_var_upw(std::string chemname);
-    void calc_rflux_chem_var_ppm(std::string chemname);
+    void compute_chems_rflux(const int nt);
+    void calc_rflux_chem_var_upw(std::string chemname, const int nt);
+    void calc_rflux_chem_var_ppm(std::string chemname, const int nt);
 
     void compute_chems_flux(void);
 
@@ -195,8 +196,9 @@ class TDSolveSacado : public TDSolve {
 
     void compute_rad(const int fr, const int to);
 
-    void update_source_geom(void);
+    void update_source_geom(int nt);
     void calc_srce_geom(SacadoIndVarArray& s_var, SacadoDepVarArray& s_srce, DType* l_x_c);
+    void calc_srce_geom(SacadoIndVarArray& s_var, SacadoDepVarArray& s_srce, DType* l_x_c, const int nt);
 
     void compute_source_cell_prob(const DType tsol_loc);
     void calc_srce_cell_base(SacadoDepVarArray& s_srce, const DType tsol_loc);
@@ -212,8 +214,8 @@ class TDSolveSacado : public TDSolve {
     void calc_srce_g_model(SacadoDepVarArray& s_srce, const DType tsol_loc);
     void calc_srce_n_model(SacadoDepVarArray& s_srce, const DType tsol_loc);
 
-    void compute_source_chem_prob(const DType tsol_loc);
-    void calc_srce_chem_var(std::string chemname, const DType tsol_loc);
+    void compute_source_chem_prob(const int nt, const DType tsol_loc);
+    void calc_srce_chem_var(std::string chemname, const int nt, const DType tsol_loc);
 
     // Other functions
     DType calc_n_bc( const DType tsol_loc );

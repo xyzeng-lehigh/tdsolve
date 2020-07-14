@@ -49,7 +49,7 @@ TDInput::TDInput(void) {
   tdMesh.x_l     = 0.0;
   tdMesh.x_r     = 1.0;
   tdMesh.Nx      = 100;
-  tdMesh.Na_m    = 2;
+  tdMesh.Na_m    = 4;
   tdMesh.Na      = 200;
   tdMesh.dx      = 0.01;
   tdMesh.x_f     = NULL;
