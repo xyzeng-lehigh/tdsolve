@@ -485,6 +485,7 @@ bool TDSolveSacado::update_sol(const int fr, const int to, const DType shift_dt_
     // Step 6. Update the solution/iterates
     if ( assembleJacobian ) {
       // Assemble the Jacobian, solve for one Newton iteration
+      // Step 6-1. Implicit updates of cell numbers in sequal
     }
     else {
       // This will use data_r instead of S_data_r
@@ -1398,7 +1399,7 @@ void TDSolveSacado::calc_rflux_chem_var_ppm(std::string chemname, const int nt) 
   SacadoDepVarArray  s_rec;
   alloc_sacado_dep_array( s_lim[0], s_var.size() );
   alloc_sacado_dep_array( s_lim[1], s_var.size() );
-  alloc_sacado_dep_array( s_rec, s_var.size() );
+  alloc_sacado_dep_array( s_rec, s_var.size()+1 );
   calc_ppm_lim_var( s_var, s_rec, s_lim[0], s_lim[1], varcoord[chemname], nt, false );
 
   calc_ppm_flux_var( s_var, s_rec, s_flx, s_lim, varcoord[chemname], nt );
@@ -1705,7 +1706,7 @@ void TDSolveSacado::calc_srce_h_pdgf(SacadoDepVarArray& s_srce, const DType tsol
 void TDSolveSacado::calc_srce_n_pdgf(SacadoDepVarArray& s_srce, const DType tsol_loc) {
   calc_srce_n_base( s_srce, tsol_loc );
 
-  DType delta_n = tdCoef->delta_h;
+  DType delta_n = tdCoef->delta_n;
   SacadoIndVarArray& s_n = S_data_var["N"];
 
   for ( int i = 0; i < Nx; i++ ) {
