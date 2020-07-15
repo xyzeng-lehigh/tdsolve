@@ -447,18 +447,18 @@ bool TDSolveSacado::update_sol(const int fr, const int to, const DType shift_dt_
     //   S_data_vel["V"]
     update_vel( fr, to, shift_dt_space, false );  
 
-    // Step 3. Compute the source terms for chemicals.
-    //         Then complete the source terms for both cells and chems
-    //         with geometric terms.
-    // This will compute the following:
+    // Step 3. Compute the geometric terms for both cells and chems
+    // This will complete
     //   S_srce_cell["X"]
+    // and update
     //   S_srce_chem["X"]
     // Note this one does not use S_data_r, as it may point to either fr or to.
     // Since implicit method is always used for chemicals, we use data_r[to] here
-    compute_source_chem_prob( to, tsol+shift_dt_to*dtn );
+    //
+    // Problem-dependent source for chems are computed after cells are updated
     update_source_geom( to );
 
-    // Step 4. Compute all remaining fluxes. In order:
+    // Step 4. Compute all remaining fluxes for cells. In order:
     // 4.1 - S_flux_cell_v["X"]
     compute_cells_vflux();
     // 4.2 - S_lim_ppm_cell[i]["X"], i=0,1
@@ -467,33 +467,54 @@ bool TDSolveSacado::update_sol(const int fr, const int to, const DType shift_dt_
     compute_cells_rflux();
     // 4.3 - S_flux_cell
     compute_cells_flux();
-    // 4.4 - S_flux_chem_d["X"]
-    //     - it is independent of R, hence no passing of nt
-    compute_chems_dflux();
-    // 4.5 - S_flux_chem_r["X"]
-    compute_chems_rflux( to ); // XYZ - DOUBLE CHECK PPM PART
-    // 4.6 - S_flux_chem["X"]
-    compute_chems_flux();
 
-    // Step 5. Compute all residuals for cells and chems
+    // Step 5. Compute all residuals for cells
     // The results are stored in H_data_res
     // Note that dt is multuplied to the spatial terms
     reset_residual();
     compute_cells_residual( fr, to );
-    compute_chems_residual( fr, to );
 
-    // Step 6. Update the solution/iterates
+    // Step 6. Update the solution/iterates for cells
     if ( assembleJacobian ) {
       // Assemble the Jacobian, solve for one Newton iteration
-      // Step 6-1. Implicit updates of cell numbers in sequal
+      // 6.0 - Implicit updates of cell numbers in sequal
     }
     else {
       // This will use data_r instead of S_data_r
-      // Step 6-1. Explicit updates of cell numbers
       update_cells_by_res( to );
-      // Step 6-2. Implicit updates of chemicals
+    }
+
+    // Step 7. Now that cells are updated, compute the
+    //         problem-dependent source for chems
+    // This will complete
+    //   S_srce_chem["X"]
+    // using updated cell numbers
+    set_sacado_ind( cellnames, to );
+    compute_source_chem_prob( to, tsol+shift_dt_to*dtn );
+
+    // Step 8. Compute the fluxes for chems. In order:
+    // 8.1 - S_flux_chem_d["X"]
+    //     - it is independent of R, hence no passing of nt
+    compute_chems_dflux();
+    // 8.2 - S_flux_chem_r["X"]
+    compute_chems_rflux( to );
+    // 8.2 - S_flux_chem["X"]
+    compute_chems_flux();
+
+    // Step 9. Compute all residuals for chems
+    // The results are stored in H_data_res
+    // Note that dt is multuplied to the spatial terms
+    compute_chems_residual( fr, to );
+
+    // Step X. Update the solution/iterates for chems
+    if ( assembleJacobian ) {
+      // Assemble the Jacobian, solve for one Newton iteration
+      // X-1 - Implicit updates of cell numbers in sequal
+    }
+    else {
+      // X-1. Implicit updates of chemicals
       update_chems_by_res( to );
-      // Step 6-3. Make consistent the velocity for dtn
+      // X-2. Make consistent the velocity for dtn
       reset_sacado_ind_array();
       reset_sacado_dep_array();
       set_sacado_ind( to );
@@ -752,11 +773,21 @@ void TDSolveSacado::alloc_sacado_dep_array(SacadoDepVarArray& S_array, const int
 }
 
 void TDSolveSacado::set_sacado_ind(const int nt) {
+  //std::vector<std::string>::iterator it;
+  //for ( it = cellnames.begin(); it != cellnames.end(); it++ ) {
+  //  set_sacado_ind_array(*it, nt);
+  //}
+  //for ( it = chemnames.begin(); it != chemnames.end(); it++ ) {
+  //  set_sacado_ind_array(*it, nt);
+  //}
+  set_sacado_ind( cellnames, nt );
+  set_sacado_ind( chemnames, nt );
+  return;
+}
+
+void TDSolveSacado::set_sacado_ind(std::vector<std::string>& names, const int nt) {
   std::vector<std::string>::iterator it;
-  for ( it = cellnames.begin(); it != cellnames.end(); it++ ) {
-    set_sacado_ind_array(*it, nt);
-  }
-  for ( it = chemnames.begin(); it != chemnames.end(); it++ ) {
+  for ( it = names.begin(); it != names.end(); it++ ) {
     set_sacado_ind_array(*it, nt);
   }
   return;
@@ -1774,8 +1805,6 @@ void TDSolveSacado::calc_srce_chem_var(std::string chemname, const int nt, const
   ChemPar&           chemPar = chempars[chemname];
   SacadoIndVarArray& s_chem  = S_data_var[chemname];
   SacadoIndVarArray& s_cell  = S_data_var[chemPar.driver];
-
-  reset_sacado_dep_array(s_srce);
 
   int num_chem = s_chem.size();
   int num_cell = s_cell.size(); // The driver may have a shorter range than the chemicals

@@ -128,6 +128,7 @@ class TDSolveSacado : public TDSolve {
 
     // Other Sacado utilities
     void set_sacado_ind(const int);
+    void set_sacado_ind(std::vector<std::string>& names, const int);
     void set_sacado_ind_array(std::string, const int);
     void set_sacado_r(const int);
     void set_sacado_v(const int);
