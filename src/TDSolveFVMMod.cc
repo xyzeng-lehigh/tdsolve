@@ -292,6 +292,9 @@ bool TDSolveFVMMod::update_sol(const int fr, const int to,
     if ( tdSetup->prob_id < 0 )
       calc_total_diff_model( to );
 
+    if ( !tdSetup->auto_red_dt )
+      return true;
+
     if ( cur_iter == max_iter && cur_res > max_tol ) {
       cout << "Coupling iteration: " << cur_iter << "; Residue: " << cur_res << "; Will reduce dt." << std::endl;
       return false;

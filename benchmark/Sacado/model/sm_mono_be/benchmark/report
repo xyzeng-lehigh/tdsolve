@@ -1,0 +1,28 @@
+TDSolve revision r117+
+
+*************************
+* Tumor Dynamics Solver *
+*************************
+
+Iter   0: Time 0.00000000; Time step 0.08000000; CFL 8.0000; Radius 1.00000000; Front-velocity 0.50005001.
+Iter   1: Time 0.08000000; Time step 0.08301185; CFL 8.0000; Radius 1.04080384; Front-velocity 0.50005001.
+Iter   2: Time 0.16301185; Time step 0.08590516; CFL 8.0000; Radius 1.08314136; Front-velocity 0.50005001.
+Iter   3: Time 0.24891701; Time step 0.08866777; CFL 8.0000; Radius 1.12694972; Front-velocity 0.50005001.
+Iter   4: Time 0.33758477; Time step 0.09130877; CFL 8.0000; Radius 1.17215991; Front-velocity 0.50005001.
+Iter   5: Time 0.42889354; Time step 0.07110646; CFL 6.0675; Radius 1.21870780; Front-velocity 0.50005001.
+Iter   6: Time 0.50000000; Time step 0.09552704; CFL 8.0000; Radius 1.25478317; Front-velocity 0.50005001.
+Iter   7: Time 0.59552704; Time step 0.09777708; CFL 8.0000; Radius 1.30346038; Front-velocity 0.50005001.
+Iter   8: Time 0.69330412; Time step 0.10001289; CFL 8.0000; Radius 1.35327050; Front-velocity 0.50005001.
+Iter   9: Time 0.79331701; Time step 0.10230720; CFL 8.0000; Radius 1.40420575; Front-velocity 0.50005001.
+Iter  10: Time 0.89562422; Time step 0.10437578; CFL 7.9764; Radius 1.45629607; Front-velocity 0.50005001.
+Iter  11: Time 1.00000000; Time step 0.10721439; CFL 8.0000; Radius 1.50942417; Front-velocity 0.50005001.
+Iter  12: Time 1.10721439; Time step 0.10989481; CFL 8.0000; Radius 1.56398855; Front-velocity 0.50005001.
+Iter  13: Time 1.21710920; Time step 0.11269394; CFL 8.0000; Radius 1.61990658; Front-velocity 0.50005001.
+Iter  14: Time 1.32980314; Time step 0.11573610; CFL 8.0000; Radius 1.67723907; Front-velocity 0.50005001.
+Iter  15: Time 1.44553924; Time step 0.05446076; CFL 3.6611; Radius 1.73611109; Front-velocity 0.50005001.
+Iter  16: Time 1.50000000; Time step 0.12056291; CFL 8.0000; Radius 1.76355777; Front-velocity 0.50005001.
+Iter  17: Time 1.62056291; Time step 0.12386880; CFL 8.0000; Radius 1.82487543; Front-velocity 0.50005001.
+Iter  18: Time 1.74443172; Time step 0.12738806; CFL 8.0000; Radius 1.88786693; Front-velocity 0.50005001.
+Iter  19: Time 1.87181977; Time step 0.12818023; CFL 7.8086; Radius 1.95264171; Front-velocity 0.50005001.
+Iter  20: Time 2.00000000; Time step 0.00000000; CFL 0.0000; Radius 2.01778995; Front-velocity 0.50005001.
+Iter  21: Time 2.00000000; Time step 0.00000000; CFL 0.0000; Radius 2.01778995; Front-velocity 0.50005001.

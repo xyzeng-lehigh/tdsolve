@@ -20,6 +20,7 @@ TDSolveSacado::TDSolveSacado(TDInput* tdInput_ptr) :
   chempars.clear();
   varlspacks.clear();
   dimlspacks.clear();
+  H_cell_offset.clear();
 
   // Common for all existing prob_id:
   //  -1 : model problem
@@ -107,12 +108,20 @@ void TDSolveSacado::setup(void) {
   std::vector<std::string>::iterator it;
 
   // Setup linear solver for cell numbers if an implicit method is used
-  if ( tdSetup->assemb == 1 || tdSetup->assemb == 2 ) {
+  if ( tdSetup->assemb == 1 ) {
+    //for ( it = cellnames.begin(); it != cellnames.end(); it++ ) {
+    //  setup_new_lin_solve( varsizes[*it] );
+    //  std::map<int,LSPack>::iterator it_ls = dimlspacks.find( varsizes[*it] );
+    //  varlspacks.insert( std::pair<std::string,LSPack>( *it, it_ls->second ) );
+    //}
+    int size = 0;
     for ( it = cellnames.begin(); it != cellnames.end(); it++ ) {
-      setup_new_lin_solve( varsizes[*it] );
-      std::map<int,LSPack>::iterator it_ls = dimlspacks.find( varsizes[*it] );
-      varlspacks.insert( std::pair<std::string,LSPack>( *it, it_ls->second ) );
+      H_cell_offset.insert( std::pair<std::string,int>( *it, size ) );
+      size += varsizes[*it];
     }
+    setup_new_lin_solve( size );
+    std::map<int,LSPack>::iterator it_ls = dimlspacks.find( size );
+    cell_lspack = it_ls->second;
   }
   
   // Setup linear solver for chemicals
@@ -357,16 +366,14 @@ void TDSolveSacado::alloc(void) {
 
   data_r  = new DType[Ndata];
 
-  alloc_array_full( data_a, Na, Ndata ); 
-
-  H_data_var.insert(std::pair<std::string,HVEC**>("A",data_a));
-
-  S_data_num += Na;   // _a
-
   if ( tdSetup->prob_id == 0 || tdSetup->prob_id == 1 ) {
     alloc_array_full( data_h, Nx, Ndata );
     H_data_var.insert(std::pair<std::string,HVEC**>("H",data_h));
     S_data_num += Nx;   // _h
+
+    alloc_array_full( data_a, Na, Ndata ); 
+    H_data_var.insert(std::pair<std::string,HVEC**>("A",data_a));
+    S_data_num += Na;   // _a
   }
 
   if ( tdSetup->prob_id == 1 ) {
@@ -405,15 +412,11 @@ bool TDSolveSacado::update_sol(const int fr, const int to, const DType shift_dt_
       assembleJacobian = false;
       shift_dt_space = shift_dt_fr;
       break;
-    case 1: // loosely implicit
-      numIter = 1;
-      assembleJacobian = true;
-      break;
-    case 2: // fully impliict
+    case 1: // implicit
       numIter = tdSetup->ntIter;
       assembleJacobian = true;
       break;
-    case 3: // PMC - just add for fun, not really using
+    case 2: // PMC - just add for fun, not really using
       numIter = tdSetup->ntIter;
       assembleJacobian = false;
       shift_dt_space = shift_dt_fr;
@@ -432,8 +435,8 @@ bool TDSolveSacado::update_sol(const int fr, const int to, const DType shift_dt_
     set_sacado_ind( to );
 
     // Step 1. Compute S_data_r and S_data_rp.
-    //   assemb == 0   : S_data_r = data_r[fr], S_data_rp ~ data_v[fr]
-    //   assemb == 1,2 : S_data_r = data_r[t0], S_data_rp ~ data_v[to]
+    //   assemb == 0 : S_data_r = data_r[fr], S_data_rp ~ data_v[fr]
+    //   assemb == 1 : S_data_r = data_r[to], S_data_rp ~ data_v[to]
     // Note that because [fr] is copied to [to] in iter 0,
     // data_v[to] is always used in this function to compute S_data_rp
     compute_rad( fr, to );
@@ -477,10 +480,12 @@ bool TDSolveSacado::update_sol(const int fr, const int to, const DType shift_dt_
     // Step 6. Update the solution/iterates for cells
     if ( assembleJacobian ) {
       // Assemble the Jacobian, solve for one Newton iteration
-      // 6.0 - Implicit updates of cell numbers in sequal
+      // 6.1 - Implicit updates of cell numbers 
+      update_cells_by_res_imp( to );
     }
     else {
       // This will use data_r instead of S_data_r
+      // 6.1 - Explicit updates of cell numbers
       update_cells_by_res( to );
     }
 
@@ -507,23 +512,17 @@ bool TDSolveSacado::update_sol(const int fr, const int to, const DType shift_dt_
     compute_chems_residual( fr, to );
 
     // Step X. Update the solution/iterates for chems
-    if ( assembleJacobian ) {
-      // Assemble the Jacobian, solve for one Newton iteration
-      // X-1 - Implicit updates of cell numbers in sequal
-    }
-    else {
-      // X-1. Implicit updates of chemicals
-      update_chems_by_res( to );
-      // X-2. Make consistent the velocity for dtn
-      reset_sacado_ind_array();
-      reset_sacado_dep_array();
-      set_sacado_ind( to );
-      set_sacado_r( to );
-      update_vel( to, to, shift_dt_to );
-      set_from_sacado_vel( "V", to );
-      set_from_sacado_vel( "U", to );
-      compute_rad( to, to );
-    }
+    // X-1. Implicit updates of chemicals
+    update_chems_by_res_imp( to );
+    // X-2. Make consistent the velocity for dtn
+    reset_sacado_ind_array();
+    reset_sacado_dep_array();
+    set_sacado_ind( to );
+    set_sacado_r( to );
+    update_vel( to, to, shift_dt_to );
+    set_from_sacado_vel( "V", to );
+    set_from_sacado_vel( "U", to );
+    compute_rad( to, to );
   }
 
   return true;
@@ -1060,11 +1059,13 @@ void TDSolveSacado::compute_cells_varflux(std::string velname, std::string celln
 
 void TDSolveSacado::compute_cells_varflux_upw(SacadoDepVarArray& s_vel, SacadoIndVarArray& s_var, SacadoDepVarArray& s_flux, const DType* rdata) {
   reset_sacado_dep_array(s_flux);
+  SacadoDepVar s_loc_u;
   // Left boundary
   s_flux[0] = 0.0;
   // Interior points
   for ( int i = 1; i < Nx; i++ ) {
-    SacadoDepVar s_loc_u  = x_f[i] * x_f[i] * S_data_r * s_vel[i];
+    if ( tdSetup->jac_vel ) s_loc_u = x_f[i] * x_f[i] * S_data_r * s_vel[i]; 
+    else s_loc_u = x_f[i] * x_f[i] * S_data_r * s_vel[i].val();
     if ( s_loc_u >= 0.0 )
       s_flux[i] = s_loc_u * s_var[i-1];
     else
@@ -1074,7 +1075,8 @@ void TDSolveSacado::compute_cells_varflux_upw(SacadoDepVarArray& s_vel, SacadoIn
   if ( rdata == NULL )
     s_flux[Nx] = 0.0;
   else {
-    SacadoDepVar s_loc_u = x_f[Nx] * x_f[Nx] * S_data_r * s_vel[Nx];
+    if ( tdSetup->jac_vel ) s_loc_u = x_f[Nx] * x_f[Nx] * S_data_r * s_vel[Nx];
+    else s_loc_u = x_f[Nx] * x_f[Nx] * S_data_r * s_vel[Nx].val();
     if ( s_loc_u >= 0.0 )
       s_flux[Nx] = s_loc_u * s_var[Nx-1];
     else
@@ -1536,7 +1538,111 @@ void TDSolveSacado::update_sol_by_res_var_exp(HVEC& h_var, HVEC& h_res, DType h_
   return;
 }
 
-void TDSolveSacado::update_chems_by_res(const int nt) {
+void TDSolveSacado::update_cells_by_res_imp(const int nt) {
+  cell_lspack.mat->reset( 0.0 );
+  cell_lspack.rhs->reset( 0.0 );
+  cell_lspack.sol->reset( 0.0 );
+
+  std::vector<std::string>::iterator it;
+
+  for ( it = cellnames.begin(); it != cellnames.end(); it++ ) {
+    HVEC& h_res = *H_data_res[*it][0];
+    DType h_r   = data_r[nt];
+    int s_offset = S_data_offset[*it];
+    int l_offset = H_cell_offset[*it];
+    update_cell_linsys_by_res_var( h_res, h_r, varcoord[*it], S_flux_cell[*it], S_srce_cell[*it], varsizes[*it], s_offset, l_offset, cell_lspack );
+  }
+
+  cell_lspack.linSolve->solve();
+
+  for ( it = cellnames.begin(); it != cellnames.end(); it++ ) {
+    HVEC& h_var = *H_data_var[*it][nt];
+    int l_offset = H_cell_offset[*it];
+    int num = varsizes[*it];
+    update_hsol_by_linsol( h_var, l_offset, num, cell_lspack );
+  }
+
+  return;
+}
+
+void TDSolveSacado::update_cell_linsys_by_res_var(HVEC& h_res, DType h_r, DType* l_x_c, SacadoDepVarArray& s_flx, SacadoDepVarArray& s_src, const int num, const int s_offset, const int l_offset, LSPack& lsPack) {
+  VComp comp(1,0.0);
+  Entry elem(1,0.0);
+
+  // RHS
+  DType s_r_to2 = h_r * h_r;
+  for ( int i = 0; i < num; i++ ) {
+    comp = h_res[i]/l_x_c[i]/l_x_c[i]/s_r_to2;
+    lsPack.rhs->set(l_offset+i,comp);
+  }
+
+  // Matrix
+  // - mass matrix
+  for ( int i = 0; i < num; i++ ) {
+    elem = 1.0;
+    lsPack.mat->set(l_offset+i,l_offset+i,elem);
+  }
+  // - source terms - assuming no nearby data is needed!
+  for ( int i = 0; i < num; i++ ) {
+    for ( std::vector<std::string>::iterator it = cellnames.begin();
+          it != cellnames.end(); it++ ) {
+      int l_offset_cell = H_cell_offset[*it];
+      int s_offset_cell = S_data_offset[*it];
+      elem = lsPack.mat->get(l_offset+i,l_offset_cell+i);
+      elem -= dtn * s_src[i].dx( s_offset_cell+i )/l_x_c[i]/l_x_c[i]/s_r_to2;
+      lsPack.mat->set(l_offset+i,l_offset_cell+i,elem);
+    }
+  }
+  // - fluxes 
+  if ( tdSetup->jac_vel ) { 
+    for ( int i = 0; i < num; i++ ) {
+      DType denom = l_x_c[i]*l_x_c[i]*s_r_to2;
+      for ( std::vector<std::string>::iterator it = cellnames.begin();
+            it != cellnames.end(); it++ ) {
+        int l_offset_cell = H_cell_offset[*it];
+        int s_offset_cell = S_data_offset[*it];
+        for ( int j = 0; j < num; j++ ) {
+          elem = lsPack.mat->get(l_offset+i,l_offset_cell+j);
+          elem += (dtn/dx) * (s_flx[i+1].dx( s_offset_cell+j ) - s_flx[i].dx( s_offset_cell+j ))/denom;
+          lsPack.mat->set(l_offset+i,l_offset_cell+j,elem);
+        }
+      }
+    }
+  }
+  else {
+    // assuming the stencil within a centered stencil of:
+    // - 3 intervals if upwind flux is used
+    // - 7 intervals if ppm flux is used 
+    int sten = ( tdSetup->chmppm ) ? 3 : 1;
+    for ( int i = 0; i < num; i++ ) {
+      int i_min = max(0,i-sten);
+      DType denom = l_x_c[i]*l_x_c[i]*s_r_to2;
+      int i_max = min(num-1,i+sten);
+      for ( int j = i_min; j <= i_max; j++ ) {
+        elem = lsPack.mat->get(l_offset+i,l_offset+j);
+        elem += (dtn/dx) * (s_flx[i+1].dx( s_offset+j )-s_flx[i].dx( s_offset+j ))/denom;
+        lsPack.mat->set(l_offset+i,l_offset+j,elem);
+      }
+    }
+  }
+
+  return;
+}
+
+void TDSolveSacado::update_hsol_by_linsol(HVEC& h_var, const int l_offset, const int num, LSPack& lsPack) {
+  VComp comp(1,0.0);
+
+  for ( int i = 0; i < num; i++ ) {
+    comp = lsPack.sol->get(l_offset+i);
+    HVEC vsol(1);
+    vsol = comp.getVal();
+    h_var[i] -= vsol[0];
+  }
+
+  return;
+}
+
+void TDSolveSacado::update_chems_by_res_imp(const int nt) {
   std::vector<std::string>::iterator it;
   for ( it = chemnames.begin(); it != chemnames.end(); it++ ) {
     HVEC& h_var = *H_data_var[*it][nt];
@@ -1563,14 +1669,6 @@ void TDSolveSacado::update_chem_by_res_var_imp(HVEC& h_var, HVEC& h_res, DType h
     lsPack.rhs->set(i,comp);
   }
 
-  //cout << " XYZ RHS: " << std::endl;
-  //for ( int i = 0; i < num; i++ ) {
-  //  comp = lsPack.rhs->get(i);
-  //  HVEC vsol(1);
-  //  vsol = comp.getVal();
-  //  cout << "    " << i << ": " << vsol[0] << std::endl;
-  //}
-  
   // Matrix
   // - mass matrix
   for ( int i = 0; i < num; i++ ) {
@@ -1636,7 +1734,7 @@ void TDSolveSacado::compute_rad(const int fr, const int to) {
     data_r[to] = data_r[fr] + dtn * S_data_rp.val();
   }
 
-  if ( tdSetup->assemb == 1 || tdSetup->assemb == 2 )
+  if ( tdSetup->assemb == 1 )
     S_data_r = data_r[to];
   else
     S_data_r = data_r[fr];

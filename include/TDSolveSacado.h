@@ -57,6 +57,8 @@ class TDSolveSacado : public TDSolve {
     std::map<std::string, ChemPar> chempars;
     std::map<std::string, LSPack> varlspacks;
     std::map<int, LSPack> dimlspacks; // Avoid duplicating linear solvers of the same size
+    LSPack cell_lspack; // A linear solver for all cells
+    std::map<std::string, int> H_cell_offset;
 
     // Independent variables (cell numbers and chemicals)
     typedef std::vector<Sacado::Fad::DFad<DType>> SacadoIndVarArray;
@@ -192,7 +194,11 @@ class TDSolveSacado : public TDSolve {
     void update_cells_by_res(const int nt);
     void update_sol_by_res_var_exp(HVEC& h_var, HVEC& h_res, DType h_r, DType* l_x_c, const int num);
 
-    void update_chems_by_res(const int nt);
+    void update_cells_by_res_imp(const int nt);
+    void update_cell_linsys_by_res_var(HVEC& h_res, DType h_r, DType* l_x_c, SacadoDepVarArray& s_flx, SacadoDepVarArray& s_src, const int num, const int s_offset, const int l_offset, LSPack& lsPack);
+    void update_hsol_by_linsol(HVEC& h_var, const int l_offset, const int num, LSPack& lsPack);
+
+    void update_chems_by_res_imp(const int nt);
     void update_chem_by_res_var_imp(HVEC& h_var, HVEC& h_res, DType h_r, DType* l_x_c, SacadoDepVarArray& s_flx, SacadoDepVarArray& s_src, const int num, const int offset, LSPack& lsPack);
 
     void compute_rad(const int fr, const int to);

@@ -1372,14 +1372,6 @@ void TDSolveFVM::update_chem_upw_be(const int fr, const int to) {
     rhs_a->set(i,comp);
   }
 
-  //cout << " XYZ RHS: " << std::endl;
-  //for ( int i = 0; i < Na; i++ ) {
-  //  comp = rhs_a->get(i);
-  //  HVEC vsol(1);
-  //  vsol = comp.getVal();
-  //  cout << "    " << i << ": " << vsol[0] << std::endl;
-  //}
-
   // Matrix
   Entry elem(1,0.0);
 

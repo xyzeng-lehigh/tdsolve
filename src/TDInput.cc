@@ -69,8 +69,8 @@ TDInput::TDInput(void) {
   tdSetup.tmeth  = 1;     // 0 - forward Euler
                           // 1 - RK2
   tdSetup.assemb = 0;     // 0 - explicit (no Jacobian at all)
-                          // 1 - loose implicit
-                          // 2 - full implicit
+                          // 1 - implicit
+                          // 2 - PMC (just for fun)
   tdSetup.chmppm = false; // Wether to use PPM for chemical r fluxes
   tdSetup.vCoup  = false; // The next two options are relevant
                           // if vCoup == true
@@ -98,6 +98,7 @@ TDInput::TDInput(void) {
   tdSetup.r_opt  = 0; // 0, default, R_{n+1} = R_n + dt*V
                       // 1, consistent, R_{n+1}^2 = R_n^2 + 2*dt*R_n*dR
   tdSetup.jac_lim  = false;
+  tdSetup.jac_vel  = false;
   tdSetup.slim_tot = false;
   tdSetup.logistic = 0;
   tdSetup.prob_id  = 0;  // -1, model problem
@@ -291,6 +292,7 @@ void TDInput::setup_toggles(void) {
   tdToggles["vel_couple"]         = &tdSetup.vCoup;
   tdToggles["v_conv_only"]        = &tdSetup.vOnly;
   tdToggles["Jacobian_limiter"]   = &tdSetup.jac_lim;
+  tdToggles["Jacobian_velocity"]  = &tdSetup.jac_vel;
   tdToggles["lim_sync_tot"]       = &tdSetup.slim_tot;
   tdToggles["diagnostic_vcoup"]   = &tdSetup.diagn_vcoup;
   tdToggles["silence_screen"]     = &tdSetup.silence_screen;
