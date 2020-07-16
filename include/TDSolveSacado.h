@@ -221,6 +221,8 @@ class TDSolveSacado : public TDSolve {
     void calc_srce_g_model(SacadoDepVarArray& s_srce, const DType tsol_loc);
     void calc_srce_n_model(SacadoDepVarArray& s_srce, const DType tsol_loc);
 
+    inline SacadoDepVar icalc_scal_logist_mm(DType,Sacado::Fad::DFad<DType>,DType,DType,DType,Sacado::Fad::DFad<DType>);
+
     void compute_source_chem_prob(const int nt, const DType tsol_loc);
     void calc_srce_chem_var(std::string chemname, const int nt, const DType tsol_loc);
 
@@ -228,5 +230,16 @@ class TDSolveSacado : public TDSolve {
     DType calc_n_bc( const DType tsol_loc );
 
 };
+
+inline TDSolveSacado::SacadoDepVar TDSolveSacado::icalc_scal_logist_mm(DType scal, Sacado::Fad::DFad<DType> s_logist, DType mm_const, DType mm_ceil, DType mm_half, Sacado::Fad::DFad<DType> s_mm) {
+  SacadoDepVar s_val;
+  if ( s_logist > 1.0 )
+    s_val = 0.0;
+  else if ( s_logist < 0.0 )
+    s_val = scal * (mm_const + mm_ceil * s_mm/(mm_half+s_mm));
+  else
+    s_val = scal * (1.0-s_logist) * (mm_const + mm_ceil * s_mm/(mm_half+s_mm));
+  return s_val;
+}
 
 #endif

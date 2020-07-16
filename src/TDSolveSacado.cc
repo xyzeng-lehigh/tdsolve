@@ -139,7 +139,7 @@ void TDSolveSacado::setup(void) {
   // OPN model
   if ( tdSetup->prob_id == 1 ) {
     setup_chem_par( "P1", tdCoef->gamma_1, tdCoef->D_1, "N", tdCoef->alpha_1, tdCoef->beta_1/tdCoef->theta, false );
-    setup_chem_par( "P2", tdCoef->gamma_2, tdCoef->D_2, "N", tdCoef->alpha_2, tdCoef->beta_2/tdCoef->theta, false );
+    setup_chem_par( "P2", tdCoef->gamma_2, tdCoef->D_2, "G", tdCoef->alpha_2, tdCoef->beta_2/tdCoef->theta, false );
   }
 
   return;
@@ -1847,16 +1847,63 @@ void TDSolveSacado::calc_srce_n_pdgf(SacadoDepVarArray& s_srce, const DType tsol
 
 void TDSolveSacado::calc_srce_g_opn(SacadoDepVarArray& s_srce, const DType tsol_loc) {
   calc_srce_g_base( s_srce, tsol_loc );
+
+  DType lambda  = tdCoef->lambda;
+  DType omega   = tdCoef->omega;
+  DType a       = tdCoef->a;
+  DType b       = tdCoef->b;
+  DType a_prime = tdCoef->a_prime;
+  DType b_prime = tdCoef->b_prime;
+  DType mu      = tdCoef->mu;
+  DType mu_coef = tdCoef->mu_coef;
+  DType mu_slp  = tdCoef->mu_slp;
+  DType p       = tdCoef->p;
+  SacadoIndVarArray& s_g  = S_data_var["G"];
+  SacadoIndVarArray& s_n  = S_data_var["N"];
+  SacadoIndVarArray& s_p1 = S_data_var["P1"];
+  SacadoIndVarArray& s_p2 = S_data_var["P2"];
+
+  SacadoDepVar s_lambda;
+  SacadoDepVar s_mu;
+
+  for ( int i = 0; i < Nx; i++ ) {
+    s_lambda = icalc_scal_logist_mm(lambda,s_g[i],1.0,b_prime,b,s_p2[i]);
+    DType loc_mu = ( p == 0.0 ) ? mu * ( mu_coef - mu_slp ) : mu * ( mu_coef - mu_slp * std::pow(x_c[i],p) );
+    s_mu = icalc_scal_logist_mm(loc_mu,0.0,1.0,a_prime,a,s_p1[i]);
+    s_srce[i] += (x_c[i] * x_c[i] * S_data_r * S_data_r) * ( (s_lambda-s_mu-omega*s_n[i]) * s_g[i] );
+  }
+
   return;
 }
 
 void TDSolveSacado::calc_srce_h_opn(SacadoDepVarArray& s_srce, const DType tsol_loc) {
   calc_srce_h_base( s_srce, tsol_loc );
+
+  DType a       = tdCoef->a;
+  DType a_prime = tdCoef->a_prime;
+  DType mu      = tdCoef->mu;
+  DType mu_coef = tdCoef->mu_coef;
+  DType mu_slp  = tdCoef->mu_slp;
+  DType p       = tdCoef->p;
+  DType delta_h = tdCoef->delta_h;
+  SacadoIndVarArray& s_g  = S_data_var["G"];
+  SacadoIndVarArray& s_h  = S_data_var["H"];
+  SacadoIndVarArray& s_p1 = S_data_var["P1"];
+
+  SacadoDepVar s_mu;
+
+  for ( int i = 0; i < Nx; i++ ) {
+    DType loc_mu = ( p == 0.0 ) ? mu * ( mu_coef - mu_slp ) : mu * ( mu_coef - mu_slp * std::pow(x_c[i],p) );
+    s_mu = icalc_scal_logist_mm(loc_mu,0.0,1.0,a_prime,a,s_p1[i]);
+    s_srce[i] += (x_c[i] * x_c[i] * S_data_r * S_data_r) * ( s_mu * s_g[i] - delta_h * s_h[i] );
+  }
+
   return;
 }
 
 void TDSolveSacado::calc_srce_n_opn(SacadoDepVarArray& s_srce, const DType tsol_loc) {
-  calc_srce_n_base( s_srce, tsol_loc );
+  // The same as in the pdgf model
+  calc_srce_n_pdgf( s_srce, tsol_loc );
   return;
 }
 
