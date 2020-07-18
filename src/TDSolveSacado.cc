@@ -257,6 +257,7 @@ void TDSolveSacado::calc_dt(const int nt) {
       v_max += std::fabs( (*H_data_vel[*it][nt])[i] / data_r[nt] );
     }
     dtn_trial = min( dtn_trial, tdSetup->cfl * dx / v_max );
+    dtn_trial = min( dtn_trial, tdSetup->dTmax );
     dtn_cfl1  = min( dtn_cfl1, dx / v_max );
   }
 
@@ -990,6 +991,16 @@ void TDSolveSacado::compute_vel_u_pres(const DType tsol_loc) {
         s_u[0] = 0.0;
         for ( int i = 1; i < num; i++ )
           s_u[i] = v_par * std::sin( 4.0 * l_x_f[i] * S_data_r * ( 1.0 + tsol_loc ) );
+      }
+      break;
+    case 5:
+      {
+        DType v_par = tdSetup->init_u_par;
+        s_u[0] = 0.0;
+        for ( int i = 0; i < num; i++ ) {
+          SacadoDepVar s_r = l_x_f[i] * S_data_r;
+          s_u[i] = - 2.0 * v_par * s_r * std::exp( - v_par * s_r * s_r );
+        }
       }
       break;
   }
@@ -1929,7 +1940,7 @@ void TDSolveSacado::calc_srce_n_model(SacadoDepVarArray& s_srce, const DType tso
   SacadoIndVarArray& s_n = S_data_var["N"];
 
   for ( int i = 0; i < Nx; i++ ) {
-    s_srce[i] += (x_c[i] * x_c[i] * S_data_r * S_data_r) * ( mu * s_g[i] + delta_n * s_n[i] );
+    s_srce[i] += (x_c[i] * x_c[i] * S_data_r * S_data_r) * ( mu * s_g[i] - delta_n * s_n[i] );
   }
 
   return;
