@@ -84,6 +84,8 @@ TDSolveSacado::TDSolveSacado(TDInput* tdInput_ptr) :
     fprintf( ot_file, "\n" );
     fclose( ot_file );
   }
+
+  srce_max = NULL;
 }
 
 TDSolveSacado::~TDSolveSacado(void) {
@@ -102,6 +104,7 @@ TDSolveSacado::~TDSolveSacado(void) {
     delete it->second.sol;
     delete it->second.linSolve;
   }
+  erase_array( srce_max, 1 );
 }
 
 void TDSolveSacado::setup(void) {
@@ -264,7 +267,17 @@ void TDSolveSacado::calc_dt(const int nt) {
           it != velnames.end(); it++ ) {
       v_max += std::fabs( (*H_data_vel[*it][nt])[i] / data_r[nt] );
     }
-    dtn_trial = min( dtn_trial, tdSetup->cfl * dx / v_max );
+    if ( tdSetup->pos_fix ) {
+      DType lip_srce = 0.0;
+      if ( i > 0 )
+        lip_srce = max( lip_srce, (*srce_max[0])[i-1] );
+      if ( i < Nx )
+        lip_srce = max( lip_srce, (*srce_max[0])[i] );
+      dtn_trial = min( dtn_trial, tdSetup->cfl*(1.0/(lip_srce+v_max/dx)) );
+    }
+    else {
+      dtn_trial = min( dtn_trial, tdSetup->cfl * dx / v_max );
+    }
     dtn_trial = min( dtn_trial, tdSetup->dTmax );
     dtn_cfl1  = min( dtn_cfl1, dx / v_max );
   }
@@ -404,6 +417,9 @@ void TDSolveSacado::alloc(void) {
   alloc_sacado_dep();
 
   alloc_functions();
+
+  if ( tdSetup->pos_fix )
+    alloc_array_full( srce_max, Nx, 1 );
 
   return;
 }
@@ -1837,6 +1853,8 @@ void TDSolveSacado::calc_srce_geom(SacadoIndVarArray& s_var, SacadoIndVarArray& 
 }
 
 void TDSolveSacado::compute_source_cell_prob(const DType tsol_loc) {
+  if ( tdSetup->pos_fix )
+    reset_srce_max();
   std::vector<std::string>::iterator it_name;
   for ( it_name = cellnames.begin(); it_name != cellnames.end(); it_name++ ) {
     SacadoDepVarArray& s_srce = S_srce_cell[*it_name];
@@ -1876,6 +1894,11 @@ void TDSolveSacado::calc_srce_g_pdgf(SacadoDepVarArray& s_srce, const DType tsol
     s_srce[i] += x_c[i] * x_c[i] * S_data_r * S_data_r * ((lambda-mu) * s_g[i]);
   }
 
+  if ( tdSetup->pos_fix ) {
+    for ( int i = 0; i < Nx; i++ )
+      adjust_srce_max( i, lambda - mu );
+  }
+
   return;
 }
 
@@ -1891,6 +1914,11 @@ void TDSolveSacado::calc_srce_h_pdgf(SacadoDepVarArray& s_srce, const DType tsol
     s_srce[i] += (x_c[i] * x_c[i] * S_data_r * S_data_r) * ( mu * s_g[i] - delta_h * s_h[i] );
   }
 
+  if ( tdSetup->pos_fix ) {
+    for ( int i = 0; i < Nx; i++ )
+      adjust_srce_max( i, -delta_h );
+  }
+
   return;
 }
 
@@ -1902,6 +1930,11 @@ void TDSolveSacado::calc_srce_n_pdgf(SacadoDepVarArray& s_srce, const DType tsol
 
   for ( int i = 0; i < Nx; i++ ) {
     s_srce[i] += (x_c[i] * x_c[i] * S_data_r * S_data_r) * ( - delta_n * s_n[i] );
+  }
+
+  if ( tdSetup->pos_fix ) {
+    for ( int i = 0; i < Nx; i++ )
+      adjust_srce_max( i, -delta_n );
   }
 
   return;
@@ -1933,6 +1966,8 @@ void TDSolveSacado::calc_srce_g_opn(SacadoDepVarArray& s_srce, const DType tsol_
     DType loc_mu = ( p == 0.0 ) ? mu * ( mu_coef - mu_slp ) : mu * ( mu_coef - mu_slp * std::pow(x_c[i],p) );
     s_mu = icalc_scal_logist_mm(loc_mu,0.0,1.0,a_prime,a,s_p1[i]);
     s_srce[i] += (x_c[i] * x_c[i] * S_data_r * S_data_r) * ( (s_lambda-s_mu-omega*s_n[i]) * s_g[i] );
+    if ( tdSetup->pos_fix )
+      adjust_srce_max( i, s_lambda.val()-s_mu.val()-omega*s_n[i].val() );
   }
 
   return;
@@ -1960,6 +1995,11 @@ void TDSolveSacado::calc_srce_h_opn(SacadoDepVarArray& s_srce, const DType tsol_
     s_srce[i] += (x_c[i] * x_c[i] * S_data_r * S_data_r) * ( s_mu * s_g[i] - delta_h * s_h[i] );
   }
 
+  if ( tdSetup->pos_fix ) {
+    for ( int i = 0; i < Nx; i++ )
+      adjust_srce_max( i, -delta_h );
+  }
+
   return;
 }
 
@@ -1979,6 +2019,11 @@ void TDSolveSacado::calc_srce_g_model(SacadoDepVarArray& s_srce, const DType tso
     s_srce[i] += x_c[i] * x_c[i] * S_data_r * S_data_r * ( lambda * s_g[i] );
   }
 
+  if ( tdSetup->pos_fix ) {
+    for ( int i = 0; i < Nx; i++ )
+      adjust_srce_max( i, lambda );
+  }
+
   return;
 }
 
@@ -1992,6 +2037,11 @@ void TDSolveSacado::calc_srce_n_model(SacadoDepVarArray& s_srce, const DType tso
 
   for ( int i = 0; i < Nx; i++ ) {
     s_srce[i] += (x_c[i] * x_c[i] * S_data_r * S_data_r) * ( mu * s_g[i] - delta_n * s_n[i] );
+  }
+
+  if ( tdSetup->pos_fix ) {
+    for ( int i = 0; i < Nx; i++ )
+      adjust_srce_max( i, -delta_n );
   }
 
   return;
@@ -2041,3 +2091,13 @@ DType TDSolveSacado::calc_n_bc( const DType tsol_loc ) {
   return n_bc;
 }
 
+void TDSolveSacado::reset_srce_max(void) {
+  *srce_max[0] = 0.0;
+  return;
+}
+
+void TDSolveSacado::adjust_srce_max(const int i, DType lip_loc) {
+  if ( lip_loc < 0.0 ) 
+    (*srce_max[0])[i] = std::max( (*srce_max[0])[i], -lip_loc );
+  return;
+}

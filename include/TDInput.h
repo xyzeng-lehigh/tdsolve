@@ -111,6 +111,7 @@ struct TDSetup {
   bool  auto_red_dt;
 
   bool  use_pmc;
+  bool  pos_fix;
 
   int   logistic;
   int   prob_id;

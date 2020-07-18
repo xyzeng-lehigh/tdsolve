@@ -232,6 +232,10 @@ class TDSolveSacado : public TDSolve {
     // Other functions
     DType calc_n_bc( const DType tsol_loc );
 
+  private: // Testing: positivity-preserving
+    HVEC** srce_max; // Incompressibility violation
+    void reset_srce_max(void);
+    void adjust_srce_max(const int i, DType lip_loc); 
 };
 
 inline TDSolveSacado::SacadoDepVar TDSolveSacado::icalc_scal_logist_mm(DType scal, Sacado::Fad::DFad<DType> s_logist, DType mm_const, DType mm_ceil, DType mm_half, Sacado::Fad::DFad<DType> s_mm) {

@@ -116,6 +116,7 @@ TDInput::TDInput(void) {
   tdSetup.auto_red_dt = true;
 
   tdSetup.use_pmc     = false;
+  tdSetup.pos_fix     = false; // For testing, enhancing positivity-preserving
 
   tdLin.Type      = LSYS_TYPE_DIR;
   tdLin.Print     = true;
@@ -306,6 +307,7 @@ void TDInput::setup_toggles(void) {
   tdToggles["silence_output"]     = &tdSetup.silence_output;
   tdToggles["auto_reduce_dt"]     = &tdSetup.auto_red_dt;
   tdToggles["use_pmc"]            = &tdSetup.use_pmc;
+  tdToggles["positivity_fix"]     = &tdSetup.pos_fix;
   tdToggles["lsysPrint"]          = &tdLin.Print;
   return;
 }
