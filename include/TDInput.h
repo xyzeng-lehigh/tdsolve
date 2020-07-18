@@ -49,6 +49,9 @@ struct TDCoef {
   DType mu_coef;
   DType p;
 
+  // Some coefficients for user defined ics
+  DType ic_sine_freq;
+
   // Additional parameters of the OPN model
   DType a, b, D_1, D_2; 
   DType a_prime, b_prime;
@@ -80,6 +83,7 @@ struct TDSetup {
   int   tmeth;
   int   assemb;
   bool  chmppm;
+  int   ppm_reset_num;
 
   // PMC for iterates (velocity, radius, etc.)
   bool  vCoup;

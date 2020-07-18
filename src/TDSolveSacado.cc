@@ -189,6 +189,14 @@ void TDSolveSacado::set_ic(void) {
         setic_unif_cell("G",1.0-tdCoef->n_bc);
         setic_unif_cell("N",tdCoef->n_bc);
         break;
+      case 1:
+        setic_sine_cell("G",0.5,0.5,tdCoef->ic_sine_freq);
+        setic_sine_cell("N",0.5,-0.5,tdCoef->ic_sine_freq);
+        break;
+      case 2:
+        setic_step_cell("G",0.5,tdCoef->n_bc,1.0-tdCoef->n_bc);
+        setic_step_cell("N",0.5,1.0-tdCoef->n_bc,tdCoef->n_bc);
+        break;
       default:
         invalid_ic = true;
         break;
@@ -268,7 +276,10 @@ void TDSolveSacado::calc_dt(const int nt) {
   dtn_old = dtn;
 
   if ( use_tfreq ) {
-    reach_output_now = reach_output_next;
+    if ( iter == 0 )
+      reach_output_now = true;
+    else
+      reach_output_now = reach_output_next;
     if ( t_output - tsol <= dtn ) {
       dtn = t_output - tsol;
       reach_output_next = true;
@@ -578,6 +589,27 @@ void TDSolveSacado::setup_chem_par( std::string chemname,
 
 void TDSolveSacado::setic_unif_cell(std::string name, DType val, int nt) {
   *H_data_var[name][nt] = val;
+  return;
+}
+
+void TDSolveSacado::setic_sine_cell(std::string name, DType c0, DType c1, DType cs, int nt) {
+  DType* l_x_c = varcoord[name];
+  int    num   = varsizes[name];
+  for ( int i = 0; i < num; i++ ) {
+    (*H_data_var[name][nt])[i] = c0 + c1 * std::sin( cs * PI * l_x_c[i] );
+  }
+  return;
+}
+
+void TDSolveSacado::setic_step_cell(std::string name, DType x_sep, DType val_l, DType val_r, int nt) {
+  DType* l_x_c = varcoord[name];
+  int    num   = varsizes[name];
+  for ( int i = 0; i < num; i++ ) {
+    if ( l_x_c[i] < x_sep )
+      (*H_data_var[name][nt])[i] = val_l;
+    else
+      (*H_data_var[name][nt])[i] = val_r;
+  }
   return;
 }
 
@@ -914,6 +946,15 @@ void TDSolveSacado::reset_sacado_dep_array(SacadoDepVarArray& s_var, DType val) 
   return;
 }
 
+void TDSolveSacado::reset_sacado_dep_array(SacadoDepVarArray& s_var, DType val, int num) {
+  int num_max = s_var.size();
+  int num_loc = std::min(num,num_max);
+  for ( int i = 0; i < num_loc; i++ ) {
+    s_var[i] = val;
+  }
+  return;
+}
+
 void TDSolveSacado::sum_in_sacado_dep_array(SacadoDepVarArray& s_tot, DType multip, SacadoDepVarArray& s_var) {
   int num = s_tot.size();
   for ( int i = 0; i < num; i++ ) {
@@ -993,13 +1034,13 @@ void TDSolveSacado::compute_vel_u_pres(const DType tsol_loc) {
           s_u[i] = v_par * std::sin( 4.0 * l_x_f[i] * S_data_r * ( 1.0 + tsol_loc ) );
       }
       break;
-    case 5:
+    case 5: // Exponential growth
       {
         DType v_par = tdSetup->init_u_par;
         s_u[0] = 0.0;
         for ( int i = 0; i < num; i++ ) {
-          SacadoDepVar s_r = l_x_f[i] * S_data_r;
-          s_u[i] = - 2.0 * v_par * s_r * std::exp( - v_par * s_r * s_r );
+          //s_u[i] = - v_par * l_x_f[i] * S_data_r / tdCoef->n_bc;
+          s_u[i] = - 0.5 * v_par * tsol_loc * tsol_loc * l_x_f[i] * S_data_r / tdCoef->n_bc;
         }
       }
       break;
@@ -1173,6 +1214,16 @@ void TDSolveSacado::compute_cells_rflux(void) {
 
   // Compute the synced limiter
   calc_ppm_lim_sync( S_lim_ppm_sync, S_lim_ppm_cell, set_zero, s_ppm_alpha );
+
+  // Turn off the PPM limiter in the first a few intervals!
+  if ( tdSetup->ppm_reset_num < 0 ) {
+    reset_sacado_dep_array( S_lim_ppm_sync[0], 1.0 );
+    reset_sacado_dep_array( S_lim_ppm_sync[1], 1.0 );
+  }
+  if ( tdSetup->ppm_reset_num > 0 ) {
+    reset_sacado_dep_array( S_lim_ppm_sync[0], 1.0, tdSetup->ppm_reset_num );
+    reset_sacado_dep_array( S_lim_ppm_sync[1], 1.0, tdSetup->ppm_reset_num );
+  }
 
   // Compute the fluxes
   for ( std::vector<std::string>::iterator it = cellnames.begin();

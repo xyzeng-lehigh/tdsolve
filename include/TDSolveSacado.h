@@ -113,6 +113,8 @@ class TDSolveSacado : public TDSolve {
 
     // Initial condition for three cell numbers
     void setic_unif_cell(std::string name, DType val, int nt=0);
+    void setic_sine_cell(std::string name, DType c0, DType c1, DType cs, int nt=0);
+    void setic_step_cell(std::string name, DType x_sep, DType val_l, DType val_r, int nt=0);
     void setic_expd_chem(DType multip, DType decay, int nt=0);
     void setic_polyexp_chem(DType poly_0, DType poly_2, int nt=0);
 
@@ -144,6 +146,7 @@ class TDSolveSacado : public TDSolve {
     void reset_sacado_dep_array(SacadoDepVarMapMap&, DType val=0.0);
     void reset_sacado_dep_array(SacadoDepVarMap&, DType val=0.0);
     void reset_sacado_dep_array(SacadoDepVarArray&, DType val=0.0);
+    void reset_sacado_dep_array(SacadoDepVarArray&, DType val, int num);
     void sum_in_sacado_dep_array(SacadoDepVarArray&, DType, SacadoDepVarArray&);
     void print_sacado_ind_array(SacadoIndVarArray&);
     void print_sacado_dep_array(SacadoDepVarArray&);

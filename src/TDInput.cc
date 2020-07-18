@@ -24,6 +24,8 @@ TDInput::TDInput(void) {
   tdCoef.q           = 0.0;
   tdCoef.p           = 0.0;
   tdCoef.mu_coef     = 1.0;
+
+  tdCoef.ic_sine_freq = 1.0;
   
   //OPN model
   tdCoef.a           = 100.0;
@@ -72,6 +74,7 @@ TDInput::TDInput(void) {
                           // 1 - implicit
                           // 2 - PMC (just for fun)
   tdSetup.chmppm = false; // Wether to use PPM for chemical r fluxes
+  tdSetup.ppm_reset_num = 0; // Reset the first a few ppm limiters
   tdSetup.vCoup  = false; // The next two options are relevant
                           // if vCoup == true
   tdSetup.vIter  = 10;    // -1  -- iterate until converge
@@ -234,6 +237,7 @@ void TDInput::setup_parameters(void) {
   tdParameters["p"]               = &tdCoef.p;
   tdParameters["mu_coef"]         = &tdCoef.mu_coef;
   tdParameters["omega"]           = &tdCoef.omega;
+  tdParameters["ic_sine_freq"]    = &tdCoef.ic_sine_freq;
   tdParameters["treatment_P1_T"]  = &tdCoef.treatP1_T;
   tdParameters["treatment_P1_h"]  = &tdCoef.treatP1_h;
   tdParameters["treatment_P1_bc"] = &tdCoef.treatP1_bc;
@@ -269,6 +273,7 @@ void TDInput::setup_options(void) {
   tdOptions["rbc"]           = &tdSetup.rbc;
   tdOptions["time_method"]   = &tdSetup.tmeth;
   tdOptions["assemble"]      = &tdSetup.assemb;
+  tdOptions["ppm_reset_num"] = &tdSetup.ppm_reset_num;
   tdOptions["vel_iter"]      = &tdSetup.vIter;
   tdOptions["norm_pow"]      = &tdSetup.nrmPow;
   tdOptions["newton_iter"]   = &tdSetup.ntIter;
