@@ -30,6 +30,8 @@ ic            = 0
 time_method   = 0
 space_cell    = 0
 space_chem    = 0
+cell_rflux    = 1
+chem_rflux    = 1
 dr_option     = 2
 r_option      = 1
 
@@ -37,5 +39,4 @@ assemble          = 1
 newton_iter       = 3
 Jacobian_limiter  = 0
 Jacobian_velocity = 1
-chem_r_ppm        = 0
 infiltration      = 2

@@ -1,0 +1,3 @@
+The large error is due to the large time step and boundary condition.
+It worth trying if it can be reduced by computing the flux as the 
+time average of boundary data within the time step.
