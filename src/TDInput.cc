@@ -116,7 +116,9 @@ TDInput::TDInput(void) {
   tdSetup.auto_red_dt = true;
 
   tdSetup.use_pmc     = false;
-  tdSetup.pos_fix     = false; // For testing, enhancing positivity-preserving
+  tdSetup.pos_fix     = 0; // 0, no positivity fix
+                           // 1, positivity fix in calc_dt
+                           // 2. positivity fix in both calc_dt and ppm
 
   tdLin.Type      = LSYS_TYPE_DIR;
   tdLin.Print     = true;
@@ -285,6 +287,7 @@ void TDInput::setup_options(void) {
   tdOptions["logistic"]      = &tdSetup.logistic;
   tdOptions["prob_id"]       = &tdSetup.prob_id;
   tdOptions["infiltration"]  = &tdSetup.infil_u;
+  tdOptions["posit_fix"]     = &tdSetup.pos_fix;
   tdOptions["lsysPrecPar"]   = &tdLin.PrecPar;
   tdOptions["lsysMaxIter"]   = &tdLin.MaxIter;
   tdOptions["lsysKrylovCap"] = &tdLin.KrylovCap;
@@ -307,7 +310,6 @@ void TDInput::setup_toggles(void) {
   tdToggles["silence_output"]     = &tdSetup.silence_output;
   tdToggles["auto_reduce_dt"]     = &tdSetup.auto_red_dt;
   tdToggles["use_pmc"]            = &tdSetup.use_pmc;
-  tdToggles["positivity_fix"]     = &tdSetup.pos_fix;
   tdToggles["lsysPrint"]          = &tdLin.Print;
   return;
 }

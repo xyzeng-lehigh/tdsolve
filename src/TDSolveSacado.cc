@@ -21,6 +21,7 @@ TDSolveSacado::TDSolveSacado(TDInput* tdInput_ptr) :
   varlspacks.clear();
   dimlspacks.clear();
   H_cell_offset.clear();
+  cellvels.clear();
 
   // Common for all existing prob_id:
   //  -1 : model problem
@@ -267,7 +268,7 @@ void TDSolveSacado::calc_dt(const int nt) {
           it != velnames.end(); it++ ) {
       v_max += std::fabs( (*H_data_vel[*it][nt])[i] / data_r[nt] );
     }
-    if ( tdSetup->pos_fix ) {
+    if ( tdSetup->pos_fix != 0 ) {
       DType lip_srce = 0.0;
       if ( i > 0 )
         lip_srce = max( lip_srce, (*srce_max[0])[i-1] );
@@ -418,7 +419,7 @@ void TDSolveSacado::alloc(void) {
 
   alloc_functions();
 
-  if ( tdSetup->pos_fix )
+  if ( tdSetup->pos_fix != 0 )
     alloc_array_full( srce_max, Nx, 1 );
 
   return;
@@ -584,6 +585,20 @@ void TDSolveSacado::update_vel(const int fr, const int to, const DType shift_dt,
   return;
 }
 
+void TDSolveSacado::add_vel_to_cellvels(std::string cname, std::string vname) {
+  std::map<std::string,std::set<std::string>>::iterator it = cellvels.find( cname );
+  if ( it == cellvels.end() ) {
+    std::set<std::string> vnames;
+    vnames.clear();
+    cellvels.insert( std::pair<std::string,std::set<std::string>>( cname, vnames ) );
+  }
+  it = cellvels.find( cname );
+  std::set<std::string>::iterator vit = it->second.find( vname );
+  if ( vit == it->second.end() )
+    it->second.insert( vname );
+  return;
+}
+
 void TDSolveSacado::setup_chem_par( std::string chemname, 
     const DType decay, const DType diffusion, std::string cellname, 
     const DType mm_ceil, const DType mm_half, const bool dbc ) {
@@ -723,6 +738,8 @@ void TDSolveSacado::alloc_sacado_dep(void) {
     SacadoDepVarArray S_array;
     alloc_sacado_dep_array(S_array, varsizes[*it_name]+1);
     S_array_v.insert( std::pair<std::string, SacadoDepVarArray>(*it_name, S_array) );
+
+    add_vel_to_cellvels( *it_name, "V" );
   }
   S_flux_cell_v.insert( std::pair<std::string, SacadoDepVarMap>("V", S_array_v) );
   // Flux associated with u
@@ -731,6 +748,8 @@ void TDSolveSacado::alloc_sacado_dep(void) {
     SacadoDepVarArray S_array;
     alloc_sacado_dep_array(S_array, varsizes[*it_name]+1);
     S_array_u.insert( std::pair<std::string, SacadoDepVarArray>(*it_name, S_array) );
+
+    add_vel_to_cellvels( *it_name, "U" );
   }
   S_flux_cell_v.insert( std::pair<std::string, SacadoDepVarMap>("U", S_array_u) );
   // Reconstructed interval face value for PPM flux
@@ -1226,6 +1245,10 @@ void TDSolveSacado::compute_cells_rflux(void) {
     SacadoDepVarArray& s_lim_r = S_lim_ppm_cell[1][*it];
     // Passing -1 as nt, so that S_data_r is used
     calc_ppm_lim_var( s_var, s_rec, s_lim_l, s_lim_r, varcoord[*it], -1, true, &set_zero, s_ppm_alpha);
+  }
+
+  if ( tdSetup->pos_fix == 2 ) {
+    adjust_pos_ppm_lim( s_ppm_alpha );
   }
 
   // Compute the synced limiter
@@ -1821,6 +1844,8 @@ void TDSolveSacado::compute_rad(const int fr, const int to) {
 }
 
 void TDSolveSacado::update_source_geom(int nt) {
+  if ( tdSetup->pos_fix != 0 )
+    adjust_srce_max_geom();
   for ( std::vector<std::string>::iterator it = cellnames.begin();
         it != cellnames.end(); it++ ) {
     SacadoIndVarArray& s_var  = S_data_var[*it];
@@ -1853,7 +1878,7 @@ void TDSolveSacado::calc_srce_geom(SacadoIndVarArray& s_var, SacadoIndVarArray& 
 }
 
 void TDSolveSacado::compute_source_cell_prob(const DType tsol_loc) {
-  if ( tdSetup->pos_fix )
+  if ( tdSetup->pos_fix != 0 )
     reset_srce_max();
   std::vector<std::string>::iterator it_name;
   for ( it_name = cellnames.begin(); it_name != cellnames.end(); it_name++ ) {
@@ -1894,7 +1919,7 @@ void TDSolveSacado::calc_srce_g_pdgf(SacadoDepVarArray& s_srce, const DType tsol
     s_srce[i] += x_c[i] * x_c[i] * S_data_r * S_data_r * ((lambda-mu) * s_g[i]);
   }
 
-  if ( tdSetup->pos_fix ) {
+  if ( tdSetup->pos_fix != 0 ) {
     for ( int i = 0; i < Nx; i++ )
       adjust_srce_max( i, lambda - mu );
   }
@@ -1914,7 +1939,7 @@ void TDSolveSacado::calc_srce_h_pdgf(SacadoDepVarArray& s_srce, const DType tsol
     s_srce[i] += (x_c[i] * x_c[i] * S_data_r * S_data_r) * ( mu * s_g[i] - delta_h * s_h[i] );
   }
 
-  if ( tdSetup->pos_fix ) {
+  if ( tdSetup->pos_fix != 0 ) {
     for ( int i = 0; i < Nx; i++ )
       adjust_srce_max( i, -delta_h );
   }
@@ -1932,7 +1957,7 @@ void TDSolveSacado::calc_srce_n_pdgf(SacadoDepVarArray& s_srce, const DType tsol
     s_srce[i] += (x_c[i] * x_c[i] * S_data_r * S_data_r) * ( - delta_n * s_n[i] );
   }
 
-  if ( tdSetup->pos_fix ) {
+  if ( tdSetup->pos_fix != 0 ) {
     for ( int i = 0; i < Nx; i++ )
       adjust_srce_max( i, -delta_n );
   }
@@ -1966,7 +1991,7 @@ void TDSolveSacado::calc_srce_g_opn(SacadoDepVarArray& s_srce, const DType tsol_
     DType loc_mu = ( p == 0.0 ) ? mu * ( mu_coef - mu_slp ) : mu * ( mu_coef - mu_slp * std::pow(x_c[i],p) );
     s_mu = icalc_scal_logist_mm(loc_mu,0.0,1.0,a_prime,a,s_p1[i]);
     s_srce[i] += (x_c[i] * x_c[i] * S_data_r * S_data_r) * ( (s_lambda-s_mu-omega*s_n[i]) * s_g[i] );
-    if ( tdSetup->pos_fix )
+    if ( tdSetup->pos_fix != 0 )
       adjust_srce_max( i, s_lambda.val()-s_mu.val()-omega*s_n[i].val() );
   }
 
@@ -1995,7 +2020,7 @@ void TDSolveSacado::calc_srce_h_opn(SacadoDepVarArray& s_srce, const DType tsol_
     s_srce[i] += (x_c[i] * x_c[i] * S_data_r * S_data_r) * ( s_mu * s_g[i] - delta_h * s_h[i] );
   }
 
-  if ( tdSetup->pos_fix ) {
+  if ( tdSetup->pos_fix != 0 ) {
     for ( int i = 0; i < Nx; i++ )
       adjust_srce_max( i, -delta_h );
   }
@@ -2019,7 +2044,7 @@ void TDSolveSacado::calc_srce_g_model(SacadoDepVarArray& s_srce, const DType tso
     s_srce[i] += x_c[i] * x_c[i] * S_data_r * S_data_r * ( lambda * s_g[i] );
   }
 
-  if ( tdSetup->pos_fix ) {
+  if ( tdSetup->pos_fix != 0 ) {
     for ( int i = 0; i < Nx; i++ )
       adjust_srce_max( i, lambda );
   }
@@ -2039,7 +2064,7 @@ void TDSolveSacado::calc_srce_n_model(SacadoDepVarArray& s_srce, const DType tso
     s_srce[i] += (x_c[i] * x_c[i] * S_data_r * S_data_r) * ( mu * s_g[i] - delta_n * s_n[i] );
   }
 
-  if ( tdSetup->pos_fix ) {
+  if ( tdSetup->pos_fix != 0 ) {
     for ( int i = 0; i < Nx; i++ )
       adjust_srce_max( i, -delta_n );
   }
@@ -2101,3 +2126,72 @@ void TDSolveSacado::adjust_srce_max(const int i, DType lip_loc) {
     (*srce_max[0])[i] = std::max( (*srce_max[0])[i], -lip_loc );
   return;
 }
+
+void TDSolveSacado::adjust_srce_max_geom(void) {
+  if (S_data_rp.val() < 0.0)
+    return;
+  else {
+    for ( int i = 0; i < Nx; i++ ) {
+      (*srce_max[0])[i] += S_data_rp.val()/S_data_r.val();
+    }
+  }
+  return;
+}
+
+void TDSolveSacado::adjust_pos_ppm_lim( SacadoDepVarArray* s_alpha ) {
+  //std::cout << " XYZ --- step 0 " << std::endl;
+  //print_sacado_dep_array( s_alpha[0] );
+  //print_sacado_dep_array( s_alpha[1] );
+  if ( S_data_rp.val() < 0 )
+    for ( int i = 0; i < Nx-1; i++ ) {
+      DType coef = - (x_f[i+1]/x_c[i+1])*(x_f[i+1]/x_c[i+1])/fabs(S_data_rp.val())/x_c[i+1];
+      DType loc_x_r = x_c[i+1]*S_data_r.val();
+      DType loc_x_r3 = loc_x_r*loc_x_r*loc_x_r;
+      DType loc_x = x_c[i]*S_data_r.val();
+      DType loc_x3 = loc_x*loc_x*loc_x;
+      for ( std::vector<std::string>::iterator it = cellnames.begin(); 
+            it != cellnames.end(); it++ ) {
+        SacadoIndVarArray& s_var = S_data_var[*it];
+        SacadoDepVarArray& s_rec = S_rec_ppm_cell[*it];
+        DType loc_v = 0.0;
+        for ( std::set<std::string>::iterator vit = cellvels[*it].begin();
+              vit != cellvels[*it].end(); vit++ ) {
+          SacadoDepVarArray& s_v = S_data_vel[*vit];
+          loc_v += min(0.0,s_v[i+1].val());
+        }
+        s_alpha[0][i] = min( s_alpha[0][i].val(), 
+            coef * loc_v * std::fabs(loc_x_r3*s_var[i+1].val()-loc_x3*s_var[i].val()) /
+            max( std::fabs(s_rec[i+1].val()-loc_x3*s_var[i].val()), 1.0e-6 ) );
+      }
+    }
+  //std::cout << " XYZ --- step 1 " << std::endl;
+  //print_sacado_dep_array( s_alpha[0] );
+  //print_sacado_dep_array( s_alpha[1] );
+  if ( S_data_rp.val() > 0 )
+    for ( int i = 1; i < Nx; i++ ) {
+      DType coef = (x_f[i]/x_c[i-1])*(x_f[i]/x_c[i-1])/fabs(S_data_rp.val())/x_c[i-1];
+      DType loc_x_l = x_c[i-1]*S_data_r.val();
+      DType loc_x_l3 = loc_x_l*loc_x_l*loc_x_l;
+      DType loc_x = x_c[i]*S_data_r.val();
+      DType loc_x3 = loc_x*loc_x*loc_x;
+      for ( std::vector<std::string>::iterator it = cellnames.begin(); 
+            it != cellnames.end(); it++ ) {
+        SacadoIndVarArray& s_var = S_data_var[*it];
+        SacadoDepVarArray& s_rec = S_rec_ppm_cell[*it];
+        DType loc_v = 0.0;
+        for ( std::set<std::string>::iterator vit = cellvels[*it].begin();
+              vit != cellvels[*it].end(); vit++ ) {
+          SacadoDepVarArray& s_v = S_data_vel[*vit];
+          loc_v += max(0.0,s_v[i].val());
+        }
+        s_alpha[1][i] = max( s_alpha[0][i].val(), 
+            (1.0/coef/max(loc_v,1.0e-6)) * std::fabs(loc_x3*s_var[i].val() - s_rec[i].val()) /
+            max( std::fabs(loc_x3*s_var[i].val() - loc_x_l3*s_var[i-1].val()), 1.0e-6) );
+      }
+    }
+  //std::cout << " XYZ --- step 2 " << std::endl;
+  //print_sacado_dep_array( s_alpha[0] );
+  //print_sacado_dep_array( s_alpha[1] );
+  return;
+}
+

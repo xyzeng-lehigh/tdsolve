@@ -59,6 +59,10 @@ class TDSolveSacado : public TDSolve {
     std::map<int, LSPack> dimlspacks; // Avoid duplicating linear solvers of the same size
     LSPack cell_lspack; // A linear solver for all cells
     std::map<std::string, int> H_cell_offset;
+    // A map from cell names to non-geometric velocities
+    std::map<std::string,std::set<std::string>> cellvels;
+
+    void add_vel_to_cellvels(std::string, std::string);
 
     // Independent variables (cell numbers and chemicals)
     typedef std::vector<Sacado::Fad::DFad<DType>> SacadoIndVarArray;
@@ -236,6 +240,8 @@ class TDSolveSacado : public TDSolve {
     HVEC** srce_max; // Incompressibility violation
     void reset_srce_max(void);
     void adjust_srce_max(const int i, DType lip_loc); 
+    void adjust_srce_max_geom(void);
+    void adjust_pos_ppm_lim( SacadoDepVarArray* s_alpha );
 };
 
 inline TDSolveSacado::SacadoDepVar TDSolveSacado::icalc_scal_logist_mm(DType scal, Sacado::Fad::DFad<DType> s_logist, DType mm_const, DType mm_ceil, DType mm_half, Sacado::Fad::DFad<DType> s_mm) {
