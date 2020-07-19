@@ -80,9 +80,10 @@ struct TDSetup {
   DType cfl;
   int   ic;
   int   scell, schem, vel, rbc, lbc;
+  int   cell_rflux;
+  int   chem_rflux;
   int   tmeth;
   int   assemb;
-  bool  chmppm;
   int   ppm_reset_num;
 
   // PMC for iterates (velocity, radius, etc.)

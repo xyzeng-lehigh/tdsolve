@@ -176,6 +176,10 @@ class TDSolveSacado : public TDSolve {
     void LimFun_PPM_INT(SacadoDepVar& s_alpha1, SacadoDepVar& s_alpha2, SacadoDepVar& s_lim_l, SacadoDepVar& s_lim_r);
 
     void compute_cells_rflux(void);
+    void calc_rflux_cell_var_upw(std::string cellname);
+    void calc_rflux_cell_var_wupw(std::string cellname);
+    inline DType calc_wupw( const DType l_x, const DType l_dx );
+    void compute_cells_rflux_ppm(void);
     void calc_ppm_lim_var(SacadoIndVarArray& s_var, SacadoDepVarArray& s_rec, SacadoDepVarArray& s_lim_l, SacadoDepVarArray& s_lim_r, DType* l_x_c, const int nt=-1, const bool tosync=false, std::vector<bool>* set_zero=NULL, SacadoDepVarArray* s_alpha=NULL);
     void calc_ppm_lim_sync(SacadoDepVarArray* s_sync, SacadoDepVarMap* s_lims, std::vector<bool>& set_zero, SacadoDepVarArray* s_alpha);
     void calc_ppm_flux_var(SacadoIndVarArray& s_var, SacadoDepVarArray& s_rec, SacadoDepVarArray& s_flx, SacadoDepVarArray* s_lim, DType* l_x_c, const int nt=-1);
@@ -188,6 +192,7 @@ class TDSolveSacado : public TDSolve {
     void compute_chems_rflux(const int nt);
     void calc_rflux_chem_var_upw(std::string chemname, const int nt);
     void calc_rflux_chem_var_ppm(std::string chemname, const int nt);
+    void calc_rflux_chem_var_wupw(std::string chemname, const int nt);
 
     void compute_chems_flux(void);
 
@@ -243,6 +248,10 @@ class TDSolveSacado : public TDSolve {
     void adjust_srce_max_geom(void);
     void adjust_pos_ppm_lim( SacadoDepVarArray* s_alpha );
 };
+
+inline DType TDSolveSacado::calc_wupw( const DType l_x, const DType l_dx ) {
+  return l_x * ( l_x * l_x - 0.25 * l_dx * l_dx );
+}
 
 inline TDSolveSacado::SacadoDepVar TDSolveSacado::icalc_scal_logist_mm(DType scal, Sacado::Fad::DFad<DType> s_logist, DType mm_const, DType mm_ceil, DType mm_half, Sacado::Fad::DFad<DType> s_mm) {
   SacadoDepVar s_val;

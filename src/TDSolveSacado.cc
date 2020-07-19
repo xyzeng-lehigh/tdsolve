@@ -752,26 +752,28 @@ void TDSolveSacado::alloc_sacado_dep(void) {
     add_vel_to_cellvels( *it_name, "U" );
   }
   S_flux_cell_v.insert( std::pair<std::string, SacadoDepVarMap>("U", S_array_u) );
-  // Reconstructed interval face value for PPM flux
-  for ( it_name = cellnames.begin(); it_name != cellnames.end(); it_name++ ) {
-    SacadoDepVarArray S_array;
-    alloc_sacado_dep_array(S_array, varsizes[*it_name]+1);
-    S_rec_ppm_cell.insert( std::pair<std::string, SacadoDepVarArray>(*it_name, S_array) );
+  if ( tdSetup->cell_rflux == 3 ) {
+    // Reconstructed interval face value for PPM flux
+    for ( it_name = cellnames.begin(); it_name != cellnames.end(); it_name++ ) {
+      SacadoDepVarArray S_array;
+      alloc_sacado_dep_array(S_array, varsizes[*it_name]+1);
+      S_rec_ppm_cell.insert( std::pair<std::string, SacadoDepVarArray>(*it_name, S_array) );
+    }
+    // Limiter for PPM flux, two per interval
+    for ( it_name = cellnames.begin(); it_name != cellnames.end(); it_name++ ) {
+      SacadoDepVarArray S_array;
+      alloc_sacado_dep_array(S_array, varsizes[*it_name]);
+      S_lim_ppm_cell[0].insert( std::pair<std::string, SacadoDepVarArray>(*it_name, S_array) );
+    }
+    for ( it_name = cellnames.begin(); it_name != cellnames.end(); it_name++ ) {
+      SacadoDepVarArray S_array;
+      alloc_sacado_dep_array(S_array, varsizes[*it_name]);
+      S_lim_ppm_cell[1].insert( std::pair<std::string, SacadoDepVarArray>(*it_name, S_array) );
+    }
+    // Synced PPM limiters
+    alloc_sacado_dep_array(S_lim_ppm_sync[0],Nx);
+    alloc_sacado_dep_array(S_lim_ppm_sync[1],Nx);
   }
-  // Limiter for PPM flux, two per interval
-  for ( it_name = cellnames.begin(); it_name != cellnames.end(); it_name++ ) {
-    SacadoDepVarArray S_array;
-    alloc_sacado_dep_array(S_array, varsizes[*it_name]);
-    S_lim_ppm_cell[0].insert( std::pair<std::string, SacadoDepVarArray>(*it_name, S_array) );
-  }
-  for ( it_name = cellnames.begin(); it_name != cellnames.end(); it_name++ ) {
-    SacadoDepVarArray S_array;
-    alloc_sacado_dep_array(S_array, varsizes[*it_name]);
-    S_lim_ppm_cell[1].insert( std::pair<std::string, SacadoDepVarArray>(*it_name, S_array) );
-  }
-  // Synced PPM limiters
-  alloc_sacado_dep_array(S_lim_ppm_sync[0],Nx);
-  alloc_sacado_dep_array(S_lim_ppm_sync[1],Nx);
   // Source terms
   for ( it_name = cellnames.begin(); it_name != cellnames.end(); it_name++ ) {
     SacadoDepVarArray S_array;
@@ -946,10 +948,12 @@ void TDSolveSacado::reset_sacado_dep_array(void) {
   reset_sacado_dep_array( S_flux_cell_r, 0.0 );
   reset_sacado_dep_array( S_flux_cell_v, 0.0 );
   reset_sacado_dep_array( S_srce_cell, 0.0 );
-  reset_sacado_dep_array( S_rec_ppm_cell, 0.0 );
-  for ( int i = 0; i < 2; i++ ) {
-    reset_sacado_dep_array( S_lim_ppm_cell[i], 1.0 );
-    reset_sacado_dep_array( S_lim_ppm_sync[i], 1.0 );
+  if ( tdSetup->cell_rflux == 3 ) {
+    reset_sacado_dep_array( S_rec_ppm_cell, 0.0 );
+    for ( int i = 0; i < 2; i++ ) {
+      reset_sacado_dep_array( S_lim_ppm_cell[i], 1.0 );
+      reset_sacado_dep_array( S_lim_ppm_sync[i], 1.0 );
+    }
   }
   reset_sacado_dep_array( S_srce_chem, 0.0 );
   reset_sacado_dep_array( S_flux_chem, 0.0 );
@@ -1228,6 +1232,77 @@ void TDSolveSacado::LimFun_PPM_INT(SacadoDepVar& s_alpha1, SacadoDepVar& s_alpha
 }
 
 void TDSolveSacado::compute_cells_rflux(void) {
+  if ( tdSetup->cell_rflux == 0 ) { // upwind
+    for ( std::vector<string>::iterator it = cellnames.begin();
+          it != cellnames.end(); it++ ) {
+      calc_rflux_cell_var_upw( *it );
+    }
+  }
+  else if ( tdSetup->cell_rflux == 3 ) { // synced ppm
+    compute_cells_rflux_ppm();
+  }
+  else { // weighted upwind
+    for ( std::vector<string>::iterator it = cellnames.begin();
+          it != cellnames.end(); it++ ) {
+      calc_rflux_cell_var_wupw( *it );
+    }
+  }
+  return;
+}
+
+void TDSolveSacado::calc_rflux_cell_var_upw(std::string cellname) {
+  SacadoIndVarArray& s_var = S_data_var[cellname];
+  SacadoDepVarArray& s_flx = S_flux_cell_r[cellname];
+  reset_sacado_dep_array(s_flx);
+  DType* l_x_c = varcoord[cellname];
+  DType* l_x_f = varflxcoord[cellname];
+  int num = s_var.size();
+
+  // - left boundary
+  {
+    s_flx[0] = 0.0;
+  }
+  // - interior points
+  for ( int i = 1; i < num; i++ ) {
+    SacadoDepVar loc_vel_r = - l_x_f[i] * S_data_rp * S_data_r;
+    int offset = ( loc_vel_r >= 0.0 ) ? -1 : 0;
+    int idx = i + offset;
+    s_flx[i] = loc_vel_r * l_x_c[idx] * l_x_c[idx] * s_var[idx];
+  }
+  // - right boundary
+  {
+    s_flx[num] = 0.0;
+  }
+  return;
+}
+
+void TDSolveSacado::calc_rflux_cell_var_wupw(std::string cellname) {
+  SacadoIndVarArray& s_var = S_data_var[cellname];
+  SacadoDepVarArray& s_flx = S_flux_cell_r[cellname];
+  reset_sacado_dep_array(s_flx);
+  DType* l_x_f = varflxcoord[cellname];
+  int num = s_var.size();
+
+  SacadoDepVar loc_vel_r = - S_data_rp * S_data_r;
+  int offset = ( loc_vel_r >= 0.0 ) ? -1 : 0;
+
+  // - left boundary
+  {
+    s_flx[0] = 0.0;
+  }
+  // - interior points
+  for ( int i = 1; i < num; i++ ) {
+    int idx = i + offset;
+    s_flx[i] = loc_vel_r * calc_wupw( l_x_f[i], dx ) * s_var[idx];
+  }
+  // - right boundary
+  {
+    s_flx[num] = 0.0;
+  }
+  return;
+}
+
+void TDSolveSacado::compute_cells_rflux_ppm(void) {
   // Preparation for the synced limiter
   std::vector<bool> set_zero(S_lim_ppm_sync[0].size(), false);
   SacadoDepVarArray s_ppm_alpha[2];
@@ -1272,7 +1347,6 @@ void TDSolveSacado::compute_cells_rflux(void) {
     SacadoDepVarArray& s_flx = S_flux_cell_r[*it];
     calc_ppm_flux_var( s_var, s_rec, s_flx, S_lim_ppm_sync, varcoord[*it] );
   }
-  return;
 }
 
 void TDSolveSacado::compute_cells_flux(void) {
@@ -1481,8 +1555,12 @@ void TDSolveSacado::calc_dflux_chem_var(std::string chemname) {
 void TDSolveSacado::compute_chems_rflux(const int nt) {
   for ( std::vector<std::string>::iterator it = chemnames.begin();
         it != chemnames.end(); it++ ) {
-    if ( tdSetup->chmppm ) calc_rflux_chem_var_ppm( *it, nt );
-    else calc_rflux_chem_var_upw( *it, nt );
+    if ( tdSetup->chem_rflux == 0 )
+      calc_rflux_chem_var_upw( *it, nt );
+    else if ( tdSetup->chem_rflux == 3 )
+      calc_rflux_chem_var_ppm( *it, nt );
+    else // Including == 1
+      calc_rflux_chem_var_wupw( *it, nt );
   }
   return;
 }
@@ -1538,6 +1616,41 @@ void TDSolveSacado::calc_rflux_chem_var_ppm(std::string chemname, const int nt) 
 
   calc_ppm_flux_var( s_var, s_rec, s_flx, s_lim, varcoord[chemname], nt );
 
+  return;
+}
+
+void TDSolveSacado::calc_rflux_chem_var_wupw(std::string chemname, const int nt) {
+  SacadoIndVarArray& s_var = S_data_var[chemname];
+  SacadoDepVarArray& s_flx = S_flux_chem_r[chemname];
+  reset_sacado_dep_array(s_flx);
+  DType* l_x_f = varflxcoord[chemname];
+  int  num = s_var.size();
+  bool dbc = chempars[chemname].dirichlet_bc;
+
+  SacadoDepVar loc_vel_r = - S_data_rp * data_r[nt];
+  int offset = ( loc_vel_r >= 0.0 ) ? -1 : 0;
+
+  // - left boundary
+  {
+    s_flx[0] = 0.0;
+  }
+  // - interior points
+  for ( int i = 1; i < num; i++ ) {
+    int idx = i + offset;
+    s_flx[i] = loc_vel_r * calc_wupw( l_x_f[i], dx ) * s_var[idx];
+  }
+  // - right boundary
+  {
+    if ( dbc ) { // Homogeneous D. b.c.
+      if ( loc_vel_r >= 0.0 )
+        s_flx[num] = loc_vel_r * calc_wupw( l_x_f[num], dx ) * s_var[num-1];
+      else
+        s_flx[num] = 0.0;
+    }
+    else { // Homogeneous N. b.c.
+      s_flx[num] = loc_vel_r * calc_wupw( l_x_f[num], dx ) * s_var[num-1];
+    }
+  }
   return;
 }
 
@@ -1714,7 +1827,7 @@ void TDSolveSacado::update_cell_linsys_by_res_var(HVEC& h_res, DType h_r, DType*
     // assuming the stencil within a centered stencil of:
     // - 3 intervals if upwind flux is used
     // - 7 intervals if ppm flux is used 
-    int sten = ( tdSetup->chmppm ) ? 3 : 1;
+    int sten = ( tdSetup->chem_rflux == 3 ) ? 3 : 1;
     for ( int i = 0; i < num; i++ ) {
       int i_min = max(0,i-sten);
       DType denom = l_x_c[i]*l_x_c[i]*s_r_to2;
@@ -1785,7 +1898,7 @@ void TDSolveSacado::update_chem_by_res_var_imp(HVEC& h_var, HVEC& h_res, DType h
   // - fluxes - assuming the stencil within a centered stencil of:
   // - 3 intervals if upwind flux is used
   // - 7 intervals if ppm flux is used 
-  int sten = ( tdSetup->chmppm ) ? 3 : 1;
+  int sten = ( tdSetup->chem_rflux == 3 ) ? 3 : 1;
   for ( int i = 0; i < num; i++ ) {
     int i_min = max(0,i-sten);
     DType denom = l_x_c[i]*l_x_c[i]*s_r_to2;

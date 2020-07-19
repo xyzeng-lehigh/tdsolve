@@ -73,7 +73,6 @@ TDInput::TDInput(void) {
   tdSetup.assemb = 0;     // 0 - explicit (no Jacobian at all)
                           // 1 - implicit
                           // 2 - PMC (just for fun)
-  tdSetup.chmppm = false; // Wether to use PPM for chemical r fluxes
   tdSetup.ppm_reset_num = 0; // Reset the first a few ppm limiters
   tdSetup.vCoup  = false; // The next two options are relevant
                           // if vCoup == true
@@ -115,6 +114,8 @@ TDInput::TDInput(void) {
   tdSetup.silence_output = false; // Turn off file outputs
   tdSetup.auto_red_dt = true;
 
+  tdSetup.cell_rflux  = 1; // 0: upwind, 1: weighted upwind, 3: ppm
+  tdSetup.chem_rflux  = 1; // 0: upwind, 1: weighted upwind, 3: ppm
   tdSetup.use_pmc     = false;
   tdSetup.pos_fix     = 0; // 0, no positivity fix
                            // 1, positivity fix in calc_dt
@@ -287,6 +288,8 @@ void TDInput::setup_options(void) {
   tdOptions["logistic"]      = &tdSetup.logistic;
   tdOptions["prob_id"]       = &tdSetup.prob_id;
   tdOptions["infiltration"]  = &tdSetup.infil_u;
+  tdOptions["cell_rflux"]    = &tdSetup.cell_rflux;
+  tdOptions["chem_rflux"]    = &tdSetup.chem_rflux;
   tdOptions["posit_fix"]     = &tdSetup.pos_fix;
   tdOptions["lsysPrecPar"]   = &tdLin.PrecPar;
   tdOptions["lsysMaxIter"]   = &tdLin.MaxIter;
@@ -299,7 +302,6 @@ void TDInput::setup_toggles(void) {
   tdToggles.clear();
   tdToggles["use_treatment_P1"]   = &tdCoef.treatP1;
   tdToggles["use_treatmentBC_P1"] = &tdCoef.treatP1BC;
-  tdToggles["chem_r_ppm"]         = &tdSetup.chmppm;
   tdToggles["vel_couple"]         = &tdSetup.vCoup;
   tdToggles["v_conv_only"]        = &tdSetup.vOnly;
   tdToggles["Jacobian_limiter"]   = &tdSetup.jac_lim;
