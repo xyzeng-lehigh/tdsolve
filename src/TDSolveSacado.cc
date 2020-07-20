@@ -585,6 +585,14 @@ void TDSolveSacado::update_vel(const int fr, const int to, const DType shift_dt,
   return;
 }
 
+DType TDSolveSacado::get_gperc(const int nt) {
+  return get_cell_perc("G",nt);
+}
+
+DType TDSolveSacado::get_nperc(const int nt) {
+  return get_cell_perc("N",nt);
+}
+
 void TDSolveSacado::add_vel_to_cellvels(std::string cname, std::string vname) {
   std::map<std::string,std::set<std::string>>::iterator it = cellvels.find( cname );
   if ( it == cellvels.end() ) {
@@ -2227,6 +2235,29 @@ DType TDSolveSacado::calc_n_bc( const DType tsol_loc ) {
     }
   }
   return n_bc;
+}
+
+DType TDSolveSacado::get_cell_perc(std::string cellname, const int nt) {
+  DType tot_cell = 0.0;
+  DType tot_all  = 0.0;
+
+  DType pi4 = 4.0 * PI;
+  
+  for ( std::vector<std::string>::iterator it = cellnames.begin();
+        it != cellnames.end(); it++ ) {
+    int num = varsizes[*it];
+    DType* l_x_c = varcoord[*it];
+    DType tot_loc = 0.0;
+    for ( int i = 0; i < num; i++ ) {
+      DType r_loc = data_r[nt] * l_x_c[i];
+      tot_loc += pi4 * r_loc * r_loc * (*H_data_var[*it][nt])[i];
+    }
+    tot_all += tot_loc;
+    if ( *it == cellname )
+      tot_cell = tot_loc;
+  }
+
+  return tot_cell / tot_all;
 }
 
 void TDSolveSacado::reset_srce_max(void) {

@@ -34,11 +34,12 @@ class TDFactory {
 
   private:
     char     probName[40];
+    bool     classical_tmeth;
     TDInput* tdInput;
     TDSolve* tdSolve;
 
-    bool run_pdgf(DType& Tterm, DType& Nperc);
-    bool run_opn(DType& Tterm, DType& Nperc);
+    bool run_pdgf(DType& Tterm, DType& Gperc, DType& Nperc);
+    bool run_opn(DType& Tterm, DType& Gperc, DType& Nperc);
 };
 
 #endif

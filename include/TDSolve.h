@@ -72,6 +72,7 @@ class TDSolve {
     // Functions called by API
     bool check_Rterm(const int nt);
     DType get_tsol(void) {return tsol;}
+    virtual DType get_gperc(const int nt) {return 0.0;};
     virtual DType get_nperc(const int nt) {return 0.0;};
 
     void downscale_sol(const int s_nt, const int r_nt);

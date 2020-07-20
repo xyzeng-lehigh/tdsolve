@@ -184,6 +184,7 @@ void parse(int* argc, char** argv) {
             bad_option = true;
             break;
         }
+        break;
       default:
         bad_option = true;
         break;

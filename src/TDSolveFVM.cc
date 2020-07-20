@@ -459,6 +459,21 @@ void TDSolveFVM::update_vel(const int nt, const int nt_dummy, const DType shift_
   return;
 }
 
+DType TDSolveFVM::get_gperc(const int nt) {
+  DType tot_g = 0.0;
+  DType tot_h = 0.0;
+  DType tot_n = 0.0;
+
+  for ( int i = 0; i < Nx; i++ ) {
+    DType r_loc = data_r[nt] * x_c[i];
+    tot_g += 4.0 * PI * r_loc * r_loc * (*data_g[nt])[i];
+    tot_h += 4.0 * PI * r_loc * r_loc * (*data_h[nt])[i];
+    tot_n += 4.0 * PI * r_loc * r_loc * (*data_n[nt])[i];
+  }
+
+  return tot_g / ( tot_g + tot_h + tot_n );
+}
+
 DType TDSolveFVM::get_nperc(const int nt) {
   DType tot_g = 0.0;
   DType tot_h = 0.0;

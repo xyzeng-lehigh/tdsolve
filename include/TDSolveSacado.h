@@ -29,6 +29,10 @@ class TDSolveSacado : public TDSolve {
     // After calling, (*data_v)[to] will be filled
     void update_vel(const int fr, const int to, const DType shift_dt=0.0, const bool last_iter=false);
 
+    // Functions called by APE
+    DType get_gperc(const int nt);
+    DType get_nperc(const int nt);
+
   protected:
     struct ChemPar {
       DType decay;
@@ -240,6 +244,7 @@ class TDSolveSacado : public TDSolve {
 
     // Other functions
     DType calc_n_bc( const DType tsol_loc );
+    DType get_cell_perc(std::string cellname, const int nt);
 
   private: // Testing: positivity-preserving
     HVEC** srce_max; // Incompressibility violation
