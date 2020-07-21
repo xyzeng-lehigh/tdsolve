@@ -1,4 +1,4 @@
-function make_mov_sol_1d_sacado(data_file,mov_id_c,mov_id_f,frate)
+function make_mov_sol_1d_sacado(data_file,mov_id_c,mov_id_f,frate,interval)
 % This is specifically designed to read the data
 % computed from TDSolveSacado
 
@@ -13,6 +13,11 @@ Nm_f = length(mov_id_f);
 
 scrsz = get(0,'ScreenSize');
 figure('Position',[1 scrsz(4) scrsz(3) scrsz(4)]);
+
+Nt_plot = 1:interval:Nt;
+if Nt_plot(end)~=Nt
+  Nt_plot = [Nt_plot Nt];
+end
 
 for nm = 1:(Nm_c+Nm_f)
   if nm <= Nm_c
@@ -70,7 +75,8 @@ for nm = 1:(Nm_c+Nm_f)
   vObj.FrameRate = frate;
   open(vObj);
 
-  for t=1:Nt
+  for nt=1:length(Nt_plot)
+    t = Nt_plot(nt);
     D(1,:) = pdata(t,:);
     X(1,:) = data(t,idx_x,:);
   
