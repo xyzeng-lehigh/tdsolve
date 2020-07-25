@@ -55,6 +55,7 @@ class TDSolveSacado : public TDSolve {
     std::vector<std::string> cellnames_u; // Cell species subject to infiltration
     std::vector<std::string> velnames;    // All velocity names
     std::vector<std::string> chemnames;   // All chemoattractant/OPN names
+    std::vector<std::string> ale_chemnames;
     std::map<std::string, int> varsizes;
     std::map<std::string, DType*> varcoord;
     std::map<std::string, DType*> varflxcoord; // Only exist for cells/chems
@@ -261,6 +262,23 @@ class TDSolveSacado : public TDSolve {
     void update_ale_grids(const int nt);
     // Solve (g^num-1)/(g-1) = val
     bool calc_ale_growth(DType& g, const int num, const DType val);
+    void print_data_array(std::string,DType*,const int);
+    bool check_chem_skip(std::string);
+
+    void compute_ale_source_chem_prob(const int nt, const DType tsol_loc);
+    void calc_ale_srce_chem_var(std::string chemname, const int nt, const DType tsol_loc);
+
+    void compute_ale_chems_dflux(const int nt);
+    void calc_ale_dflux_chem_var(std::string chemname,const int nt);
+
+    void compute_ale_chems_rflux(const int fr, const int to);
+    void calc_ale_rflux_chem_var(std::string chemname, const int fr, const int to);
+
+    void compute_ale_chems_residual(const int fr, const int to);
+    void assemble_ale_residual_var(HVEC& h_res, const int fr, const int to, HVEC& h_var, SacadoIndVarArray& s_var, SacadoDepVarArray& s_flx_r, SacadoDepVarArray& s_flx_d, SacadoDepVarArray& s_src);
+
+    void update_ale_chems_by_res_imp(const int nt);
+    void update_ale_chem_by_res_var_imp(HVEC& h_var, HVEC& h_res, SacadoDepVarArray& s_flx_r, SacadoDepVarArray& s_flx_d, SacadoDepVarArray& s_src, const int offset, LSPack& lsPack, const int nt);
 };
 
 inline DType TDSolveSacado::calc_wupw( const DType l_x, const DType l_dx ) {

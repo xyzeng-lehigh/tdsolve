@@ -107,7 +107,7 @@ TDInput::TDInput(void) {
   tdSetup.prob_id  = 0;  // -1, model problem
                          // 0, default, single chemotaxis
                          // 1, OPN
-  tdSetup.chemo_L     = 50.0;
+  tdSetup.chemo_L     = 100.0;
   tdSetup.chemo_opt   = 0; // 0, range = [0, Na_m * R]
                            // 1, range = [0, chemo_L]
   tdSetup.infil_u     = 0;
