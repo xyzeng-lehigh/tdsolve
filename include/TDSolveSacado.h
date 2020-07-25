@@ -246,12 +246,21 @@ class TDSolveSacado : public TDSolve {
     DType calc_n_bc( const DType tsol_loc );
     DType get_cell_perc(std::string cellname, const int nt);
 
-  private: // Testing: positivity-preserving
     HVEC** srce_max; // Incompressibility violation
     void reset_srce_max(void);
     void adjust_srce_max(const int i, DType lip_loc); 
     void adjust_srce_max_geom(void);
+
+  private: // Testing: positivity-preserving
     void adjust_pos_ppm_lim( SacadoDepVarArray* s_alpha );
+
+  private: // Testing: fixed range for A
+    DType* x_ale_c[2];
+    DType* x_ale_f[2];
+    DType* dx_ale[2];
+    void update_ale_grids(const int nt);
+    // Solve (g^num-1)/(g-1) = val
+    bool calc_ale_growth(DType& g, const int num, const DType val);
 };
 
 inline DType TDSolveSacado::calc_wupw( const DType l_x, const DType l_dx ) {

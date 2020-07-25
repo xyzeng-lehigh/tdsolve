@@ -117,6 +117,10 @@ struct TDSetup {
   int   logistic;
   int   prob_id;
 
+  // Another option for updating chemoattractant
+  DType chemo_L; // Approximating infinity
+  int   chemo_opt;
+
   // Test cases
   int   infil_u;
   DType init_u_par;

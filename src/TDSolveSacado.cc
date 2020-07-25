@@ -106,6 +106,13 @@ TDSolveSacado::~TDSolveSacado(void) {
     delete it->second.linSolve;
   }
   erase_array( srce_max, 1 );
+  if ( tdSetup->chemo_opt == 1 ) {
+    for ( int i = 0; i < 2; i++ ) {
+      delete[] x_ale_c[i];
+      delete[] x_ale_f[i];
+      delete[] dx_ale[i];
+    }
+  }
 }
 
 void TDSolveSacado::setup(void) {
@@ -422,6 +429,14 @@ void TDSolveSacado::alloc(void) {
   if ( tdSetup->pos_fix != 0 )
     alloc_array_full( srce_max, Nx, 1 );
 
+  if ( tdSetup->chemo_opt == 1 ) {
+    for ( int i = 0; i < 2; i++ ) {
+      x_ale_f[i] = new DType[Na+1];
+      x_ale_c[i] = new DType[Na];
+      dx_ale[i]  = new DType[Na];
+    }
+  }
+
   return;
 }
 
@@ -527,6 +542,11 @@ bool TDSolveSacado::update_sol(const int fr, const int to, const DType shift_dt_
     compute_source_chem_prob( to, tsol+shift_dt_to*dtn );
 
     // Step 8. Compute the fluxes for chems. In order:
+    //if ( tdSetup->chemo_opt == 1 ) {
+    //  update_ale_grids( fr ); // fr and to needs to be between 0 and 1
+    //  update_ale_grids( to ); // fr and to needs to be between 0 and 1
+    //}
+
     // 8.1 - S_flux_chem_d["X"]
     //     - it is independent of R, hence no passing of nt
     compute_chems_dflux();
@@ -2283,9 +2303,6 @@ void TDSolveSacado::adjust_srce_max_geom(void) {
 }
 
 void TDSolveSacado::adjust_pos_ppm_lim( SacadoDepVarArray* s_alpha ) {
-  //std::cout << " XYZ --- step 0 " << std::endl;
-  //print_sacado_dep_array( s_alpha[0] );
-  //print_sacado_dep_array( s_alpha[1] );
   if ( S_data_rp.val() < 0 )
     for ( int i = 0; i < Nx-1; i++ ) {
       DType coef = - (x_f[i+1]/x_c[i+1])*(x_f[i+1]/x_c[i+1])/fabs(S_data_rp.val())/x_c[i+1];
@@ -2308,9 +2325,6 @@ void TDSolveSacado::adjust_pos_ppm_lim( SacadoDepVarArray* s_alpha ) {
             max( std::fabs(s_rec[i+1].val()-loc_x3*s_var[i].val()), 1.0e-6 ) );
       }
     }
-  //std::cout << " XYZ --- step 1 " << std::endl;
-  //print_sacado_dep_array( s_alpha[0] );
-  //print_sacado_dep_array( s_alpha[1] );
   if ( S_data_rp.val() > 0 )
     for ( int i = 1; i < Nx; i++ ) {
       DType coef = (x_f[i]/x_c[i-1])*(x_f[i]/x_c[i-1])/fabs(S_data_rp.val())/x_c[i-1];
@@ -2333,9 +2347,71 @@ void TDSolveSacado::adjust_pos_ppm_lim( SacadoDepVarArray* s_alpha ) {
             max( std::fabs(loc_x3*s_var[i].val() - loc_x_l3*s_var[i-1].val()), 1.0e-6) );
       }
     }
-  //std::cout << " XYZ --- step 2 " << std::endl;
-  //print_sacado_dep_array( s_alpha[0] );
-  //print_sacado_dep_array( s_alpha[1] );
   return;
+}
+
+void TDSolveSacado::update_ale_grids(const int nt) {
+  if ( tdSetup->chemo_L < data_r[nt] * (1.0*Na/Nx) ) {
+    throw std::runtime_error( "TDSolveSacado::update_ale_grids - range is too short!\n" );
+  }
+
+  // First part, r from 0 to R, uniform grid
+  for ( int i = 0; i <= Nx; i++ ) {
+    x_ale_f[nt][i] = i * dx * data_r[nt];
+  }
+
+  // Second part, r from R to chemo_L, geometric grid
+  // (g^{Na-Nx}-1)/(g-1) = (L-R)/(R/Nx)
+  DType g;
+  if ( !calc_ale_growth(g,Na-Nx,(tdSetup->chemo_L-data_r[nt])/(dx*data_r[nt])) ) {
+    throw std::runtime_error( "TDSolveSacado::calc_ale_growth - bisection fail.\n" );
+  }
+  DType g_scal = 1.0;
+  for ( int i = Nx+1; i < Na; i++ ) {
+    x_ale_f[nt][i] = x_ale_f[nt][i-1] + dx * g_scal;
+    g_scal *= g;
+  }
+  x_ale_f[nt][Na] = tdSetup->chemo_L;
+
+  for ( int i = 0; i < Na; i++ ) {
+    x_ale_c[nt][i] = 0.5 * (x_ale_f[nt][i] + x_ale_f[nt][i+1]);
+  }
+
+  for ( int i = 0; i < Na; i++ ) {
+    dx_ale[nt][i] = x_ale_f[nt][i+1] - x_ale_f[nt][i];
+  }
+  return;
+}
+
+bool TDSolveSacado::calc_ale_growth(DType& g, const int num, const DType val) {
+  // Bi-section
+  const int   iter_max = 100;
+  const DType loc_eps = 1e-10;
+  DType g_l = std::pow(val/num,1.0/(num-1.0));
+  DType g_r = std::pow(val,1.0/(num-1.0));
+  g = 0.5 * (g_l+g_r);
+  DType f_l = std::pow(g_l,num)-1.0-val*(g_l-1.0);
+  DType f_r = std::pow(g_r,num)-1.0-val*(g_r-1.0);
+
+  int niter = 0;
+
+  if ( f_l * f_r > 0.0 )
+    return false;
+
+  while ( std::fabs(g_r-g_l) > loc_eps && niter < iter_max ) {
+    niter++;
+    DType g_m = 0.5 * ( g_l + g_r );
+    DType f_m = std::pow(g_r,num)-1.0-val*(g_r-1.0); 
+    if ( std::fabs( f_m ) < loc_eps )
+      break;
+    else if ( f_m * f_l < 0.0 )
+      g_r = g_m;
+    else
+      g_l = g_m;
+  }
+
+  g = 0.5 * ( g_l + g_r );
+
+  return niter <  iter_max;
 }
 

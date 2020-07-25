@@ -107,6 +107,9 @@ TDInput::TDInput(void) {
   tdSetup.prob_id  = 0;  // -1, model problem
                          // 0, default, single chemotaxis
                          // 1, OPN
+  tdSetup.chemo_L     = 50.0;
+  tdSetup.chemo_opt   = 0; // 0, range = [0, Na_m * R]
+                           // 1, range = [0, chemo_L]
   tdSetup.infil_u     = 0;
   tdSetup.init_u_par  = 1.0; 
   tdSetup.diagn_vcoup = true;
@@ -258,6 +261,7 @@ void TDInput::setup_parameters(void) {
   tdParameters["dt_init"]         = &tdSetup.dTinit;
   tdParameters["dt_growth"]       = &tdSetup.dTgrow;
   tdParameters["dt_max"]          = &tdSetup.dTmax;
+  tdParameters["chemo_range"]     = &tdSetup.chemo_L;
   tdParameters["init_u_par"]      = &tdSetup.init_u_par;
   tdParameters["lsysTargetRes"]   = &tdLin.TargetRes;
 
@@ -288,6 +292,7 @@ void TDInput::setup_options(void) {
   tdOptions["logistic"]      = &tdSetup.logistic;
   tdOptions["prob_id"]       = &tdSetup.prob_id;
   tdOptions["infiltration"]  = &tdSetup.infil_u;
+  tdOptions["chemo_option"]  = &tdSetup.chemo_opt;
   tdOptions["cell_rflux"]    = &tdSetup.cell_rflux;
   tdOptions["chem_rflux"]    = &tdSetup.chem_rflux;
   tdOptions["posit_fix"]     = &tdSetup.pos_fix;
