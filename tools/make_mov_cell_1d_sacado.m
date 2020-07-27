@@ -41,7 +41,7 @@ ymax = max(max(max(pdata)));
 ymin = min(min(min(pdata)));
 yspn = ymax-ymin;
 ymin = ymin - max(0.1*yspn,0.05);
-ymax = ymax + max(0.1*yspn,0.05);
+ymax = ymax + max(0.1*yspn,0.40);
 
 xmin = min(min(data(:,idx_x,:)));
 xmax = max(max(data(:,idx_x,:)));

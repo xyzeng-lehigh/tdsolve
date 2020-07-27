@@ -182,6 +182,12 @@ void TDSolveSacado::set_ic(void) {
         setic_unif_cell("N",tdCoef->n_bc);
         setic_expd_chem(1.0e+3,1.0);
         break;
+      case 10:
+        setic_unif_cell("G",0.84);
+        setic_unif_cell("H",0.16-tdCoef->n_bc);
+        setic_unif_cell("N",tdCoef->n_bc);
+        (*data_a[0]) = 0.0;
+        break;
       case 1: 
         setic_unif_cell("G",5.0*(1.0-tdCoef->n_bc)/6.0);
         setic_unif_cell("H",(1.0-tdCoef->n_bc)/6.0);
