@@ -149,7 +149,9 @@ void TDSolveSacado::setup(void) {
 
   // OPN or PDGF problems
   if ( tdSetup->prob_id == 0 || tdSetup->prob_id == 1 ) {
+    // XYZ - testing for a mild infiltration velocity only
     setup_chem_par( "A", tdCoef->gamma_a, tdCoef->D, "G", tdCoef->alpha_a, tdCoef->beta_a/tdCoef->theta, true );
+    //setup_chem_par( "A", tdCoef->gamma_a, tdCoef->D, "G", tdCoef->alpha_a, tdCoef->beta_a/tdCoef->theta, true, 1 );
   }
 
   // OPN model
@@ -648,7 +650,7 @@ void TDSolveSacado::add_vel_to_cellvels(std::string cname, std::string vname) {
 
 void TDSolveSacado::setup_chem_par( std::string chemname, 
     const DType decay, const DType diffusion, std::string cellname, 
-    const DType mm_ceil, const DType mm_half, const bool dbc ) {
+    const DType mm_ceil, const DType mm_half, const bool dbc, const int test_opt ) {
   std::map<std::string, ChemPar>::iterator it = chempars.find( chemname );
   if ( it != chempars.end() ) {
     std::string error_message = "TDSolveSacado::setup_chem_par - chemoattractant/opn parameter for " + chemname + " has already been setup.\n";
@@ -661,6 +663,7 @@ void TDSolveSacado::setup_chem_par( std::string chemname,
   chemPar.mm_half      = mm_half;
   chemPar.driver       = cellname;
   chemPar.dirichlet_bc = dbc;
+  chemPar.test_opt     = test_opt;
   chempars.insert( std::pair<std::string, ChemPar>( chemname, chemPar ) );
   return;
 }
@@ -2179,7 +2182,10 @@ void TDSolveSacado::calc_srce_g_opn(SacadoDepVarArray& s_srce, const DType tsol_
   SacadoDepVar s_mu;
 
   for ( int i = 0; i < Nx; i++ ) {
-    s_lambda = icalc_scal_logist_mm(lambda,s_g[i],1.0,b_prime,b,s_p2[i]);
+    if ( tdSetup->logistic == 0 )
+      s_lambda = icalc_scal_logist_mm(lambda,s_g[i],1.0,b_prime,b,s_p2[i]);
+    else
+      s_lambda = icalc_scal_logist_mm(lambda,0.0,1.0,b_prime,b,s_p2[i]);
     DType loc_mu = ( p == 0.0 ) ? mu * ( mu_coef - mu_slp ) : mu * ( mu_coef - mu_slp * std::pow(x_c[i],p) );
     s_mu = icalc_scal_logist_mm(loc_mu,0.0,1.0,a_prime,a,s_p1[i]);
     s_srce[i] += (x_c[i] * x_c[i] * S_data_r * S_data_r) * ( (s_lambda-s_mu-omega*s_n[i]) * s_g[i] );
@@ -2506,8 +2512,23 @@ void TDSolveSacado::calc_ale_srce_chem_var(std::string chemname, const int nt, c
     s_srce[i] += ( - chemPar.decay * s_chem[i] );
   }
 
-  for ( int i = 0; i < Nx; i++ ) {
-    s_srce[i] += ( chemPar.mm_ceil * s_cell[i] ) / ( chemPar.mm_half + s_cell[i] );
+  if ( chemPar.test_opt == 0 ) { // Regular method
+    for ( int i = 0; i < Nx; i++ ) {
+      s_srce[i] += ( chemPar.mm_ceil * s_cell[i] ) / ( chemPar.mm_half + s_cell[i] );
+    }
+  }
+  else if ( chemPar.test_opt == 1 ) {
+    Sacado::Fad::DFad<DType> tot_cell = 0.0;
+    Sacado::Fad::DFad<DType> tot_vlmn = 0.0;
+    for ( int i = 0; i < Nx; i++ ) {
+      tot_cell = x_c[i] * x_c[i] * s_cell[i];
+      tot_vlmn = x_c[i] * x_c[i];
+    }
+    tot_cell = tot_cell/tot_vlmn;
+    Sacado::Fad::DFad<DType> growth = ( chemPar.mm_ceil * tot_cell ) / ( chemPar.mm_half + tot_cell );
+    for ( int i = 0; i < Nx; i++ ) {
+      s_srce[i] += growth * s_chem[i];
+    }
   }
   return;
 }

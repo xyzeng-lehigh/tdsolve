@@ -63,6 +63,7 @@ for nt = 1:length(Nt_plot)
   t = Nt_plot(nt);
   fg = figure(1);
   set(fg,'units','normalized','outerposition',[0 0 1 1]);
+  %set(fg,'units','normalized','outerposition',[0 0 .5 .5]);
   hold on;
 
   for nm = 1:Nm

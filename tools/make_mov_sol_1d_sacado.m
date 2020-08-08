@@ -11,8 +11,8 @@ Nt   = length(time);
 Nm_c = length(mov_id_c);
 Nm_f = length(mov_id_f);
 
-scrsz = get(0,'ScreenSize');
-figure('Position',[1 scrsz(4) scrsz(3) scrsz(4)]);
+figure('units','normalized','outerposition',[0 0 1 1]);
+%figure('units','normalized','outerposition',[0 0 .5 .5]);
 
 Nt_plot = 1:interval:Nt;
 if Nt_plot(end)~=Nt

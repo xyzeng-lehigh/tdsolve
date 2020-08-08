@@ -41,6 +41,8 @@ class TDSolveSacado : public TDSolve {
       DType mm_ceil, mm_half;
       std::string driver;
       bool dirichlet_bc;
+      // Testing options
+      int test_opt;
     };
     struct LSPack {
       LinMat*   mat;
@@ -118,7 +120,7 @@ class TDSolveSacado : public TDSolve {
 
     // Additional setup functions
     void setup_chem_par(std::string chemname, const DType decay, const DType diffusion,
-        std::string cellname, const DType mm_ceil, const DType mm_half, const bool dbc);
+        std::string cellname, const DType mm_ceil, const DType mm_half, const bool dbc, const int test_opt=0);
 
     // Initial condition for three cell numbers
     void setic_unif_cell(std::string name, DType val, int nt=0);
@@ -287,9 +289,9 @@ inline DType TDSolveSacado::calc_wupw( const DType l_x, const DType l_dx ) {
 
 inline TDSolveSacado::SacadoDepVar TDSolveSacado::icalc_scal_logist_mm(DType scal, Sacado::Fad::DFad<DType> s_logist, DType mm_const, DType mm_ceil, DType mm_half, Sacado::Fad::DFad<DType> s_mm) {
   SacadoDepVar s_val;
-  if ( s_logist > 1.0 )
+  if ( s_logist >= 1.0 )
     s_val = 0.0;
-  else if ( s_logist < 0.0 )
+  else if ( s_logist <= 0.0 )
     s_val = scal * (mm_const + mm_ceil * s_mm/(mm_half+s_mm));
   else
     s_val = scal * (1.0-s_logist) * (mm_const + mm_ceil * s_mm/(mm_half+s_mm));
