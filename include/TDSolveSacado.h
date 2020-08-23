@@ -34,6 +34,8 @@ class TDSolveSacado : public TDSolve {
     DType get_nperc(const int nt);
 
   protected:
+    // Inhomogeneous bc function handle
+    typedef DType (TDSolveSacado::*fCalcBC)(const DType);
     struct ChemPar {
       DType decay;
       DType diffusion;
@@ -41,6 +43,7 @@ class TDSolveSacado : public TDSolve {
       DType mm_ceil, mm_half;
       std::string driver;
       bool dirichlet_bc;
+      fCalcBC F_chemBC;
       // Testing options
       int test_opt;
     };
@@ -193,13 +196,13 @@ class TDSolveSacado : public TDSolve {
 
     void compute_cells_flux(void);
 
-    void compute_chems_dflux(void);
-    void calc_dflux_chem_var(std::string chemname);
+    void compute_chems_dflux(const DType tsol_loc);
+    void calc_dflux_chem_var(std::string chemname, const DType tsol_loc);
 
-    void compute_chems_rflux(const int nt);
+    void compute_chems_rflux(const int nt, const DType tsol_loc);
     void calc_rflux_chem_var_upw(std::string chemname, const int nt);
     void calc_rflux_chem_var_ppm(std::string chemname, const int nt);
-    void calc_rflux_chem_var_wupw(std::string chemname, const int nt);
+    void calc_rflux_chem_var_wupw(std::string chemname, const int nt, const DType tsol_loc);
 
     void compute_chems_flux(void);
 
@@ -248,6 +251,7 @@ class TDSolveSacado : public TDSolve {
     // Other functions
     DType calc_n_bc( const DType tsol_loc );
     DType get_cell_perc(std::string cellname, const int nt);
+    DType calc_treatment_P1(const DType tsol_loc);
 
     HVEC** srce_max; // Incompressibility violation
     void reset_srce_max(void);

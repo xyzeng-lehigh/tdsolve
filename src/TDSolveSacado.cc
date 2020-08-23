@@ -158,6 +158,9 @@ void TDSolveSacado::setup(void) {
   if ( tdSetup->prob_id == 1 ) {
     setup_chem_par( "P1", tdCoef->gamma_1, tdCoef->D_1, "N", tdCoef->alpha_1, tdCoef->beta_1/tdCoef->theta, false );
     setup_chem_par( "P2", tdCoef->gamma_2, tdCoef->D_2, "G", tdCoef->alpha_2, tdCoef->beta_2/tdCoef->theta, false );
+    if ( tdCoef->treatP1BC ) {
+      chempars["P1"].F_chemBC = &TDSolveSacado::calc_treatment_P1;
+    }
   }
 
   return;
@@ -570,9 +573,9 @@ bool TDSolveSacado::update_sol(const int fr, const int to, const DType shift_dt_
     // Step 8. Compute the fluxes for chems. In order:
     // 8.1 - S_flux_chem_d["X"]
     //     - it is independent of R, hence no passing of nt
-    compute_chems_dflux();
+    compute_chems_dflux(tsol+shift_dt_to*dtn);
     // 8.2 - S_flux_chem_r["X"]
-    compute_chems_rflux( to );
+    compute_chems_rflux( to, tsol+shift_dt_to*dtn );
     // 8.2 - S_flux_chem["X"]
     compute_chems_flux();
 
@@ -663,6 +666,7 @@ void TDSolveSacado::setup_chem_par( std::string chemname,
   chemPar.mm_half      = mm_half;
   chemPar.driver       = cellname;
   chemPar.dirichlet_bc = dbc;
+  chemPar.F_chemBC     = NULL;
   chemPar.test_opt     = test_opt;
   chempars.insert( std::pair<std::string, ChemPar>( chemname, chemPar ) );
   return;
@@ -1586,17 +1590,17 @@ void TDSolveSacado::calc_ppm_flux_var(SacadoIndVarArray& s_var, SacadoDepVarArra
   return;
 }
 
-void TDSolveSacado::compute_chems_dflux(void) {
+void TDSolveSacado::compute_chems_dflux(const DType tsol_loc) {
   for ( std::vector<std::string>::iterator it = chemnames.begin();
         it != chemnames.end(); it++ ) {
     if ( check_chem_skip( *it ) )
       continue;
-    calc_dflux_chem_var( *it );
+    calc_dflux_chem_var( *it, tsol_loc );
   }
   return;
 }
 
-void TDSolveSacado::calc_dflux_chem_var(std::string chemname) {
+void TDSolveSacado::calc_dflux_chem_var(std::string chemname, const DType tsol_loc) {
   SacadoIndVarArray& s_var = S_data_var[chemname];
   SacadoDepVarArray& s_flx = S_flux_chem_d[chemname];
   reset_sacado_dep_array(s_flx);
@@ -1615,16 +1619,19 @@ void TDSolveSacado::calc_dflux_chem_var(std::string chemname) {
   }
   // - right boundary
   {
-    if ( dbc ) // Homogeneous D. b.c.
-      s_flx[num] = - dcoef * l_x_f[num] * l_x_f[num] * (0.0 - s_var[num-1]) / dx;
-    else // Homogeneous N. b.c.
-      s_flx[num] = 0.0;
+    DType chem_bc = 0.0;
+    if ( chempars[chemname].F_chemBC != NULL )
+      chem_bc = (this->*(chempars[chemname].F_chemBC))(tsol_loc);
+    if ( dbc ) // Dirichlet b.c.
+      s_flx[num] = - dcoef * l_x_f[num] * l_x_f[num] * (chem_bc - s_var[num-1]) / dx;
+    else // Neumann b.c.
+      s_flx[num] = - dcoef * l_x_f[num] * l_x_f[num] * chem_bc;
   }
 
   return;
 }
 
-void TDSolveSacado::compute_chems_rflux(const int nt) {
+void TDSolveSacado::compute_chems_rflux(const int nt, const DType tsol_loc) {
   for ( std::vector<std::string>::iterator it = chemnames.begin();
         it != chemnames.end(); it++ ) {
     if ( check_chem_skip( *it ) )
@@ -1634,7 +1641,7 @@ void TDSolveSacado::compute_chems_rflux(const int nt) {
     else if ( tdSetup->chem_rflux == 3 )
       calc_rflux_chem_var_ppm( *it, nt );
     else // Including == 1
-      calc_rflux_chem_var_wupw( *it, nt );
+      calc_rflux_chem_var_wupw( *it, nt, tsol_loc );
   }
   return;
 }
@@ -1693,7 +1700,7 @@ void TDSolveSacado::calc_rflux_chem_var_ppm(std::string chemname, const int nt) 
   return;
 }
 
-void TDSolveSacado::calc_rflux_chem_var_wupw(std::string chemname, const int nt) {
+void TDSolveSacado::calc_rflux_chem_var_wupw(std::string chemname, const int nt, const DType tsol_loc) {
   SacadoIndVarArray& s_var = S_data_var[chemname];
   SacadoDepVarArray& s_flx = S_flux_chem_r[chemname];
   reset_sacado_dep_array(s_flx);
@@ -1715,14 +1722,20 @@ void TDSolveSacado::calc_rflux_chem_var_wupw(std::string chemname, const int nt)
   }
   // - right boundary
   {
-    if ( dbc ) { // Homogeneous D. b.c.
+    DType chem_bc = 0.0;
+    if ( chempars[chemname].F_chemBC != NULL )
+      chem_bc = (this->*(chempars[chemname].F_chemBC))(tsol_loc);
+    if ( dbc ) { // Dirichlet b.c.
       if ( loc_vel_r >= 0.0 )
         s_flx[num] = loc_vel_r * calc_wupw( l_x_f[num], dx ) * s_var[num-1];
       else
-        s_flx[num] = 0.0;
+        s_flx[num] = loc_vel_r * calc_wupw( l_x_f[num], dx ) * chem_bc;
     }
-    else { // Homogeneous N. b.c.
-      s_flx[num] = loc_vel_r * calc_wupw( l_x_f[num], dx ) * s_var[num-1];
+    else { // Neumann b.c.
+      if ( loc_vel_r >= 0.0 )
+        s_flx[num] = loc_vel_r * calc_wupw( l_x_f[num], dx ) * s_var[num-1];
+      else // XYZ - pay attention whether to use 0.5 here
+        s_flx[num] = loc_vel_r * calc_wupw( l_x_f[num], dx ) * (s_var[num-1] + dx * chem_bc);
     }
   }
   return;
@@ -2337,6 +2350,27 @@ DType TDSolveSacado::get_cell_perc(std::string cellname, const int nt) {
   }
 
   return tot_cell / tot_all;
+}
+
+DType TDSolveSacado::calc_treatment_P1(const DType tsol_loc) {
+  std::vector<DType> t0 = tdCoef->treatP1_t0;
+  DType T = tdCoef->treatP1_T;
+  DType h = tdCoef->treatP1_h;
+
+  if ( t0.size() == 0 )
+    return 0.0;
+
+  int pass_count = 0;
+  for ( unsigned i = 0; i < t0.size(); i++ ) 
+    if ( tsol_loc <= t0[i] )
+      break;
+    else
+      pass_count++;
+
+  if ( pass_count%2 == 0 )
+    return 0.0;
+  else
+    return -T*( 1.0 + cos(2.0*PI*tsol_loc/h) );
 }
 
 void TDSolveSacado::reset_srce_max(void) {
