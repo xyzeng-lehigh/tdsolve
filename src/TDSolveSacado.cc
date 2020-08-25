@@ -573,7 +573,7 @@ bool TDSolveSacado::update_sol(const int fr, const int to, const DType shift_dt_
     // Step 8. Compute the fluxes for chems. In order:
     // 8.1 - S_flux_chem_d["X"]
     //     - it is independent of R, hence no passing of nt
-    compute_chems_dflux(tsol+shift_dt_to*dtn);
+    compute_chems_dflux( to, tsol+shift_dt_to*dtn );
     // 8.2 - S_flux_chem_r["X"]
     compute_chems_rflux( to, tsol+shift_dt_to*dtn );
     // 8.2 - S_flux_chem["X"]
@@ -1590,17 +1590,17 @@ void TDSolveSacado::calc_ppm_flux_var(SacadoIndVarArray& s_var, SacadoDepVarArra
   return;
 }
 
-void TDSolveSacado::compute_chems_dflux(const DType tsol_loc) {
+void TDSolveSacado::compute_chems_dflux(const int nt, const DType tsol_loc) {
   for ( std::vector<std::string>::iterator it = chemnames.begin();
         it != chemnames.end(); it++ ) {
     if ( check_chem_skip( *it ) )
       continue;
-    calc_dflux_chem_var( *it, tsol_loc );
+    calc_dflux_chem_var( *it, nt, tsol_loc );
   }
   return;
 }
 
-void TDSolveSacado::calc_dflux_chem_var(std::string chemname, const DType tsol_loc) {
+void TDSolveSacado::calc_dflux_chem_var(std::string chemname, const int nt, const DType tsol_loc) {
   SacadoIndVarArray& s_var = S_data_var[chemname];
   SacadoDepVarArray& s_flx = S_flux_chem_d[chemname];
   reset_sacado_dep_array(s_flx);
@@ -1625,7 +1625,7 @@ void TDSolveSacado::calc_dflux_chem_var(std::string chemname, const DType tsol_l
     if ( dbc ) // Dirichlet b.c.
       s_flx[num] = - dcoef * l_x_f[num] * l_x_f[num] * (chem_bc - s_var[num-1]) / dx;
     else // Neumann b.c.
-      s_flx[num] = - dcoef * l_x_f[num] * l_x_f[num] * chem_bc;
+      s_flx[num] = - dcoef * l_x_f[num] * l_x_f[num] * data_r[nt] * chem_bc;
   }
 
   return;
@@ -1735,7 +1735,7 @@ void TDSolveSacado::calc_rflux_chem_var_wupw(std::string chemname, const int nt,
       if ( loc_vel_r >= 0.0 )
         s_flx[num] = loc_vel_r * calc_wupw( l_x_f[num], dx ) * s_var[num-1];
       else // XYZ - pay attention whether to use 0.5 here
-        s_flx[num] = loc_vel_r * calc_wupw( l_x_f[num], dx ) * (s_var[num-1] + dx * chem_bc);
+        s_flx[num] = loc_vel_r * calc_wupw( l_x_f[num], dx ) * (s_var[num-1] + dx * data_r[nt] * chem_bc);
     }
   }
   return;
@@ -2370,7 +2370,7 @@ DType TDSolveSacado::calc_treatment_P1(const DType tsol_loc) {
   if ( pass_count%2 == 0 )
     return 0.0;
   else
-    return -T*( 1.0 + cos(2.0*PI*tsol_loc/h) );
+    return - 1.0 * T * ( 1.0 + std::cos(2.0*PI*tsol_loc/h) );
 }
 
 void TDSolveSacado::reset_srce_max(void) {

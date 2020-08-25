@@ -196,8 +196,8 @@ class TDSolveSacado : public TDSolve {
 
     void compute_cells_flux(void);
 
-    void compute_chems_dflux(const DType tsol_loc);
-    void calc_dflux_chem_var(std::string chemname, const DType tsol_loc);
+    void compute_chems_dflux(const int nt, const DType tsol_loc);
+    void calc_dflux_chem_var(std::string chemname, const int nt, const DType tsol_loc);
 
     void compute_chems_rflux(const int nt, const DType tsol_loc);
     void calc_rflux_chem_var_upw(std::string chemname, const int nt);
