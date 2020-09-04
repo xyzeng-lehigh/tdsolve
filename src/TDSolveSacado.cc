@@ -2370,7 +2370,7 @@ DType TDSolveSacado::calc_treatment_P1(const DType tsol_loc) {
   if ( pass_count%2 == 0 )
     return 0.0;
   else
-    return - 1.0 * T * ( 1.0 + std::cos(2.0*PI*tsol_loc/h) );
+    return T * ( 1.0 + std::cos(2.0*PI*tsol_loc/h) );
 }
 
 void TDSolveSacado::reset_srce_max(void) {
