@@ -2444,7 +2444,8 @@ void TDSolveSacado::adjust_pos_ppm_lim( SacadoDepVarArray* s_alpha ) {
 }
 
 void TDSolveSacado::update_ale_grids(const int nt) {
-  if ( tdSetup->chemo_L < data_r[nt] * (1.0*Na/Nx) ) {
+  //if ( tdSetup->chemo_L < data_r[nt] * (1.0*Na/Nx) ) {
+  if ( tdSetup->chemo_L < data_r[nt] * 2 ) {
     throw std::runtime_error( "TDSolveSacado::update_ale_grids - range is too short!\n" );
   }
 
