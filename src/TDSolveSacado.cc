@@ -23,55 +23,64 @@ TDSolveSacado::TDSolveSacado(TDInput* tdInput_ptr) :
   dimlspacks.clear();
   H_cell_offset.clear();
   cellvels.clear();
+  setupVarMap.clear();
+
+  setupVarMap.insert( std::pair<int, fSetupVar>(-1, &TDSolveSacado::setup_var_model) );
+  setupVarMap.insert( std::pair<int, fSetupVar>( 0, &TDSolveSacado::setup_var_pdgf) );
+  setupVarMap.insert( std::pair<int, fSetupVar>( 1, &TDSolveSacado::setup_var_opn) );
+  setupVarMap.insert( std::pair<int, fSetupVar>( 2, &TDSolveSacado::setup_var_oncolytic) );
+
+  // Setup variables
+  (this->*setupVarMap[tdSetup->prob_id])();
 
   // Common for all existing prob_id:
   //  -1 : model problem
   //   0 : pdgf
   //   1 : opn
-  cellnames.push_back( "G" ); 
-  cellnames.push_back( "N" ); 
-  varsizes.insert(std::pair<std::string,int>("G",Nx));
-  varsizes.insert(std::pair<std::string,int>("N",Nx));
-  varcoord.insert(std::pair<std::string,DType*>("G",x_c));
-  varcoord.insert(std::pair<std::string,DType*>("N",x_c));
-  varflxcoord.insert(std::pair<std::string,DType*>("G",x_f));
-  varflxcoord.insert(std::pair<std::string,DType*>("N",x_f));
+  //cellnames.push_back( "G" ); 
+  //cellnames.push_back( "N" ); 
+  //varsizes.insert(std::pair<std::string,int>("G",Nx));
+  //varsizes.insert(std::pair<std::string,int>("N",Nx));
+  //varcoord.insert(std::pair<std::string,DType*>("G",x_c));
+  //varcoord.insert(std::pair<std::string,DType*>("N",x_c));
+  //varflxcoord.insert(std::pair<std::string,DType*>("G",x_f));
+  //varflxcoord.insert(std::pair<std::string,DType*>("N",x_f));
 
-  cellnames_u.push_back( "N" );
+  //cellnames_u.push_back( "N" );
 
-  velnames.push_back( "V" ); 
-  velnames.push_back( "U" ); 
-  varsizes.insert(std::pair<std::string,int>("V",Nx+1));
-  varsizes.insert(std::pair<std::string,int>("U",Nx+1));
-  varcoord.insert(std::pair<std::string,DType*>("V",x_f));
-  varcoord.insert(std::pair<std::string,DType*>("U",x_f));
+  //velnames.push_back( "V" ); 
+  //velnames.push_back( "U" ); 
+  //varsizes.insert(std::pair<std::string,int>("V",Nx+1));
+  //varsizes.insert(std::pair<std::string,int>("U",Nx+1));
+  //varcoord.insert(std::pair<std::string,DType*>("V",x_f));
+  //varcoord.insert(std::pair<std::string,DType*>("U",x_f));
 
-  if ( tdSetup->prob_id == 0 || tdSetup->prob_id == 1 ) { // PDGF or OPN
-    cellnames.push_back( "H" ); 
-    varsizes.insert(std::pair<std::string,int>("H",Nx));
-    varcoord.insert(std::pair<std::string,DType*>("H",x_c));
-    varflxcoord.insert(std::pair<std::string,DType*>("H",x_f));
+  //if ( tdSetup->prob_id == 0 || tdSetup->prob_id == 1 ) { // PDGF or OPN
+  //  cellnames.push_back( "H" ); 
+  //  varsizes.insert(std::pair<std::string,int>("H",Nx));
+  //  varcoord.insert(std::pair<std::string,DType*>("H",x_c));
+  //  varflxcoord.insert(std::pair<std::string,DType*>("H",x_f));
 
-    chemnames.push_back( "A" ); 
-    varsizes.insert(std::pair<std::string,int>("A",Na));
-    varcoord.insert(std::pair<std::string,DType*>("A",x_a_c));
-    varflxcoord.insert(std::pair<std::string,DType*>("A",x_a_f));
+  //  chemnames.push_back( "A" ); 
+  //  varsizes.insert(std::pair<std::string,int>("A",Na));
+  //  varcoord.insert(std::pair<std::string,DType*>("A",x_a_c));
+  //  varflxcoord.insert(std::pair<std::string,DType*>("A",x_a_f));
 
-    if ( tdSetup->chemo_opt == 1 ) {
-      ale_chemnames.push_back( "A" );
-    }
-  }
+  //  if ( tdSetup->chemo_opt == 1 ) {
+  //    ale_chemnames.push_back( "A" );
+  //  }
+  //}
 
-  if ( tdSetup->prob_id == 1 ) { // OPN
-    chemnames.push_back( "P1" ); 
-    chemnames.push_back( "P2" ); 
-    varsizes.insert(std::pair<std::string,int>("P1",Nx));
-    varsizes.insert(std::pair<std::string,int>("P2",Nx));
-    varcoord.insert(std::pair<std::string,DType*>("P1",x_c));
-    varcoord.insert(std::pair<std::string,DType*>("P2",x_c));
-    varflxcoord.insert(std::pair<std::string,DType*>("P1",x_f));
-    varflxcoord.insert(std::pair<std::string,DType*>("P2",x_f));
-  }
+  //if ( tdSetup->prob_id == 1 ) { // OPN
+  //  chemnames.push_back( "P1" ); 
+  //  chemnames.push_back( "P2" ); 
+  //  varsizes.insert(std::pair<std::string,int>("P1",Nx));
+  //  varsizes.insert(std::pair<std::string,int>("P2",Nx));
+  //  varcoord.insert(std::pair<std::string,DType*>("P1",x_c));
+  //  varcoord.insert(std::pair<std::string,DType*>("P2",x_c));
+  //  varflxcoord.insert(std::pair<std::string,DType*>("P1",x_f));
+  //  varflxcoord.insert(std::pair<std::string,DType*>("P2",x_f));
+  //}
 
   if ( !(tdSetup->silence_output) ) {
     FILE* ot_file = fopen( tdInput->outputFile, "w" );
@@ -635,6 +644,63 @@ DType TDSolveSacado::get_gperc(const int nt) {
 
 DType TDSolveSacado::get_nperc(const int nt) {
   return get_cell_perc("N",nt);
+}
+
+void TDSolveSacado::add_cellular_var(std::vector<std::string>& names, std::string name, const int size, DType* x_var, DType* x_flx) {
+  names.push_back( name );
+  varsizes.insert(std::pair<std::string,int>(name,size));
+  varcoord.insert(std::pair<std::string,DType*>(name,x_var));
+  varflxcoord.insert(std::pair<std::string,DType*>(name,x_flx));
+  return;
+}
+
+void TDSolveSacado::add_nodal_var(std::vector<std::string>& names, std::string name, const int size, DType* x_var) {
+  names.push_back( name );
+  varsizes.insert(std::pair<std::string,int>(name,size));
+  varcoord.insert(std::pair<std::string,DType*>(name,x_var));
+  return;
+}
+
+void TDSolveSacado::setup_var_model(void) {
+  add_cellular_var( cellnames, "G", Nx, x_c, x_f );
+  add_cellular_var( cellnames, "N", Nx, x_c, x_f );
+  add_nodal_var( velnames, "V", Nx+1, x_f );
+  add_nodal_var( velnames, "U", Nx+1, x_f );
+  cellnames_u.push_back( "N" );
+  return;
+}
+
+void TDSolveSacado::setup_var_pdgf(void) {
+  add_cellular_var( cellnames, "G", Nx, x_c, x_f );
+  add_cellular_var( cellnames, "N", Nx, x_c, x_f );
+  add_cellular_var( cellnames, "H", Nx, x_c, x_f );
+  add_nodal_var( velnames, "V", Nx+1, x_f );
+  add_nodal_var( velnames, "U", Nx+1, x_f );
+  cellnames_u.push_back( "N" );
+
+  add_cellular_var( chemnames, "A", Na, x_a_c, x_a_f );
+  if ( tdSetup->chemo_opt == 1 )
+    ale_chemnames.push_back( "A" );
+  return;
+}
+
+void TDSolveSacado::setup_var_opn(void) {
+  add_cellular_var( cellnames, "G", Nx, x_c, x_f );
+  add_cellular_var( cellnames, "N", Nx, x_c, x_f );
+  add_cellular_var( cellnames, "H", Nx, x_c, x_f );
+  add_nodal_var( velnames, "V", Nx+1, x_f );
+  add_nodal_var( velnames, "U", Nx+1, x_f );
+  cellnames_u.push_back( "N" );
+
+  add_cellular_var( chemnames, "A", Na, x_a_c, x_a_f );
+  if ( tdSetup->chemo_opt == 1 )
+    ale_chemnames.push_back( "A" );
+  add_cellular_var( chemnames, "P1", Nx, x_c, x_f );
+  add_cellular_var( chemnames, "P2", Nx, x_c, x_f );
+  return;
+}
+
+void TDSolveSacado::setup_var_oncolytic(void) {
 }
 
 void TDSolveSacado::add_vel_to_cellvels(std::string cname, std::string vname) {

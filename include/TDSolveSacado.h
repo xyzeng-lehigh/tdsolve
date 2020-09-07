@@ -14,6 +14,9 @@ class TDSolveSacado : public TDSolve {
     TDSolveSacado(TDInput* tdInput_ptr);
     ~TDSolveSacado(void);
 
+    typedef void (TDSolveSacado::*fSetupVar)(void);
+    std::map<int, fSetupVar> setupVarMap;
+
     void setup(void);
     void set_ic(void);
 
@@ -32,6 +35,16 @@ class TDSolveSacado : public TDSolve {
     // Functions called by APE
     DType get_gperc(const int nt);
     DType get_nperc(const int nt);
+
+  protected:
+    // Setting up variables
+    void add_cellular_var(std::vector<std::string>& names, std::string name, const int size, DType* x_var, DType* x_flx);
+    void add_nodal_var(std::vector<std::string>& names, std::string name, const int size, DType* x_var);
+
+    void setup_var_model(void);
+    void setup_var_pdgf(void);
+    void setup_var_opn(void);
+    void setup_var_oncolytic(void);
 
   protected:
     // Inhomogeneous bc function handle
