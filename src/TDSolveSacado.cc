@@ -24,63 +24,20 @@ TDSolveSacado::TDSolveSacado(TDInput* tdInput_ptr) :
   H_cell_offset.clear();
   cellvels.clear();
   setupVarMap.clear();
+  setupICMap.clear();
 
-  setupVarMap.insert( std::pair<int, fSetupVar>(-1, &TDSolveSacado::setup_var_model) );
-  setupVarMap.insert( std::pair<int, fSetupVar>( 0, &TDSolveSacado::setup_var_pdgf) );
-  setupVarMap.insert( std::pair<int, fSetupVar>( 1, &TDSolveSacado::setup_var_opn) );
-  setupVarMap.insert( std::pair<int, fSetupVar>( 2, &TDSolveSacado::setup_var_oncolytic) );
+  setupVarMap.insert( std::pair<int, fSetupFun>(-1, &TDSolveSacado::setup_var_model) );
+  setupVarMap.insert( std::pair<int, fSetupFun>( 0, &TDSolveSacado::setup_var_pdgf) );
+  setupVarMap.insert( std::pair<int, fSetupFun>( 1, &TDSolveSacado::setup_var_opn) );
+  setupVarMap.insert( std::pair<int, fSetupFun>( 2, &TDSolveSacado::setup_var_oncolytic) );
 
   // Setup variables
   (this->*setupVarMap[tdSetup->prob_id])();
 
-  // Common for all existing prob_id:
-  //  -1 : model problem
-  //   0 : pdgf
-  //   1 : opn
-  //cellnames.push_back( "G" ); 
-  //cellnames.push_back( "N" ); 
-  //varsizes.insert(std::pair<std::string,int>("G",Nx));
-  //varsizes.insert(std::pair<std::string,int>("N",Nx));
-  //varcoord.insert(std::pair<std::string,DType*>("G",x_c));
-  //varcoord.insert(std::pair<std::string,DType*>("N",x_c));
-  //varflxcoord.insert(std::pair<std::string,DType*>("G",x_f));
-  //varflxcoord.insert(std::pair<std::string,DType*>("N",x_f));
-
-  //cellnames_u.push_back( "N" );
-
-  //velnames.push_back( "V" ); 
-  //velnames.push_back( "U" ); 
-  //varsizes.insert(std::pair<std::string,int>("V",Nx+1));
-  //varsizes.insert(std::pair<std::string,int>("U",Nx+1));
-  //varcoord.insert(std::pair<std::string,DType*>("V",x_f));
-  //varcoord.insert(std::pair<std::string,DType*>("U",x_f));
-
-  //if ( tdSetup->prob_id == 0 || tdSetup->prob_id == 1 ) { // PDGF or OPN
-  //  cellnames.push_back( "H" ); 
-  //  varsizes.insert(std::pair<std::string,int>("H",Nx));
-  //  varcoord.insert(std::pair<std::string,DType*>("H",x_c));
-  //  varflxcoord.insert(std::pair<std::string,DType*>("H",x_f));
-
-  //  chemnames.push_back( "A" ); 
-  //  varsizes.insert(std::pair<std::string,int>("A",Na));
-  //  varcoord.insert(std::pair<std::string,DType*>("A",x_a_c));
-  //  varflxcoord.insert(std::pair<std::string,DType*>("A",x_a_f));
-
-  //  if ( tdSetup->chemo_opt == 1 ) {
-  //    ale_chemnames.push_back( "A" );
-  //  }
-  //}
-
-  //if ( tdSetup->prob_id == 1 ) { // OPN
-  //  chemnames.push_back( "P1" ); 
-  //  chemnames.push_back( "P2" ); 
-  //  varsizes.insert(std::pair<std::string,int>("P1",Nx));
-  //  varsizes.insert(std::pair<std::string,int>("P2",Nx));
-  //  varcoord.insert(std::pair<std::string,DType*>("P1",x_c));
-  //  varcoord.insert(std::pair<std::string,DType*>("P2",x_c));
-  //  varflxcoord.insert(std::pair<std::string,DType*>("P1",x_f));
-  //  varflxcoord.insert(std::pair<std::string,DType*>("P2",x_f));
-  //}
+  setupICMap.insert( std::pair<int, fSetupFun>(-1, &TDSolveSacado::setup_ic_model) );
+  setupICMap.insert( std::pair<int, fSetupFun>( 0, &TDSolveSacado::setup_ic_pdgf) );
+  setupICMap.insert( std::pair<int, fSetupFun>( 1, &TDSolveSacado::setup_ic_opn) );
+  setupICMap.insert( std::pair<int, fSetupFun>( 2, &TDSolveSacado::setup_ic_oncolytic) );
 
   if ( !(tdSetup->silence_output) ) {
     FILE* ot_file = fopen( tdInput->outputFile, "w" );
@@ -105,7 +62,14 @@ TDSolveSacado::TDSolveSacado(TDInput* tdInput_ptr) :
 
 TDSolveSacado::~TDSolveSacado(void) {
   erase_array( data_inc, 1 );
-  erase_array( data_u, Ndata );
+  for ( std::map<std::string,HVEC**>::iterator it = H_data_var.begin();
+        it != H_data_var.end(); it++ ) {
+    erase_array( it->second, Ndata );
+  }
+  for ( std::map<std::string,HVEC**>::iterator it = H_data_vel.begin();
+        it != H_data_vel.end(); it++ ) {
+    erase_array( it->second, Ndata );
+  }
   for ( std::map<std::string,HVEC**>::iterator it = H_data_res.begin();
         it != H_data_res.end(); it++ ) {
     erase_array( it->second, 1 );
@@ -134,11 +98,6 @@ void TDSolveSacado::setup(void) {
 
   // Setup linear solver for cell numbers if an implicit method is used
   if ( tdSetup->assemb == 1 ) {
-    //for ( it = cellnames.begin(); it != cellnames.end(); it++ ) {
-    //  setup_new_lin_solve( varsizes[*it] );
-    //  std::map<int,LSPack>::iterator it_ls = dimlspacks.find( varsizes[*it] );
-    //  varlspacks.insert( std::pair<std::string,LSPack>( *it, it_ls->second ) );
-    //}
     int size = 0;
     for ( it = cellnames.begin(); it != cellnames.end(); it++ ) {
       H_cell_offset.insert( std::pair<std::string,int>( *it, size ) );
@@ -156,22 +115,6 @@ void TDSolveSacado::setup(void) {
     varlspacks.insert( std::pair<std::string,LSPack>( *it, it_ls->second ) );
   }
 
-  // OPN or PDGF problems
-  if ( tdSetup->prob_id == 0 || tdSetup->prob_id == 1 ) {
-    // XYZ - testing for a mild infiltration velocity only
-    setup_chem_par( "A", tdCoef->gamma_a, tdCoef->D, "G", tdCoef->alpha_a, tdCoef->beta_a/tdCoef->theta, true );
-    //setup_chem_par( "A", tdCoef->gamma_a, tdCoef->D, "G", tdCoef->alpha_a, tdCoef->beta_a/tdCoef->theta, true, 1 );
-  }
-
-  // OPN model
-  if ( tdSetup->prob_id == 1 ) {
-    setup_chem_par( "P1", tdCoef->gamma_1, tdCoef->D_1, "N", tdCoef->alpha_1, tdCoef->beta_1/tdCoef->theta, false );
-    setup_chem_par( "P2", tdCoef->gamma_2, tdCoef->D_2, "G", tdCoef->alpha_2, tdCoef->beta_2/tdCoef->theta, false );
-    if ( tdCoef->treatP1BC ) {
-      chempars["P1"].F_chemBC = &TDSolveSacado::calc_treatment_P1;
-    }
-  }
-
   return;
 }
 
@@ -187,60 +130,7 @@ void TDSolveSacado::setup_new_lin_solve(const int num) {
 
 void TDSolveSacado::set_ic(void) {
   data_r[0] = tdCoef->R_0;
-  bool invalid_ic = false;
-  if ( tdSetup->prob_id >= 0 ) { // Tumor model
-    switch ( tdSetup->ic ) {
-      case 0: 
-        setic_unif_cell("G",0.84);
-        setic_unif_cell("H",0.16-tdCoef->n_bc);
-        setic_unif_cell("N",tdCoef->n_bc);
-        setic_expd_chem(1.0e+3,1.0);
-        break;
-      case 10:
-        setic_unif_cell("G",0.84);
-        setic_unif_cell("H",0.16-tdCoef->n_bc);
-        setic_unif_cell("N",tdCoef->n_bc);
-        (*data_a[0]) = 0.0;
-        break;
-      case 1: 
-        setic_unif_cell("G",5.0*(1.0-tdCoef->n_bc)/6.0);
-        setic_unif_cell("H",(1.0-tdCoef->n_bc)/6.0);
-        setic_unif_cell("N",tdCoef->n_bc);
-        setic_expd_chem(1.0e+3,1.0);
-        break;
-      case 2:
-        setic_unif_cell("G",1.0-tdCoef->n_bc);
-        setic_unif_cell("H",0.0);
-        setic_unif_cell("N",tdCoef->n_bc);
-        setic_polyexp_chem(5.0/3.0,1.0/6.0);
-        break;
-      default:
-        invalid_ic = true;
-        break;
-    }
-  }
-  else if ( tdSetup->prob_id == -1 ) { // Model problem, only G and N
-    switch ( tdSetup->ic ) {
-      case 0:
-        setic_unif_cell("G",1.0-tdCoef->n_bc);
-        setic_unif_cell("N",tdCoef->n_bc);
-        break;
-      case 1:
-        setic_sine_cell("G",0.5,0.5,tdCoef->ic_sine_freq);
-        setic_sine_cell("N",0.5,-0.5,tdCoef->ic_sine_freq);
-        break;
-      case 2:
-        setic_step_cell("G",0.5,tdCoef->n_bc,1.0-tdCoef->n_bc);
-        setic_step_cell("N",0.5,1.0-tdCoef->n_bc,tdCoef->n_bc);
-        break;
-      default:
-        invalid_ic = true;
-        break;
-    }
-  }
-  else { // Other models
-    invalid_ic = true;
-  }
+  bool invalid_ic = (this->*setupICMap[tdSetup->prob_id])();
 
   if ( invalid_ic ) {
     std::cout << "Error: No initial condition is defined ... Exit ...\n" << std::endl;
@@ -248,11 +138,6 @@ void TDSolveSacado::set_ic(void) {
   }
 
   calc_total_inc_viol(0);
-
-  if ( tdSetup->prob_id == 1 ) {
-    (*data_p1[0]) = 0.0;
-    (*data_p2[0]) = 0.0;
-  }
 
   // This is only to compute the initial time step size
   // All Sacado arrays, velocity, etc., will be recomputed 
@@ -266,7 +151,7 @@ void TDSolveSacado::set_ic(void) {
     // Compute S_data_vel["V"] from S_data_var and S_data_r
     // Hence in this case they corresponds to nt=0
     update_vel(0, 1, 0.0);
-    // Copy S_data_vel["V"] to data_v[0]
+    // Copy S_data_vel["V"] to H_data_vel["V"][0]
     set_from_sacado_vel("V",0);
     set_from_sacado_vel("U",0);
     // This will predict a S_data_rp that is used for the
@@ -405,43 +290,33 @@ void TDSolveSacado::diagnostic(const int nt) {
 
 void TDSolveSacado::alloc(void) {
   Ndata = 3;
-  
-  alloc_array_full( data_g, Nx, Ndata );
-  alloc_array_full( data_n, Nx, Ndata ); // M
-  alloc_array_full( data_v, Nx+1, Ndata );
-  alloc_array_full( data_u, Nx+1, Ndata );
+
+  for ( std::vector<std::string>::iterator it = cellnames.begin();
+        it != cellnames.end(); it++ ) {
+    HVEC** data = NULL;
+    alloc_array_full( data, varsizes[*it], Ndata );
+    H_data_var.insert(std::pair<std::string,HVEC**>(*it,data));
+    S_data_num += varsizes[*it];
+  }
+
+  for ( std::vector<std::string>::iterator it = chemnames.begin();
+        it != chemnames.end(); it++ ) {
+    HVEC** data = NULL;
+    alloc_array_full( data, varsizes[*it], Ndata );
+    H_data_var.insert(std::pair<std::string,HVEC**>(*it,data));
+    S_data_num += varsizes[*it];
+  }
+
+  for ( std::vector<std::string>::iterator it = velnames.begin();
+        it != velnames.end(); it++ ) {
+    HVEC** data = NULL;
+    alloc_array_full( data, varsizes[*it], Ndata );
+    H_data_vel.insert(std::pair<std::string,HVEC**>(*it,data));
+  }
 
   alloc_array_full( data_inc, Nx, 1 );
 
-  H_data_var.insert(std::pair<std::string,HVEC**>("G",data_g));
-  H_data_var.insert(std::pair<std::string,HVEC**>("N",data_n));
-
-  H_data_vel.insert(std::pair<std::string,HVEC**>("V",data_v));
-  H_data_vel.insert(std::pair<std::string,HVEC**>("U",data_u));
-
-  S_data_num += Nx;   // _g
-  S_data_num += Nx;   // _n
-
   data_r  = new DType[Ndata];
-
-  if ( tdSetup->prob_id == 0 || tdSetup->prob_id == 1 ) {
-    alloc_array_full( data_h, Nx, Ndata );
-    H_data_var.insert(std::pair<std::string,HVEC**>("H",data_h));
-    S_data_num += Nx;   // _h
-
-    alloc_array_full( data_a, Na, Ndata ); 
-    H_data_var.insert(std::pair<std::string,HVEC**>("A",data_a));
-    S_data_num += Na;   // _a
-  }
-
-  if ( tdSetup->prob_id == 1 ) {
-    alloc_array_full( data_p1, Nx, Ndata );
-    alloc_array_full( data_p2, Nx, Ndata );
-    H_data_var.insert(std::pair<std::string,HVEC**>("P1",data_p1));
-    H_data_var.insert(std::pair<std::string,HVEC**>("P2",data_p2));
-    S_data_num += Nx;  // _p1
-    S_data_num += Nx;  // _p2
-  }
 
   alloc_hvec_res();
 
@@ -504,10 +379,10 @@ bool TDSolveSacado::update_sol(const int fr, const int to, const DType shift_dt_
     set_sacado_ind( to );
 
     // Step 1. Compute S_data_r and S_data_rp.
-    //   assemb == 0 : S_data_r = data_r[fr], S_data_rp ~ data_v[fr]
-    //   assemb == 1 : S_data_r = data_r[to], S_data_rp ~ data_v[to]
+    //   assemb == 0 : S_data_r = data_r[fr], S_data_rp ~ H_data_vel["V"][fr]
+    //   assemb == 1 : S_data_r = data_r[to], S_data_rp ~ H_data_vel["V"][to]
     // Note that because [fr] is copied to [to] in iter 0,
-    // data_v[to] is always used in this function to compute S_data_rp
+    // H_data_vel["V"][to] is always used in this function to compute S_data_rp
     compute_rad( fr, to );
 
     // Step 2. Compute velocity S_data_vel["V"], which requires S_data_r
@@ -661,16 +536,16 @@ void TDSolveSacado::add_nodal_var(std::vector<std::string>& names, std::string n
   return;
 }
 
-void TDSolveSacado::setup_var_model(void) {
+bool TDSolveSacado::setup_var_model(void) {
   add_cellular_var( cellnames, "G", Nx, x_c, x_f );
   add_cellular_var( cellnames, "N", Nx, x_c, x_f );
   add_nodal_var( velnames, "V", Nx+1, x_f );
   add_nodal_var( velnames, "U", Nx+1, x_f );
   cellnames_u.push_back( "N" );
-  return;
+  return true;
 }
 
-void TDSolveSacado::setup_var_pdgf(void) {
+bool TDSolveSacado::setup_var_pdgf(void) {
   add_cellular_var( cellnames, "G", Nx, x_c, x_f );
   add_cellular_var( cellnames, "N", Nx, x_c, x_f );
   add_cellular_var( cellnames, "H", Nx, x_c, x_f );
@@ -681,10 +556,15 @@ void TDSolveSacado::setup_var_pdgf(void) {
   add_cellular_var( chemnames, "A", Na, x_a_c, x_a_f );
   if ( tdSetup->chemo_opt == 1 )
     ale_chemnames.push_back( "A" );
-  return;
+
+  setup_chem_par( "A", tdCoef->gamma_a, tdCoef->D, "G", tdCoef->alpha_a, tdCoef->beta_a/tdCoef->theta, true );
+  // XYZ - testing for a mild infiltration velocity only
+  //setup_chem_par( "A", tdCoef->gamma_a, tdCoef->D, "G", tdCoef->alpha_a, tdCoef->beta_a/tdCoef->theta, true, 1 );
+
+  return true;
 }
 
-void TDSolveSacado::setup_var_opn(void) {
+bool TDSolveSacado::setup_var_opn(void) {
   add_cellular_var( cellnames, "G", Nx, x_c, x_f );
   add_cellular_var( cellnames, "N", Nx, x_c, x_f );
   add_cellular_var( cellnames, "H", Nx, x_c, x_f );
@@ -697,10 +577,116 @@ void TDSolveSacado::setup_var_opn(void) {
     ale_chemnames.push_back( "A" );
   add_cellular_var( chemnames, "P1", Nx, x_c, x_f );
   add_cellular_var( chemnames, "P2", Nx, x_c, x_f );
-  return;
+
+  setup_chem_par( "A", tdCoef->gamma_a, tdCoef->D, "G", tdCoef->alpha_a, tdCoef->beta_a/tdCoef->theta, true );
+  setup_chem_par( "P1", tdCoef->gamma_1, tdCoef->D_1, "N", tdCoef->alpha_1, tdCoef->beta_1/tdCoef->theta, false );
+  setup_chem_par( "P2", tdCoef->gamma_2, tdCoef->D_2, "G", tdCoef->alpha_2, tdCoef->beta_2/tdCoef->theta, false );
+  if ( tdCoef->treatP1BC )
+    chempars["P1"].F_chemBC = &TDSolveSacado::calc_treatment_P1;
+
+  return true;
 }
 
-void TDSolveSacado::setup_var_oncolytic(void) {
+bool TDSolveSacado::setup_var_oncolytic(void) {
+  return true;
+}
+
+bool TDSolveSacado::setup_ic_model(void) {
+  bool invalid_ic = false;
+  switch ( tdSetup->ic ) {
+    case 0:
+      setic_unif_cell("G",1.0-tdCoef->n_bc);
+      setic_unif_cell("N",tdCoef->n_bc);
+      break;
+    case 1:
+      setic_sine_cell("G",0.5,0.5,tdCoef->ic_sine_freq);
+      setic_sine_cell("N",0.5,-0.5,tdCoef->ic_sine_freq);
+      break;
+    case 2:
+      setic_step_cell("G",0.5,tdCoef->n_bc,1.0-tdCoef->n_bc);
+      setic_step_cell("N",0.5,1.0-tdCoef->n_bc,tdCoef->n_bc);
+      break;
+    default:
+      invalid_ic = true;
+      break;
+  }
+  return invalid_ic;
+}
+
+bool TDSolveSacado::setup_ic_pdgf(void) {
+  bool invalid_ic = false;
+  switch ( tdSetup->ic ) {
+    case 0: 
+      setic_unif_cell("G",0.84);
+      setic_unif_cell("H",0.16-tdCoef->n_bc);
+      setic_unif_cell("N",tdCoef->n_bc);
+      setic_expd_chem(1.0e+3,1.0);
+      break;
+    case 10:
+      setic_unif_cell("G",0.84);
+      setic_unif_cell("H",0.16-tdCoef->n_bc);
+      setic_unif_cell("N",tdCoef->n_bc);
+      (*(H_data_var["A"])[0]) = 0.0;
+      break;
+    case 1: 
+      setic_unif_cell("G",5.0*(1.0-tdCoef->n_bc)/6.0);
+      setic_unif_cell("H",(1.0-tdCoef->n_bc)/6.0);
+      setic_unif_cell("N",tdCoef->n_bc);
+      setic_expd_chem(1.0e+3,1.0);
+      break;
+    case 2:
+      setic_unif_cell("G",1.0-tdCoef->n_bc);
+      setic_unif_cell("H",0.0);
+      setic_unif_cell("N",tdCoef->n_bc);
+      setic_polyexp_chem(5.0/3.0,1.0/6.0);
+      break;
+    default:
+      invalid_ic = true;
+      break;
+  }
+  return invalid_ic;
+}
+
+bool TDSolveSacado::setup_ic_opn(void) {
+  bool invalid_ic = false;
+  switch ( tdSetup->ic ) {
+    case 0: 
+      setic_unif_cell("G",0.84);
+      setic_unif_cell("H",0.16-tdCoef->n_bc);
+      setic_unif_cell("N",tdCoef->n_bc);
+      setic_expd_chem(1.0e+3,1.0);
+      break;
+    case 10:
+      setic_unif_cell("G",0.84);
+      setic_unif_cell("H",0.16-tdCoef->n_bc);
+      setic_unif_cell("N",tdCoef->n_bc);
+      (*(H_data_var["A"])[0]) = 0.0;
+      break;
+    case 1: 
+      setic_unif_cell("G",5.0*(1.0-tdCoef->n_bc)/6.0);
+      setic_unif_cell("H",(1.0-tdCoef->n_bc)/6.0);
+      setic_unif_cell("N",tdCoef->n_bc);
+      setic_expd_chem(1.0e+3,1.0);
+      break;
+    case 2:
+      setic_unif_cell("G",1.0-tdCoef->n_bc);
+      setic_unif_cell("H",0.0);
+      setic_unif_cell("N",tdCoef->n_bc);
+      setic_polyexp_chem(5.0/3.0,1.0/6.0);
+      break;
+    default:
+      invalid_ic = true;
+      break;
+  }
+
+  (*(H_data_var["P1"])[0]) = 0.0;
+  (*(H_data_var["P2"])[0]) = 0.0;
+
+  return invalid_ic;
+}
+
+bool TDSolveSacado::setup_ic_oncolytic(void) {
+  return true;
 }
 
 void TDSolveSacado::add_vel_to_cellvels(std::string cname, std::string vname) {
@@ -765,40 +751,42 @@ void TDSolveSacado::setic_step_cell(std::string name, DType x_sep, DType val_l, 
 }
 
 void TDSolveSacado::setic_expd_chem(DType multip, DType decay, int nt) {
+  HVEC** data_chem = H_data_var["A"];
   if ( tdSetup->chemo_opt == 1 ) {
     update_ale_grids( nt );
     for ( int i = 0; i < Na; i++ ) {
-      (*data_a[nt])[i] = multip * std::exp( - decay * x_ale_c[nt][i] * x_ale_c[nt][i] );
+      (*data_chem[nt])[i] = multip * std::exp( - decay * x_ale_c[nt][i] * x_ale_c[nt][i] );
     }
   }
   else {
     for ( int i = 0; i < Na; i++ ) {
       DType tvar = x_a_c[i] * data_r[nt];
-      (*data_a[nt])[i] = multip * std::exp( - decay * tvar * tvar );
+      (*data_chem[nt])[i] = multip * std::exp( - decay * tvar * tvar );
     }
   }
   return;
 }
 
 void TDSolveSacado::setic_polyexp_chem(DType poly_0, DType poly_2, int nt) {
+  HVEC** data_chem = H_data_var["A"];
   if ( tdSetup->chemo_opt == 1 ) {
     for ( int i = 0; i < Nx; i++ ) {
-      (*data_a[nt])[i] = poly_0 - poly_2 * x_ale_c[nt][i] * x_ale_c[nt][i] / data_r[nt] / data_r[nt];
+      (*data_chem[nt])[i] = poly_0 - poly_2 * x_ale_c[nt][i] * x_ale_c[nt][i] / data_r[nt] / data_r[nt];
     }
     DType exp_coef = poly_0 - poly_2;
     DType exp_rate = 2*poly_2/exp_coef;
     for ( int i = Nx; i < Na; i++ ) {
-      (*data_a[nt])[i] = exp_coef * exp(-exp_rate*(x_ale_c[nt][i]/data_r[nt]-1.0));
+      (*data_chem[nt])[i] = exp_coef * exp(-exp_rate*(x_ale_c[nt][i]/data_r[nt]-1.0));
     }
   }
   else {
     for ( int i = 0; i < Nx; i++ ) {
-      (*data_a[nt])[i] = poly_0 - poly_2 * x_a_c[i] * x_a_c[i];
+      (*data_chem[nt])[i] = poly_0 - poly_2 * x_a_c[i] * x_a_c[i];
     }
     DType exp_coef = poly_0 - poly_2;
     DType exp_rate = 2*poly_2/exp_coef;
     for ( int i = Nx; i < Na; i++ ) {
-      (*data_a[nt])[i] = exp_coef * exp(-exp_rate*(x_a_c[i]-1.0));
+      (*data_chem[nt])[i] = exp_coef * exp(-exp_rate*(x_a_c[i]-1.0));
     }
   }
   return;
@@ -1022,9 +1010,10 @@ void TDSolveSacado::set_sacado_r(const int nt) {
 
 void TDSolveSacado::set_sacado_v(const int nt) {
   SacadoDepVarArray& s_v = S_data_vel["V"];
+  HVEC** data_vel = H_data_vel["V"];
   int num = s_v.size();
   for ( int i = 0; i < num; i++ ) {
-    s_v[i] = (*data_v[nt])[i];
+    s_v[i] = (*data_vel[nt])[i];
   }
   return;
 }
@@ -2086,10 +2075,11 @@ void TDSolveSacado::update_chem_by_res_var_imp(HVEC& h_var, HVEC& h_res, DType h
 }
 
 void TDSolveSacado::compute_rad(const int fr, const int to) {
+  HVEC** data_vel = H_data_vel["V"];
   if ( tdSetup->dr_opt == 2 ) // For legacy issue, there is no opt 1
-    S_data_rp = (*data_v[to])[Nx]/(1.0-0.25*dx*dx);
+    S_data_rp = (*data_vel[to])[Nx]/(1.0-0.25*dx*dx);
   else
-    S_data_rp = (*data_v[to])[Nx];
+    S_data_rp = (*data_vel[to])[Nx];
   
   // Only S_data_rp is required
   if ( fr == to )

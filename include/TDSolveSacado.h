@@ -14,8 +14,9 @@ class TDSolveSacado : public TDSolve {
     TDSolveSacado(TDInput* tdInput_ptr);
     ~TDSolveSacado(void);
 
-    typedef void (TDSolveSacado::*fSetupVar)(void);
-    std::map<int, fSetupVar> setupVarMap;
+    typedef bool (TDSolveSacado::*fSetupFun)(void);
+    std::map<int, fSetupFun> setupVarMap;
+    std::map<int, fSetupFun> setupICMap;
 
     void setup(void);
     void set_ic(void);
@@ -41,10 +42,15 @@ class TDSolveSacado : public TDSolve {
     void add_cellular_var(std::vector<std::string>& names, std::string name, const int size, DType* x_var, DType* x_flx);
     void add_nodal_var(std::vector<std::string>& names, std::string name, const int size, DType* x_var);
 
-    void setup_var_model(void);
-    void setup_var_pdgf(void);
-    void setup_var_opn(void);
-    void setup_var_oncolytic(void);
+    bool setup_var_model(void);
+    bool setup_var_pdgf(void);
+    bool setup_var_opn(void);
+    bool setup_var_oncolytic(void);
+
+    bool setup_ic_model(void);
+    bool setup_ic_pdgf(void);
+    bool setup_ic_opn(void);
+    bool setup_ic_oncolytic(void);
 
   protected:
     // Inhomogeneous bc function handle
