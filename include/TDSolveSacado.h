@@ -17,6 +17,12 @@ class TDSolveSacado : public TDSolve {
     typedef bool (TDSolveSacado::*fSetupFun)(void);
     std::map<int, fSetupFun> setupVarMap;
     std::map<int, fSetupFun> setupICMap;
+    std::map<int, fSetupFun> setupSrceMap;
+    std::map<int, fSetupFun> setupVelUFlxMap;
+
+    typedef bool (TDSolveSacado::*fSetupTFun)(const DType);
+    std::map<int, fSetupTFun> setupVelUMap;
+    std::map<int, fSetupTFun> setupExtraVFlxMap;
 
     void setup(void);
     void set_ic(void);
@@ -51,6 +57,15 @@ class TDSolveSacado : public TDSolve {
     bool setup_ic_pdgf(void);
     bool setup_ic_opn(void);
     bool setup_ic_oncolytic(void);
+
+    bool setup_srce_model(void);
+    bool setup_srce_pdgf(void);
+    bool setup_srce_opn(void);
+    bool setup_srce_oncolytic(void);
+
+    bool compute_extra_vflx_infiltration(const DType);
+
+    bool add_vupdate_uflx(void);
 
   protected:
     // Inhomogeneous bc function handle
@@ -172,7 +187,8 @@ class TDSolveSacado : public TDSolve {
     void set_from_sacado_ind(const int);
     void set_from_sacado_ind_array(std::string, HVEC&);
     void set_from_sacado_r(const int);
-    void set_from_sacado_vel(std::string, const int);
+    void set_from_sacado_vel(const int);
+    void set_from_sacado_vel_ind(std::string, const int);
     void reset_sacado_ind_array(void);
     void reset_sacado_ind_array(SacadoIndVarArray& s_var, const int s_offset, DType val=0.0);
     void reset_sacado_dep_array(void);
@@ -189,8 +205,8 @@ class TDSolveSacado : public TDSolve {
 
     void calc_total_inc_viol(const int nt);
     void compute_vel_u(const DType tsol_loc);
-    void compute_vel_u_pres(const DType tsol_loc);
-    void compute_vel_u_chem(void);
+    bool compute_vel_u_pres(const DType tsol_loc);
+    bool compute_vel_u_chem(const DType tsol_loc);
 
     void compute_vel_v(void);
 

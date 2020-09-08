@@ -25,6 +25,10 @@ TDSolveSacado::TDSolveSacado(TDInput* tdInput_ptr) :
   cellvels.clear();
   setupVarMap.clear();
   setupICMap.clear();
+  setupSrceMap.clear();
+  setupVelUFlxMap.clear();
+  setupVelUMap.clear();
+  setupExtraVFlxMap.clear();
 
   setupVarMap.insert( std::pair<int, fSetupFun>(-1, &TDSolveSacado::setup_var_model) );
   setupVarMap.insert( std::pair<int, fSetupFun>( 0, &TDSolveSacado::setup_var_pdgf) );
@@ -38,6 +42,23 @@ TDSolveSacado::TDSolveSacado(TDInput* tdInput_ptr) :
   setupICMap.insert( std::pair<int, fSetupFun>( 0, &TDSolveSacado::setup_ic_pdgf) );
   setupICMap.insert( std::pair<int, fSetupFun>( 1, &TDSolveSacado::setup_ic_opn) );
   setupICMap.insert( std::pair<int, fSetupFun>( 2, &TDSolveSacado::setup_ic_oncolytic) );
+
+  setupSrceMap.insert( std::pair<int, fSetupFun>(-1, &TDSolveSacado::setup_srce_model) );
+  setupSrceMap.insert( std::pair<int, fSetupFun>( 0, &TDSolveSacado::setup_srce_pdgf) );
+  setupSrceMap.insert( std::pair<int, fSetupFun>( 1, &TDSolveSacado::setup_srce_opn) );
+  setupSrceMap.insert( std::pair<int, fSetupFun>( 2, &TDSolveSacado::setup_srce_oncolytic) );
+
+  setupVelUFlxMap.insert( std::pair<int, fSetupFun>(-1, &TDSolveSacado::add_vupdate_uflx) );
+  setupVelUFlxMap.insert( std::pair<int, fSetupFun>( 0, &TDSolveSacado::add_vupdate_uflx) );
+  setupVelUFlxMap.insert( std::pair<int, fSetupFun>( 1, &TDSolveSacado::add_vupdate_uflx) );
+
+  setupVelUMap.insert( std::pair<int, fSetupTFun>(-1, &TDSolveSacado::compute_vel_u_pres) );
+  setupVelUMap.insert( std::pair<int, fSetupTFun>( 0, &TDSolveSacado::compute_vel_u_chem) );
+  setupVelUMap.insert( std::pair<int, fSetupTFun>( 1, &TDSolveSacado::compute_vel_u_chem) );
+
+  setupExtraVFlxMap.insert( std::pair<int, fSetupTFun>(-1, &TDSolveSacado::compute_extra_vflx_infiltration) );
+  setupExtraVFlxMap.insert( std::pair<int, fSetupTFun>( 0, &TDSolveSacado::compute_extra_vflx_infiltration) );
+  setupExtraVFlxMap.insert( std::pair<int, fSetupTFun>( 1, &TDSolveSacado::compute_extra_vflx_infiltration) );
 
   if ( !(tdSetup->silence_output) ) {
     FILE* ot_file = fopen( tdInput->outputFile, "w" );
@@ -152,8 +173,7 @@ void TDSolveSacado::set_ic(void) {
     // Hence in this case they corresponds to nt=0
     update_vel(0, 1, 0.0);
     // Copy S_data_vel["V"] to H_data_vel["V"][0]
-    set_from_sacado_vel("V",0);
-    set_from_sacado_vel("U",0);
+    set_from_sacado_vel(0);
     // This will predict a S_data_rp that is used for the
     // first time step size computation.
     // Using 0, 0, only S_data_rp will be computed.
@@ -240,8 +260,11 @@ void TDSolveSacado::output(const int nt) {
   if ( tdSetup->silence_output ) return;
 
   FILE* ot_file = fopen( tdInput->radiusFile, "a" );
-  fprintf( ot_file, "%10.20f\t%10.20f\t%10.20f\t%10.20f\n", tsol, data_r[nt], 
-      (*H_data_vel["V"][nt])[varsizes["V"]-1], (*H_data_vel["U"][nt])[varsizes["U"]-1] );
+  fprintf( ot_file, "%10.20f\t%10.20f", tsol, data_r[nt] );
+  for ( std::vector<std::string>::iterator it = velnames.begin();
+        it != velnames.end(); it++ )
+    fprintf( ot_file, "\t%10.20f", (*H_data_vel[*it][nt])[varsizes[*it]-1] );
+  fprintf( ot_file, "\n" );
   fclose( ot_file );
 
   if ( !reach_term_now ) {
@@ -477,8 +500,7 @@ bool TDSolveSacado::update_sol(const int fr, const int to, const DType shift_dt_
     set_sacado_ind( to );
     set_sacado_r( to );
     update_vel( to, to, shift_dt_to );
-    set_from_sacado_vel( "V", to );
-    set_from_sacado_vel( "U", to );
+    set_from_sacado_vel(to);
     compute_rad( to, to );
   }
 
@@ -502,10 +524,9 @@ void TDSolveSacado::copy_data(const int fr, const int to) {
 }
 
 void TDSolveSacado::update_vel(const int fr, const int to, const DType shift_dt, const bool last_iter) {
-  // Compute the velocity u using the gradient
-  compute_vel_u( tsol+shift_dt*dtn );
-  // Compute the flux associated with U
-  compute_cells_varflux( "U", "N", tsol+shift_dt*dtn, true );
+  std::map<int,fSetupTFun>::iterator it = setupExtraVFlxMap.find( tdSetup->prob_id );
+  if ( it != setupExtraVFlxMap.end() )
+    (this->*setupExtraVFlxMap[tdSetup->prob_id])(tsol+shift_dt*dtn);
   // Compute the right-hand sides (source terms)
   compute_source_cell_prob( tsol+shift_dt*dtn );
   // Compute the velocity (integral form)
@@ -686,6 +707,47 @@ bool TDSolveSacado::setup_ic_opn(void) {
 }
 
 bool TDSolveSacado::setup_ic_oncolytic(void) {
+  return true;
+}
+
+bool TDSolveSacado::setup_srce_model(void) {
+  F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("G", &TDSolveSacado::calc_srce_g_model) );
+  F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("N", &TDSolveSacado::calc_srce_n_model) );
+  return true;
+}
+
+bool TDSolveSacado::setup_srce_pdgf(void) {
+  F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("G", &TDSolveSacado::calc_srce_g_pdgf) );
+  F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("H", &TDSolveSacado::calc_srce_h_pdgf) );
+  F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("N", &TDSolveSacado::calc_srce_n_pdgf) );
+  return true;
+}
+
+bool TDSolveSacado::setup_srce_opn(void) {
+  F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("G", &TDSolveSacado::calc_srce_g_opn) );
+  F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("H", &TDSolveSacado::calc_srce_h_opn) );
+  F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("N", &TDSolveSacado::calc_srce_n_opn) );
+  return true;
+}
+
+bool TDSolveSacado::setup_srce_oncolytic(void) {
+  return true;
+}
+
+bool TDSolveSacado::compute_extra_vflx_infiltration(const DType tsol_loc) {
+  // Compute the velocity u using the gradient
+  compute_vel_u( tsol_loc );
+  // Compute the flux associated with U
+  compute_cells_varflux( "U", "N", tsol_loc, true );
+  return true;
+}
+
+bool TDSolveSacado::add_vupdate_uflx(void) {
+  SacadoDepVarArray& s_v = S_data_vel["V"];
+  SacadoDepVarArray& s_flux_u = S_flux_cell_v["U"]["N"];
+  for ( int i = 1; i < Nx+1; i++ ) {
+    s_v[i] = s_v[i] - s_flux_u[i];
+  }
   return true;
 }
 
@@ -937,26 +999,7 @@ void TDSolveSacado::alloc_sacado_dep(void) {
 
 void TDSolveSacado::alloc_functions(void) {
   F_calcSrceMap.clear();
-  if ( tdSetup->prob_id == 0 ) { // PDGF
-    F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("G", &TDSolveSacado::calc_srce_g_pdgf) );
-    F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("H", &TDSolveSacado::calc_srce_h_pdgf) );
-    F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("N", &TDSolveSacado::calc_srce_n_pdgf) );
-  }
-  else if ( tdSetup->prob_id == 1 ) { // OPN
-    F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("G", &TDSolveSacado::calc_srce_g_opn) );
-    F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("H", &TDSolveSacado::calc_srce_h_opn) );
-    F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("N", &TDSolveSacado::calc_srce_n_opn) );
-  }
-  else if ( tdSetup->prob_id == -1 ) { // Model problem
-    F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("G", &TDSolveSacado::calc_srce_g_model) );
-    F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("N", &TDSolveSacado::calc_srce_n_model) );
-  }
-  else {
-    for ( std::vector<std::string>::iterator it = cellnames.begin(); 
-          it != cellnames.end(); it++ ) {
-      F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>(*it, &TDSolveSacado::calc_srce_cell_base) );
-    }
-  }
+  (this->*setupSrceMap[tdSetup->prob_id])();
   return;
 }
 
@@ -970,13 +1013,6 @@ void TDSolveSacado::alloc_sacado_dep_array(SacadoDepVarArray& S_array, const int
 }
 
 void TDSolveSacado::set_sacado_ind(const int nt) {
-  //std::vector<std::string>::iterator it;
-  //for ( it = cellnames.begin(); it != cellnames.end(); it++ ) {
-  //  set_sacado_ind_array(*it, nt);
-  //}
-  //for ( it = chemnames.begin(); it != chemnames.end(); it++ ) {
-  //  set_sacado_ind_array(*it, nt);
-  //}
   set_sacado_ind( cellnames, nt );
   set_sacado_ind( chemnames, nt );
   return;
@@ -1045,7 +1081,14 @@ void TDSolveSacado::set_from_sacado_r(const int nt) {
   return;
 }
 
-void TDSolveSacado::set_from_sacado_vel( std::string name, const int nt) {
+void TDSolveSacado::set_from_sacado_vel(const int nt) {
+  for ( std::vector<std::string>::iterator it = velnames.begin();
+        it != velnames.end(); it++ )
+    set_from_sacado_vel_ind( *it, nt );
+  return;
+}
+
+void TDSolveSacado::set_from_sacado_vel_ind( std::string name, const int nt) {
   SacadoDepVarArray& s_vel = S_data_vel[name];
   int num = varsizes[name];
   for ( int i = 0; i < num; i++ ) {
@@ -1159,14 +1202,13 @@ void TDSolveSacado::calc_total_inc_viol(const int nt) {
 }
 
 void TDSolveSacado::compute_vel_u(const DType tsol_loc) {
-  if ( tdSetup->prob_id < 0 )
-    compute_vel_u_pres(tsol_loc );
-  else
-    compute_vel_u_chem();
+  std::map<int,fSetupTFun>::iterator it = setupVelUMap.find( tdSetup->prob_id );
+  if ( it != setupVelUMap.end() )
+    (this->*setupVelUMap[tdSetup->prob_id])(tsol_loc);
   return;
 }
 
-void TDSolveSacado::compute_vel_u_pres(const DType tsol_loc) {
+bool TDSolveSacado::compute_vel_u_pres(const DType tsol_loc) {
   SacadoDepVarArray& s_u = S_data_vel["U"];
   int num = varsizes["U"];
   DType* l_x_f = varcoord["U"];
@@ -1214,10 +1256,10 @@ void TDSolveSacado::compute_vel_u_pres(const DType tsol_loc) {
       break;
   }
 
-  return;
+  return true;
 }
 
-void TDSolveSacado::compute_vel_u_chem(void) {
+bool TDSolveSacado::compute_vel_u_chem(const DType tsol_loc) {
   SacadoDepVarArray& s_u = S_data_vel["U"];
   SacadoIndVarArray& s_a = S_data_var["A"];
 
@@ -1228,12 +1270,11 @@ void TDSolveSacado::compute_vel_u_chem(void) {
   for ( int i = 1; i <= Nx; i++ )
     s_u[i] = aor * ( (s_a[i] - s_a[i-1]) / dx );
 
-  return;
+  return true;
 }
 
 void TDSolveSacado::compute_vel_v(void) {
   SacadoDepVarArray& s_v = S_data_vel["V"];
-  SacadoDepVarArray& s_flux_u = S_flux_cell_v["U"]["N"];
   
   s_v[0] = 0.0;
 
@@ -1245,8 +1286,12 @@ void TDSolveSacado::compute_vel_v(void) {
     }
   }
 
+  std::map<int,fSetupFun>::iterator it = setupVelUFlxMap.find( tdSetup->prob_id );
+  if ( it != setupVelUFlxMap.end() )
+    (this->*setupVelUFlxMap[tdSetup->prob_id])();
+
   for ( int i = 1; i < Nx+1; i++ ) {
-    s_v[i] = (s_v[i] - s_flux_u[i])/x_f[i]/x_f[i]/S_data_r;
+    s_v[i] = s_v[i]/x_f[i]/x_f[i]/S_data_r;
   }
 
   return;
