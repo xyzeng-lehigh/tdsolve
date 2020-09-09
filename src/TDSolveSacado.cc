@@ -509,7 +509,9 @@ bool TDSolveSacado::update_sol(const int fr, const int to, const DType shift_dt_
   }
 
   // Aux variables
-  (this->*setupAuxMap[tdSetup->prob_id])(tsol+shift_dt_to*dtn);
+  std::map<int,fSetupTFun>::iterator it = setupAuxMap.find( tdSetup->prob_id );
+  if ( it != setupAuxMap.end() )
+    (this->*setupAuxMap[tdSetup->prob_id])(tsol+shift_dt_to*dtn);
 
   return true;
 }
