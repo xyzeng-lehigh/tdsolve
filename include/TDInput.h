@@ -9,6 +9,10 @@
 #include "Data_Type.h"
 #include "Comput_Choices.h"
 
+typedef std::map<std::string, DType>   ParVals;
+typedef std::map<std::string, ParVals> VarPars;
+typedef std::map<std::string, VarPars> ProbVars;
+
 // Coefficients table
 // TDCoef       PDGF (default)      OPN
 // lambda       lambda              lambda 
@@ -60,6 +64,9 @@ struct TDCoef {
   DType treatP1_T, treatP1_h, treatP1_bc;
   std::vector<DType> treatP1_t0;
   bool  treatP1, treatP1BC;
+
+  // Modularized coefficients containers
+  ProbVars probVarParVals;
 };
 
 struct TDMesh {

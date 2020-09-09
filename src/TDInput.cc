@@ -47,6 +47,7 @@ TDInput::TDInput(void) {
   tdCoef.treatP1_h   = 1.0;
   tdCoef.treatP1_bc  = 0.0;
   tdCoef.treatP1_t0.clear();
+  tdCoef.probVarParVals.clear();
 
   tdMesh.x_l     = 0.0;
   tdMesh.x_r     = 1.0;

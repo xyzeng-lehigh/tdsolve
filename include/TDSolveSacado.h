@@ -14,6 +14,8 @@ class TDSolveSacado : public TDSolve {
     TDSolveSacado(TDInput* tdInput_ptr);
     ~TDSolveSacado(void);
 
+    std::string prob_name;
+
     typedef bool (TDSolveSacado::*fSetupFun)(void);
     std::map<int, fSetupFun> setupVarMap;
     std::map<int, fSetupFun> setupICMap;
@@ -23,6 +25,7 @@ class TDSolveSacado : public TDSolve {
     typedef bool (TDSolveSacado::*fSetupTFun)(const DType);
     std::map<int, fSetupTFun> setupVelUMap;
     std::map<int, fSetupTFun> setupExtraVFlxMap;
+    std::map<int, fSetupTFun> setupAuxMap;
 
     void setup(void);
     void set_ic(void);
@@ -44,6 +47,10 @@ class TDSolveSacado : public TDSolve {
     DType get_nperc(const int nt);
 
   protected:
+    // Specific toggle options for oncolytic model
+    bool in_oncolytic_stage[3];
+
+  protected:
     // Setting up variables
     void add_cellular_var(std::vector<std::string>& names, std::string name, const int size, DType* x_var, DType* x_flx);
     void add_nodal_var(std::vector<std::string>& names, std::string name, const int size, DType* x_var);
@@ -63,9 +70,11 @@ class TDSolveSacado : public TDSolve {
     bool setup_srce_opn(void);
     bool setup_srce_oncolytic(void);
 
+    bool add_vupdate_uflx(void);
+
     bool compute_extra_vflx_infiltration(const DType);
 
-    bool add_vupdate_uflx(void);
+    bool setup_aux_oncolytic(const DType);
 
   protected:
     // Inhomogeneous bc function handle
@@ -266,17 +275,28 @@ class TDSolveSacado : public TDSolve {
 
     void compute_source_cell_prob(const DType tsol_loc);
     void calc_srce_cell_base(SacadoDepVarArray& s_srce, const DType tsol_loc);
+
     void calc_srce_g_base(SacadoDepVarArray& s_srce, const DType tsol_loc);
     void calc_srce_h_base(SacadoDepVarArray& s_srce, const DType tsol_loc);
     void calc_srce_n_base(SacadoDepVarArray& s_srce, const DType tsol_loc);
+
+    void calc_srce_g_model(SacadoDepVarArray& s_srce, const DType tsol_loc);
+    void calc_srce_n_model(SacadoDepVarArray& s_srce, const DType tsol_loc);
+
     void calc_srce_g_pdgf(SacadoDepVarArray& s_srce, const DType tsol_loc);
     void calc_srce_h_pdgf(SacadoDepVarArray& s_srce, const DType tsol_loc);
     void calc_srce_n_pdgf(SacadoDepVarArray& s_srce, const DType tsol_loc);
+
     void calc_srce_g_opn(SacadoDepVarArray& s_srce, const DType tsol_loc);
     void calc_srce_h_opn(SacadoDepVarArray& s_srce, const DType tsol_loc);
     void calc_srce_n_opn(SacadoDepVarArray& s_srce, const DType tsol_loc);
-    void calc_srce_g_model(SacadoDepVarArray& s_srce, const DType tsol_loc);
-    void calc_srce_n_model(SacadoDepVarArray& s_srce, const DType tsol_loc);
+
+    void calc_srce_b_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
+    void calc_srce_h_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
+    void calc_srce_n_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
+    void calc_srce_g_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
+    void calc_srce_mv_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
+    void calc_srce_mb_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
 
     inline SacadoDepVar icalc_scal_logist_mm(DType,Sacado::Fad::DFad<DType>,DType,DType,DType,Sacado::Fad::DFad<DType>);
 

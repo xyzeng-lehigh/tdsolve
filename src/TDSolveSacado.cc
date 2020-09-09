@@ -10,6 +10,7 @@ TDSolveSacado::TDSolveSacado(TDInput* tdInput_ptr) :
   TDSolve(tdInput_ptr) {
   data_inc   = NULL;
   S_data_num = 0;
+  prob_name = "";
   cellnames.clear();
   cellnames_u.clear();
   velnames.clear();
@@ -29,6 +30,7 @@ TDSolveSacado::TDSolveSacado(TDInput* tdInput_ptr) :
   setupVelUFlxMap.clear();
   setupVelUMap.clear();
   setupExtraVFlxMap.clear();
+  setupAuxMap.clear();
 
   setupVarMap.insert( std::pair<int, fSetupFun>(-1, &TDSolveSacado::setup_var_model) );
   setupVarMap.insert( std::pair<int, fSetupFun>( 0, &TDSolveSacado::setup_var_pdgf) );
@@ -59,6 +61,8 @@ TDSolveSacado::TDSolveSacado(TDInput* tdInput_ptr) :
   setupExtraVFlxMap.insert( std::pair<int, fSetupTFun>(-1, &TDSolveSacado::compute_extra_vflx_infiltration) );
   setupExtraVFlxMap.insert( std::pair<int, fSetupTFun>( 0, &TDSolveSacado::compute_extra_vflx_infiltration) );
   setupExtraVFlxMap.insert( std::pair<int, fSetupTFun>( 1, &TDSolveSacado::compute_extra_vflx_infiltration) );
+
+  setupAuxMap.insert( std::pair<int, fSetupTFun>(2, &TDSolveSacado::setup_aux_oncolytic) );
 
   if ( !(tdSetup->silence_output) ) {
     FILE* ot_file = fopen( tdInput->outputFile, "w" );
@@ -504,6 +508,9 @@ bool TDSolveSacado::update_sol(const int fr, const int to, const DType shift_dt_
     compute_rad( to, to );
   }
 
+  // Aux variables
+  (this->*setupAuxMap[tdSetup->prob_id])(tsol+shift_dt_to*dtn);
+
   return true;
 }
 
@@ -558,6 +565,7 @@ void TDSolveSacado::add_nodal_var(std::vector<std::string>& names, std::string n
 }
 
 bool TDSolveSacado::setup_var_model(void) {
+  prob_name = "model";
   add_cellular_var( cellnames, "G", Nx, x_c, x_f );
   add_cellular_var( cellnames, "N", Nx, x_c, x_f );
   add_nodal_var( velnames, "V", Nx+1, x_f );
@@ -567,6 +575,7 @@ bool TDSolveSacado::setup_var_model(void) {
 }
 
 bool TDSolveSacado::setup_var_pdgf(void) {
+  prob_name = "pdgf";
   add_cellular_var( cellnames, "G", Nx, x_c, x_f );
   add_cellular_var( cellnames, "N", Nx, x_c, x_f );
   add_cellular_var( cellnames, "H", Nx, x_c, x_f );
@@ -586,6 +595,7 @@ bool TDSolveSacado::setup_var_pdgf(void) {
 }
 
 bool TDSolveSacado::setup_var_opn(void) {
+  prob_name = "opn";
   add_cellular_var( cellnames, "G", Nx, x_c, x_f );
   add_cellular_var( cellnames, "N", Nx, x_c, x_f );
   add_cellular_var( cellnames, "H", Nx, x_c, x_f );
@@ -609,6 +619,16 @@ bool TDSolveSacado::setup_var_opn(void) {
 }
 
 bool TDSolveSacado::setup_var_oncolytic(void) {
+  prob_name = "oncolytic";
+  add_cellular_var( cellnames, "B",  Nx, x_c, x_f );
+  add_cellular_var( chemnames, "Vi", Nx, x_c, x_f );
+  add_cellular_var( cellnames, "H",  Nx, x_c, x_f );
+  add_cellular_var( cellnames, "N",  Nx, x_c, x_f );
+  add_cellular_var( cellnames, "G",  Nx, x_c, x_f );
+  add_cellular_var( cellnames, "Mv", Nx, x_c, x_f );
+  add_cellular_var( cellnames, "Mb", Nx, x_c, x_f );
+  add_cellular_var( chemnames, "A",  Nx, x_c, x_f );
+  add_nodal_var( velnames, "V", Nx+1, x_f );
   return true;
 }
 
@@ -707,6 +727,9 @@ bool TDSolveSacado::setup_ic_opn(void) {
 }
 
 bool TDSolveSacado::setup_ic_oncolytic(void) {
+  in_oncolytic_stage[0] = true;  // The first stage 
+  in_oncolytic_stage[1] = false; // The second stage 
+  in_oncolytic_stage[2] = false; // The second stage 
   return true;
 }
 
@@ -731,6 +754,21 @@ bool TDSolveSacado::setup_srce_opn(void) {
 }
 
 bool TDSolveSacado::setup_srce_oncolytic(void) {
+  F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("B",  &TDSolveSacado::calc_srce_b_oncolytic) );
+  F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("H",  &TDSolveSacado::calc_srce_h_oncolytic) );
+  F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("N",  &TDSolveSacado::calc_srce_n_oncolytic) );
+  F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("G",  &TDSolveSacado::calc_srce_g_oncolytic) );
+  F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("Mv", &TDSolveSacado::calc_srce_mv_oncolytic) );
+  F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("Mb", &TDSolveSacado::calc_srce_mb_oncolytic) );
+  return true;
+}
+
+bool TDSolveSacado::add_vupdate_uflx(void) {
+  SacadoDepVarArray& s_v = S_data_vel["V"];
+  SacadoDepVarArray& s_flux_u = S_flux_cell_v["U"]["N"];
+  for ( int i = 1; i < Nx+1; i++ ) {
+    s_v[i] = s_v[i] - s_flux_u[i];
+  }
   return true;
 }
 
@@ -742,12 +780,7 @@ bool TDSolveSacado::compute_extra_vflx_infiltration(const DType tsol_loc) {
   return true;
 }
 
-bool TDSolveSacado::add_vupdate_uflx(void) {
-  SacadoDepVarArray& s_v = S_data_vel["V"];
-  SacadoDepVarArray& s_flux_u = S_flux_cell_v["U"]["N"];
-  for ( int i = 1; i < Nx+1; i++ ) {
-    s_v[i] = s_v[i] - s_flux_u[i];
-  }
+bool TDSolveSacado::setup_aux_oncolytic(const DType tsol_loc) {
   return true;
 }
 
@@ -2217,6 +2250,44 @@ void TDSolveSacado::calc_srce_n_base(SacadoDepVarArray& s_srce, const DType tsol
   return;
 }
 
+void TDSolveSacado::calc_srce_g_model(SacadoDepVarArray& s_srce, const DType tsol_loc) {
+  calc_srce_g_base( s_srce, tsol_loc );
+
+  DType lambda = tdCoef->lambda;
+  SacadoIndVarArray& s_g = S_data_var["G"];
+
+  for ( int i = 0; i < Nx; i++ ) {
+    s_srce[i] += x_c[i] * x_c[i] * S_data_r * S_data_r * ( lambda * s_g[i] );
+  }
+
+  if ( tdSetup->pos_fix != 0 ) {
+    for ( int i = 0; i < Nx; i++ )
+      adjust_srce_max( i, lambda );
+  }
+
+  return;
+}
+
+void TDSolveSacado::calc_srce_n_model(SacadoDepVarArray& s_srce, const DType tsol_loc) {
+  calc_srce_n_base( s_srce, tsol_loc );
+
+  DType mu      = tdCoef->mu;
+  DType delta_n = tdCoef->delta_n;
+  SacadoIndVarArray& s_g = S_data_var["G"];
+  SacadoIndVarArray& s_n = S_data_var["N"];
+
+  for ( int i = 0; i < Nx; i++ ) {
+    s_srce[i] += (x_c[i] * x_c[i] * S_data_r * S_data_r) * ( mu * s_g[i] - delta_n * s_n[i] );
+  }
+
+  if ( tdSetup->pos_fix != 0 ) {
+    for ( int i = 0; i < Nx; i++ )
+      adjust_srce_max( i, -delta_n );
+  }
+
+  return;
+}
+
 void TDSolveSacado::calc_srce_g_pdgf(SacadoDepVarArray& s_srce, const DType tsol_loc) {
   calc_srce_g_base( s_srce, tsol_loc );
 
@@ -2346,39 +2417,182 @@ void TDSolveSacado::calc_srce_n_opn(SacadoDepVarArray& s_srce, const DType tsol_
   return;
 }
 
-void TDSolveSacado::calc_srce_g_model(SacadoDepVarArray& s_srce, const DType tsol_loc) {
-  calc_srce_g_base( s_srce, tsol_loc );
+void TDSolveSacado::calc_srce_b_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc) {
+  reset_sacado_dep_array(s_srce);
+  if (!in_oncolytic_stage[0]) return;
 
-  DType lambda = tdCoef->lambda;
-  SacadoIndVarArray& s_g = S_data_var["G"];
+  DType theta   = tdCoef->theta;
+  DType mm_ceil = tdCoef->probVarParVals[prob_name]["B"]["mm_ceil_grow_pos"];
+  DType mm_half = tdCoef->probVarParVals[prob_name]["B"]["mm_half"];
+  DType coef_vi = tdCoef->probVarParVals[prob_name]["B"]["coef_vi_neg"];
+  DType coef_h  = tdCoef->probVarParVals[prob_name]["B"]["coef_h_neg"] / theta;
+  DType coef_mb = tdCoef->probVarParVals[prob_name]["B"]["mm_ceil_coef_mb_neg"] / theta;
+  SacadoIndVarArray& s_b  = S_data_var["B"];
+  SacadoIndVarArray& s_vi = S_data_var["Vi"];
+  SacadoIndVarArray& s_h  = S_data_var["H"];
+  SacadoIndVarArray& s_mb = S_data_var["Mb"];
+  SacadoIndVarArray& s_a  = S_data_var["A"];
 
-  for ( int i = 0; i < Nx; i++ ) {
-    s_srce[i] += x_c[i] * x_c[i] * S_data_r * S_data_r * ( lambda * s_g[i] );
-  }
+  int    num   = varsizes["B"];
+  DType* l_x_c = varcoord["B"];
 
-  if ( tdSetup->pos_fix != 0 ) {
-    for ( int i = 0; i < Nx; i++ )
-      adjust_srce_max( i, lambda );
+  SacadoDepVar coef_b(0.0);
+
+  for ( int i = 0; i < num; i++ ) {
+    coef_b = (mm_ceil*s_a[i])/(mm_half+s_a[i]) - coef_vi*s_vi[i] - coef_h*s_h[i] - 
+        ((coef_mb*s_a[i])/(mm_half+s_a[i]))*s_mb[i];
+    s_srce[i] += (l_x_c[i] * l_x_c[i] * S_data_r * S_data_r) * coef_b * s_b[i];
+    if ( tdSetup->pos_fix != 0 )
+      adjust_srce_max( i, coef_b.val() );
   }
 
   return;
 }
 
-void TDSolveSacado::calc_srce_n_model(SacadoDepVarArray& s_srce, const DType tsol_loc) {
-  calc_srce_n_base( s_srce, tsol_loc );
+void TDSolveSacado::calc_srce_h_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc) {
+  reset_sacado_dep_array(s_srce);
+  if (!in_oncolytic_stage[1]) return;
 
-  DType mu      = tdCoef->mu;
-  DType delta_n = tdCoef->delta_n;
-  SacadoIndVarArray& s_g = S_data_var["G"];
-  SacadoIndVarArray& s_n = S_data_var["N"];
+  DType theta   = tdCoef->theta;
+  DType mm_ceil   = tdCoef->probVarParVals[prob_name]["H"]["mm_ceil_grow_pos"];
+  DType mm_half   = tdCoef->probVarParVals[prob_name]["H"]["mm_half"];
+  DType coef_mb   = tdCoef->probVarParVals[prob_name]["H"]["mm_ceil_coef_mb_neg"] / theta;
+  DType coef_mv   = tdCoef->probVarParVals[prob_name]["H"]["mm_ceil_coef_mv_neg"] / theta;
+  DType decay     = tdCoef->probVarParVals[prob_name]["H"]["grow_neg"];
+  DType prod_vi_b = tdCoef->probVarParVals[prob_name]["H"]["prod_vi_b_pos"];
+  DType coef_b    = tdCoef->probVarParVals[prob_name]["H"]["coef_b_pos"] / theta;
+  SacadoIndVarArray& s_h  = S_data_var["H"];
+  SacadoIndVarArray& s_b  = S_data_var["B"];
+  SacadoIndVarArray& s_vi = S_data_var["Vi"];
+  SacadoIndVarArray& s_mb = S_data_var["Mb"];
+  SacadoIndVarArray& s_mv = S_data_var["Mv"];
+  SacadoIndVarArray& s_a  = S_data_var["A"];
 
-  for ( int i = 0; i < Nx; i++ ) {
-    s_srce[i] += (x_c[i] * x_c[i] * S_data_r * S_data_r) * ( mu * s_g[i] - delta_n * s_n[i] );
+  int    num   = varsizes["H"];
+  DType* l_x_c = varcoord["H"];
+
+  SacadoDepVar coef_h(0.0);
+
+  for ( int i = 0; i < num; i++ ) {
+    coef_h = (mm_ceil*s_a[i])/(mm_half+s_a[i]) + coef_b*s_b[i] - ((coef_mb*s_a[i])/(mm_half+s_a[i]))*s_mb[i] - 
+      ((coef_mv*s_a[i])/(mm_half+s_a[i]))*s_mv[i] - decay;
+    s_srce[i] += (l_x_c[i] * l_x_c[i] * S_data_r * S_data_r) * (coef_h * s_h[i] + prod_vi_b * s_vi[i] * s_b[i] );
+    if ( tdSetup->pos_fix != 0 )
+      adjust_srce_max( i, coef_h.val() );
   }
 
-  if ( tdSetup->pos_fix != 0 ) {
-    for ( int i = 0; i < Nx; i++ )
-      adjust_srce_max( i, -delta_n );
+  return;
+}
+
+void TDSolveSacado::calc_srce_n_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc) {
+  reset_sacado_dep_array(s_srce);
+  if (!in_oncolytic_stage[1]) return;
+
+  DType theta     = tdCoef->theta;
+  DType mm_half   = tdCoef->probVarParVals[prob_name]["N"]["mm_half"];
+  DType prod_mb_b = tdCoef->probVarParVals[prob_name]["N"]["mm_ceil_prod_mb_b_pos"] / theta;
+  DType prod_mb_h = tdCoef->probVarParVals[prob_name]["N"]["mm_ceil_prod_mb_h_pos"] / theta;
+  DType prod_mv_h = tdCoef->probVarParVals[prob_name]["N"]["mm_ceil_prod_mv_h_pos"] / theta;
+  DType prod_h    = tdCoef->probVarParVals[prob_name]["N"]["prod_h_pos"];
+  SacadoIndVarArray& s_n  = S_data_var["N"];
+  SacadoIndVarArray& s_h  = S_data_var["H"];
+  SacadoIndVarArray& s_b  = S_data_var["B"];
+  SacadoIndVarArray& s_mb = S_data_var["Mb"];
+  SacadoIndVarArray& s_mv = S_data_var["Mv"];
+  SacadoIndVarArray& s_a  = S_data_var["A"];
+
+  int    num   = varsizes["N"];
+  DType* l_x_c = varcoord["N"];
+
+  for ( int i = 0; i < num; i++ ) {
+    s_srce[i] += (l_x_c[i] * l_x_c[i] * S_data_r * S_data_r) *
+      ( ((prod_mb_b*s_a[i])/(mm_half+s_a[i])) * s_mb[i] * s_b[i] + 
+        ((prod_mb_h*s_a[i])/(mm_half+s_a[i])) * s_mb[i] * s_h[i] + 
+        ((prod_mv_h*s_a[i])/(mm_half+s_a[i])) * s_mv[i] * s_h[i] + 
+        prod_h * s_h[i] );
+  }
+
+  return;
+}
+
+void TDSolveSacado::calc_srce_g_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc) {
+  reset_sacado_dep_array(s_srce);
+  if (!in_oncolytic_stage[1]) return;
+
+  DType theta  = tdCoef->theta;
+  DType coef_b = tdCoef->probVarParVals[prob_name]["G"]["coef_b_pos"] / theta;
+  DType decay  = tdCoef->probVarParVals[prob_name]["G"]["grow_neg"];
+  SacadoIndVarArray& s_g = S_data_var["G"];
+  SacadoIndVarArray& s_b = S_data_var["B"];
+
+  int    num   = varsizes["G"];
+  DType* l_x_c = varcoord["G"];
+
+  SacadoDepVar coef_g(0.0);
+
+  for ( int i = 0; i < num; i++ ) {
+    coef_g = coef_b * s_b[i] - decay;
+    s_srce[i] += (l_x_c[i] * l_x_c[i] * S_data_r * S_data_r) * ( coef_g * s_g[i] );
+    if ( tdSetup->pos_fix != 0 )
+      adjust_srce_max( i, coef_g.val() );
+  }
+
+  return;
+}
+
+void TDSolveSacado::calc_srce_mv_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc) {
+  reset_sacado_dep_array(s_srce);
+  if (!in_oncolytic_stage[2]) return;
+
+  DType theta   = tdCoef->theta;
+  DType mm_ceil = tdCoef->probVarParVals[prob_name]["Mv"]["mm_ceil_grow_pos"];
+  DType mm_half = tdCoef->probVarParVals[prob_name]["Mv"]["mm_half"];
+  DType decay   = tdCoef->probVarParVals[prob_name]["Mv"]["grow_neg"];
+  DType coef_h  = tdCoef->probVarParVals[prob_name]["Mv"]["coef_h_pos"] / theta;
+  SacadoIndVarArray& s_mv = S_data_var["Mv"];
+  SacadoIndVarArray& s_h  = S_data_var["H"];
+  SacadoIndVarArray& s_a  = S_data_var["A"];
+
+  int    num   = varsizes["Mv"];
+  DType* l_x_c = varcoord["Mv"];
+
+  SacadoDepVar coef_mv(0.0);
+
+  for ( int i = 0; i < num; i++ ) {
+    coef_mv = coef_h*s_h[i] + (mm_ceil*s_a[i])/(mm_half+s_a[i]) - decay;
+    s_srce[i] += (l_x_c[i] * l_x_c[i] * S_data_r * S_data_r) * (coef_mv * s_mv[i]);
+    if ( tdSetup->pos_fix != 0 )
+      adjust_srce_max( i, coef_mv.val() );
+  }
+
+  return;
+}
+
+void TDSolveSacado::calc_srce_mb_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc) {
+  reset_sacado_dep_array(s_srce);
+  if (!in_oncolytic_stage[2]) return;
+
+  DType theta   = tdCoef->theta;
+  DType mm_ceil = tdCoef->probVarParVals[prob_name]["Mb"]["mm_ceil_grow_pos"];
+  DType mm_half = tdCoef->probVarParVals[prob_name]["Mb"]["mm_half"];
+  DType decay   = tdCoef->probVarParVals[prob_name]["Mb"]["grow_neg"];
+  DType coef_b  = tdCoef->probVarParVals[prob_name]["Mb"]["coef_b_pos"] / theta;
+  DType coef_h  = tdCoef->probVarParVals[prob_name]["Mb"]["coef_h_pos"] / theta;
+  SacadoIndVarArray& s_mb = S_data_var["Mb"];
+  SacadoIndVarArray& s_h  = S_data_var["H"];
+  SacadoIndVarArray& s_b  = S_data_var["B"];
+  SacadoIndVarArray& s_a  = S_data_var["A"];
+
+  int    num   = varsizes["Mb"];
+  DType* l_x_c = varcoord["Mb"];
+
+  SacadoDepVar coef_mb(0.0);
+
+  for ( int i = 0; i < num; i++ ) {
+    coef_mb = coef_b*s_b[i] + coef_h*s_h[i] + (mm_ceil*s_a[i])/(mm_half+s_a[i]) - decay;
+    s_srce[i] += (l_x_c[i] * l_x_c[i] * S_data_r * S_data_r) * (coef_mb * s_mb[i]);
+    if ( tdSetup->pos_fix != 0 )
+      adjust_srce_max( i, coef_mb.val() );
   }
 
   return;
