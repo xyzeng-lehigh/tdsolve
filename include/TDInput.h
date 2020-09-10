@@ -162,6 +162,8 @@ class TDInput {
     std::map<std::string, int*>   tdOptions;
     std::map<std::string, bool*>  tdToggles;
 
+    std::vector<std::string> probNames;
+
     bool set_parameter(std::string, DType);
     bool set_option(std::string, int);
     bool set_toggle(std::string, bool);
@@ -180,14 +182,20 @@ class TDInput {
     void setup_parameters(void);
     void setup_options(void);
     void setup_toggles(void);
+    bool check_string_prob(char*&);
 
   public:
     TDInput(void);
     TDInput(const TDInput&);
     ~TDInput(void);
     
-    void  setInputFile(const char*);
-    void  parse(void);
+    void setInputFile(const char*);
+    void parse(void);
+    void parse_var_par( ifstream&, VarPars& );
+    void parse_par_val( ifstream&, ParVals& );
+
+    std::string trim(const std::string& str, const std::string& whitespace=" \t");
+    bool cleanup(std::string& str, char*& name, char*& value);
 };
 
 #endif

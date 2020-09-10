@@ -140,6 +140,12 @@ TDInput::TDInput(void) {
   strcpy(outputFile,"sol.dat");
   strcpy(radiusFile,"rad.dat");
 
+  probNames.clear();
+  probNames.push_back( "model" );
+  probNames.push_back( "pdgf" );
+  probNames.push_back( "opn" );
+  probNames.push_back( "oncolytic" );
+
   setup_parameters();
   setup_options();
   setup_toggles();
@@ -322,31 +328,26 @@ void TDInput::setup_toggles(void) {
   return;
 }
 
+bool TDInput::check_string_prob( char*& name ) {
+  for ( std::vector<std::string>::iterator it = probNames.begin();
+        it != probNames.end(); it++ ) {
+    if ( strcmp( name, it->c_str() ) == 0 )
+      return true;
+  }
+  return false;
+}
+
 void TDInput::parse(void) {
   ifstream fin;
   string file_line_s;
   fin.open(inputFile);
   char* name;
   char* value;
+  bool to_skip;
 
   while (getline(fin,file_line_s)) {
-    // This ignore a short line
-    if (file_line_s.length()<2)
-      continue;
-    // This indicates the comment lines
-    if ((file_line_s[0]=='/')&&(file_line_s[1]=='/'))
-      continue;
-    // This ignore a non-comment line with no separation tokens
-    if (file_line_s.find_first_of((const char*)delims_nospace)==string::npos)
-      continue;
-    name  = strtok((char*)file_line_s.c_str(),delims);
-    value = strtok(NULL,delims);
-    if ((name==NULL)||(value==NULL)) {
-      fprintf(stderr,"Warning: the following line in the input file %s is not recogonized:\n",inputFile);
-      fprintf(stderr,"         %s\n",file_line_s.c_str());
-      continue;
-    }
-
+    to_skip = cleanup( file_line_s, name, value );
+    if ( to_skip ) continue;
     std::map<std::string, DType*>::iterator it_par = tdParameters.find(name);
     std::map<std::string, int*>::iterator   it_opt = tdOptions.find(name);
     std::map<std::string, bool*>::iterator  it_tog = tdToggles.find(name);
@@ -357,6 +358,13 @@ void TDInput::parse(void) {
       *(it_opt->second) = atoi(value);
     else if ( it_tog != tdToggles.end() )
       *(it_tog->second) = (atoi(value)!=0);
+    else if ( check_string_prob(name) ) {
+      VarPars varParVals;
+      varParVals.clear();
+      parse_var_par( fin, varParVals );
+      tdCoef.probVarParVals.insert( 
+          std::pair<std::string,VarPars>(name,varParVals) );
+    }
     else if (strcmp(name,"treatment_P1_t0")==0)
       tdCoef.treatP1_t0.push_back( atof(value) );
     else if (strcmp(name,"lsysType")==0)
@@ -439,6 +447,78 @@ void TDInput::parse(void) {
 
   fin.close();
   return;
+}
+
+void TDInput::parse_var_par( ifstream& fin, VarPars& varParVals ) {
+  string file_line_s;
+  char* name;
+  char* value;
+  bool to_skip;
+
+  while (getline(fin,file_line_s)) {
+    to_skip = cleanup( file_line_s, name, value );
+    if ( to_skip ) continue;
+    if ( strcmp( name, "end" ) )
+      return;
+    else {
+      ParVals parVals;
+      parVals.clear();
+      parse_par_val( fin, parVals );
+      varParVals.insert(
+          std::pair<std::string,ParVals>(name,parVals) );
+    }
+  }
+  return;
+}
+
+void TDInput::parse_par_val( ifstream& fin, ParVals& parVals ) {
+  string file_line_s;
+  char* name;
+  char* value;
+  bool to_skip;
+
+  while (getline(fin,file_line_s)) {
+    to_skip = cleanup( file_line_s, name, value );
+    if ( to_skip ) continue;
+    if ( strcmp( name, "end" ) )
+      return;
+    else {
+      parVals.insert( std::pair<std::string,DType>( name, atof(value) ) );
+    }
+  }
+  return;
+}
+
+std::string TDInput::trim(const std::string& str, const std::string& whitespace) {
+  const auto strBegin = str.find_first_not_of(whitespace);
+  if ( strBegin == string::npos )
+    return "";
+  const auto strEnd = str.find_last_not_of(whitespace);
+  const auto strRange = strEnd - strBegin + 1;
+  return str.substr( strBegin, strRange );
+}
+
+bool TDInput::cleanup(std::string& file_line_s, char*& name, char*& value) {
+  // Remove leading and trailing white spaces
+  file_line_s = trim(file_line_s);
+  // This ignore a short line
+  if (file_line_s.length()<2)
+    return true;
+  // This indicates the comment lines
+  if ((file_line_s[0]=='/')&&(file_line_s[1]=='/'))
+    return true;
+  // This ignore a non-comment line with no separation tokens
+  if (file_line_s.find_first_of((const char*)delims_nospace)==string::npos)
+    return true;
+  name  = strtok((char*)file_line_s.c_str(),delims);
+  value = strtok(NULL,delims);
+  //if ( name==NULL || value==NULL ) {
+  if ( name==NULL ) {
+    fprintf(stderr,"Warning: the following line in the input file %s is not recogonized:\n",inputFile);
+    fprintf(stderr,"         %s\n",file_line_s.c_str());
+    return true;
+  }
+  return false;
 }
 
 bool TDInput::set_parameter(std::string name, DType value) {
