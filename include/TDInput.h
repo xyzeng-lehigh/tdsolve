@@ -183,6 +183,7 @@ class TDInput {
     void setup_options(void);
     void setup_toggles(void);
     bool check_string_prob(char*&);
+    void display_prob_var_par(void);
 
   public:
     TDInput(void);

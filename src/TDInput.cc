@@ -337,6 +337,24 @@ bool TDInput::check_string_prob( char*& name ) {
   return false;
 }
 
+void TDInput::display_prob_var_par(void) {
+  for ( ProbVars::iterator it = tdCoef.probVarParVals.begin();
+        it != tdCoef.probVarParVals.end(); it++ ) {
+    std::cout << "Problem: " << it->first << std::endl;
+    VarPars& varParVals = it->second;
+    for ( VarPars::iterator itv = varParVals.begin();
+          itv != varParVals.end(); itv++ ) {
+      std::cout << "\tVariable: " << itv->first << std::endl;
+      ParVals& parVals = itv->second;
+      for ( ParVals::iterator itp = parVals.begin();
+            itp != parVals.end(); itp++ ) {
+        std::cout << "\t\t" << itp->first << " = " << itp->second << std::endl;
+      }
+    }
+  }
+  return;
+}
+
 void TDInput::parse(void) {
   ifstream fin;
   string file_line_s;
@@ -446,6 +464,9 @@ void TDInput::parse(void) {
     tdMesh.x_a_c[i] = tdMesh.x_l + (i+0.5) * tdMesh.dx;
 
   fin.close();
+
+  display_prob_var_par();
+
   return;
 }
 
@@ -458,7 +479,7 @@ void TDInput::parse_var_par( ifstream& fin, VarPars& varParVals ) {
   while (getline(fin,file_line_s)) {
     to_skip = cleanup( file_line_s, name, value );
     if ( to_skip ) continue;
-    if ( strcmp( name, "end" ) )
+    if ( strcmp( name, "end" ) == 0 )
       return;
     else {
       ParVals parVals;
@@ -480,7 +501,7 @@ void TDInput::parse_par_val( ifstream& fin, ParVals& parVals ) {
   while (getline(fin,file_line_s)) {
     to_skip = cleanup( file_line_s, name, value );
     if ( to_skip ) continue;
-    if ( strcmp( name, "end" ) )
+    if ( strcmp( name, "end" ) == 0 )
       return;
     else {
       parVals.insert( std::pair<std::string,DType>( name, atof(value) ) );
@@ -502,14 +523,17 @@ bool TDInput::cleanup(std::string& file_line_s, char*& name, char*& value) {
   // Remove leading and trailing white spaces
   file_line_s = trim(file_line_s);
   // This ignore a short line
-  if (file_line_s.length()<2)
+  //if (file_line_s.length()<2)
+  if (file_line_s.length()<1)
     return true;
   // This indicates the comment lines
   if ((file_line_s[0]=='/')&&(file_line_s[1]=='/'))
     return true;
-  // This ignore a non-comment line with no separation tokens
-  if (file_line_s.find_first_of((const char*)delims_nospace)==string::npos)
+  if (file_line_s[0]=='#')
     return true;
+  // This ignore a non-comment line with no separation tokens
+  //if (file_line_s.find_first_of((const char*)delims_nospace)==string::npos)
+  //  return true;
   name  = strtok((char*)file_line_s.c_str(),delims);
   value = strtok(NULL,delims);
   //if ( name==NULL || value==NULL ) {

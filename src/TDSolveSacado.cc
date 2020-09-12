@@ -732,7 +732,21 @@ bool TDSolveSacado::setup_ic_oncolytic(void) {
   in_oncolytic_stage[0] = true;  // The first stage 
   in_oncolytic_stage[1] = false; // The second stage 
   in_oncolytic_stage[2] = false; // The second stage 
-  return true;
+
+  bool invalid_ic = false;
+  DType theta = tdCoef->theta;
+
+  switch ( tdSetup->ic ) {
+    case 0:
+      for ( std::map<std::string,HVEC**>::iterator it = H_data_var.begin();
+            it != H_data_var.end(); it++ )
+        *(it->second)[0] = tdCoef->probVarParVals[prob_name][it->first]["init"] / theta;
+      break;
+    default:
+      invalid_ic = true;
+  }
+
+  return invalid_ic;
 }
 
 bool TDSolveSacado::setup_srce_model(void) {
@@ -2427,8 +2441,8 @@ void TDSolveSacado::calc_srce_b_oncolytic(SacadoDepVarArray& s_srce, const DType
   DType mm_ceil = tdCoef->probVarParVals[prob_name]["B"]["mm_ceil_grow_pos"];
   DType mm_half = tdCoef->probVarParVals[prob_name]["B"]["mm_half"];
   DType coef_vi = tdCoef->probVarParVals[prob_name]["B"]["coef_vi_neg"];
-  DType coef_h  = tdCoef->probVarParVals[prob_name]["B"]["coef_h_neg"] / theta;
-  DType coef_mb = tdCoef->probVarParVals[prob_name]["B"]["mm_ceil_coef_mb_neg"] / theta;
+  DType coef_h  = tdCoef->probVarParVals[prob_name]["B"]["coef_h_neg"] * theta;
+  DType coef_mb = tdCoef->probVarParVals[prob_name]["B"]["mm_ceil_coef_mb_neg"] * theta;
   SacadoIndVarArray& s_b  = S_data_var["B"];
   SacadoIndVarArray& s_vi = S_data_var["Vi"];
   SacadoIndVarArray& s_h  = S_data_var["H"];
@@ -2458,11 +2472,11 @@ void TDSolveSacado::calc_srce_h_oncolytic(SacadoDepVarArray& s_srce, const DType
   DType theta   = tdCoef->theta;
   DType mm_ceil   = tdCoef->probVarParVals[prob_name]["H"]["mm_ceil_grow_pos"];
   DType mm_half   = tdCoef->probVarParVals[prob_name]["H"]["mm_half"];
-  DType coef_mb   = tdCoef->probVarParVals[prob_name]["H"]["mm_ceil_coef_mb_neg"] / theta;
-  DType coef_mv   = tdCoef->probVarParVals[prob_name]["H"]["mm_ceil_coef_mv_neg"] / theta;
+  DType coef_mb   = tdCoef->probVarParVals[prob_name]["H"]["mm_ceil_coef_mb_neg"] * theta;
+  DType coef_mv   = tdCoef->probVarParVals[prob_name]["H"]["mm_ceil_coef_mv_neg"] * theta;
   DType decay     = tdCoef->probVarParVals[prob_name]["H"]["grow_neg"];
   DType prod_vi_b = tdCoef->probVarParVals[prob_name]["H"]["prod_vi_b_pos"];
-  DType coef_b    = tdCoef->probVarParVals[prob_name]["H"]["coef_b_pos"] / theta;
+  DType coef_b    = tdCoef->probVarParVals[prob_name]["H"]["coef_b_pos"] * theta;
   SacadoIndVarArray& s_h  = S_data_var["H"];
   SacadoIndVarArray& s_b  = S_data_var["B"];
   SacadoIndVarArray& s_vi = S_data_var["Vi"];
@@ -2492,9 +2506,9 @@ void TDSolveSacado::calc_srce_n_oncolytic(SacadoDepVarArray& s_srce, const DType
 
   DType theta     = tdCoef->theta;
   DType mm_half   = tdCoef->probVarParVals[prob_name]["N"]["mm_half"];
-  DType prod_mb_b = tdCoef->probVarParVals[prob_name]["N"]["mm_ceil_prod_mb_b_pos"] / theta;
-  DType prod_mb_h = tdCoef->probVarParVals[prob_name]["N"]["mm_ceil_prod_mb_h_pos"] / theta;
-  DType prod_mv_h = tdCoef->probVarParVals[prob_name]["N"]["mm_ceil_prod_mv_h_pos"] / theta;
+  DType prod_mb_b = tdCoef->probVarParVals[prob_name]["N"]["mm_ceil_prod_mb_b_pos"] * theta;
+  DType prod_mb_h = tdCoef->probVarParVals[prob_name]["N"]["mm_ceil_prod_mb_h_pos"] * theta;
+  DType prod_mv_h = tdCoef->probVarParVals[prob_name]["N"]["mm_ceil_prod_mv_h_pos"] * theta;
   DType prod_h    = tdCoef->probVarParVals[prob_name]["N"]["prod_h_pos"];
   SacadoIndVarArray& s_n  = S_data_var["N"];
   SacadoIndVarArray& s_h  = S_data_var["H"];
@@ -2522,7 +2536,7 @@ void TDSolveSacado::calc_srce_g_oncolytic(SacadoDepVarArray& s_srce, const DType
   if (!in_oncolytic_stage[1]) return;
 
   DType theta  = tdCoef->theta;
-  DType coef_b = tdCoef->probVarParVals[prob_name]["G"]["coef_b_pos"] / theta;
+  DType coef_b = tdCoef->probVarParVals[prob_name]["G"]["coef_b_pos"] * theta;
   DType decay  = tdCoef->probVarParVals[prob_name]["G"]["grow_neg"];
   SacadoIndVarArray& s_g = S_data_var["G"];
   SacadoIndVarArray& s_b = S_data_var["B"];
@@ -2550,7 +2564,7 @@ void TDSolveSacado::calc_srce_mv_oncolytic(SacadoDepVarArray& s_srce, const DTyp
   DType mm_ceil = tdCoef->probVarParVals[prob_name]["Mv"]["mm_ceil_grow_pos"];
   DType mm_half = tdCoef->probVarParVals[prob_name]["Mv"]["mm_half"];
   DType decay   = tdCoef->probVarParVals[prob_name]["Mv"]["grow_neg"];
-  DType coef_h  = tdCoef->probVarParVals[prob_name]["Mv"]["coef_h_pos"] / theta;
+  DType coef_h  = tdCoef->probVarParVals[prob_name]["Mv"]["coef_h_pos"] * theta;
   SacadoIndVarArray& s_mv = S_data_var["Mv"];
   SacadoIndVarArray& s_h  = S_data_var["H"];
   SacadoIndVarArray& s_a  = S_data_var["A"];
@@ -2578,8 +2592,8 @@ void TDSolveSacado::calc_srce_mb_oncolytic(SacadoDepVarArray& s_srce, const DTyp
   DType mm_ceil = tdCoef->probVarParVals[prob_name]["Mb"]["mm_ceil_grow_pos"];
   DType mm_half = tdCoef->probVarParVals[prob_name]["Mb"]["mm_half"];
   DType decay   = tdCoef->probVarParVals[prob_name]["Mb"]["grow_neg"];
-  DType coef_b  = tdCoef->probVarParVals[prob_name]["Mb"]["coef_b_pos"] / theta;
-  DType coef_h  = tdCoef->probVarParVals[prob_name]["Mb"]["coef_h_pos"] / theta;
+  DType coef_b  = tdCoef->probVarParVals[prob_name]["Mb"]["coef_b_pos"] * theta;
+  DType coef_h  = tdCoef->probVarParVals[prob_name]["Mb"]["coef_h_pos"] * theta;
   SacadoIndVarArray& s_mb = S_data_var["Mb"];
   SacadoIndVarArray& s_h  = S_data_var["H"];
   SacadoIndVarArray& s_b  = S_data_var["B"];
