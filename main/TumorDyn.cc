@@ -31,8 +31,6 @@ int main(int argc, char** argv) {
   tdInput.setInputFile((const char*)inputFile);
   tdInput.parse();
 
-  return 0;
-
   TDSolve* tdSolve;
   bool classical_tmeth = false;
   switch ( tdInput.tdSetup.frame ) {

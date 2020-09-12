@@ -77,11 +77,23 @@ class TDSolveSacado : public TDSolve {
     bool setup_aux_oncolytic(const DType);
 
   protected:
+    // Dependent variables
+    typedef Sacado::Fad::DFad<DType> SacadoDepVar;
+    typedef std::vector<SacadoDepVar> SacadoDepVarArray;
+    typedef std::map<std::string, SacadoDepVarArray> SacadoDepVarMap;
+    typedef std::map<std::string, SacadoDepVarMap> SacadoDepVarMapMap;
+
+    // Source term function handles
+    typedef void (TDSolveSacado::*fCalcSrce)(SacadoDepVarArray&,const DType);
+    typedef void (TDSolveSacado::*fCalcTSrce)(std::string,const int,const DType);
+    std::map<std::string, fCalcSrce> F_calcSrceMap;
+
     // Inhomogeneous bc function handle
     typedef DType (TDSolveSacado::*fCalcBC)(const DType);
     struct ChemPar {
       DType decay;
       DType diffusion;
+      fCalcTSrce srceFun;
       // Michaelis Mentun coefficients
       DType mm_ceil, mm_half;
       std::string driver;
@@ -130,11 +142,6 @@ class TDSolveSacado : public TDSolve {
     HVEC** data_u;
     std::map<std::string, HVEC**> H_data_vel;
 
-    // Dependent variables
-    typedef Sacado::Fad::DFad<DType> SacadoDepVar;
-    typedef std::vector<SacadoDepVar> SacadoDepVarArray;
-    typedef std::map<std::string, SacadoDepVarArray> SacadoDepVarMap;
-    typedef std::map<std::string, SacadoDepVarMap> SacadoDepVarMapMap;
     // R, R', etc (they may not need to be allocated as Sacado array)
     SacadoDepVar S_data_r;
     SacadoDepVar S_data_rp;
@@ -160,13 +167,11 @@ class TDSolveSacado : public TDSolve {
     //std::map<std::string, std::vector<Sacado::Fad::DFad<DType>>> S_slope_chem; // MUSCL or PPM
     //std::map<std::string, std::vector<Sacado::Fad::DFad<DType>>> S_slope_p;
     
-    // Source term function handles
-    typedef void (TDSolveSacado::*fCalcSrce)(SacadoDepVarArray&,const DType);
-    std::map<std::string, fCalcSrce> F_calcSrceMap;
-
     // Additional setup functions
     void setup_chem_par(std::string chemname, const DType decay, const DType diffusion,
         std::string cellname, const DType mm_ceil, const DType mm_half, const bool dbc, const int test_opt=0);
+    bool setup_chem_par_gen(std::string chemname, const DType decay, 
+        const DType diffusion, const bool dbc, fCalcTSrce srceFun );
 
     // Initial condition for three cell numbers
     void setic_unif_cell(std::string name, DType val, int nt=0);
@@ -302,6 +307,9 @@ class TDSolveSacado : public TDSolve {
 
     void compute_source_chem_prob(const int nt, const DType tsol_loc);
     void calc_srce_chem_var(std::string chemname, const int nt, const DType tsol_loc);
+
+    void calc_chem_srce_vi_oncolytic(std::string chemname, const int nt, const DType tsol_loc);
+    void calc_chem_srce_a_oncolytic(std::string chemname, const int nt, const DType tsol_loc);
 
     // Other functions
     DType calc_n_bc( const DType tsol_loc );

@@ -631,6 +631,12 @@ bool TDSolveSacado::setup_var_oncolytic(void) {
   add_cellular_var( cellnames, "Mb", Nx, x_c, x_f );
   add_cellular_var( chemnames, "A",  Nx, x_c, x_f );
   add_nodal_var( velnames, "V", Nx+1, x_f );
+
+  setup_chem_par_gen( "Vi", tdCoef->probVarParVals[prob_name]["Vi"]["grow_neg"], 
+      tdCoef->probVarParVals[prob_name]["Vi"]["diffusion"], 
+      false, &TDSolveSacado::calc_chem_srce_vi_oncolytic );
+  setup_chem_par_gen( "A",  0.0, tdCoef->probVarParVals[prob_name]["A"]["diffusion"],
+      false, &TDSolveSacado::calc_chem_srce_a_oncolytic );
   return true;
 }
 
@@ -831,8 +837,29 @@ void TDSolveSacado::setup_chem_par( std::string chemname,
   chemPar.dirichlet_bc = dbc;
   chemPar.F_chemBC     = NULL;
   chemPar.test_opt     = test_opt;
+
+  chemPar.srceFun      = &TDSolveSacado::calc_srce_chem_var;
+
   chempars.insert( std::pair<std::string, ChemPar>( chemname, chemPar ) );
   return;
+}
+
+bool TDSolveSacado::setup_chem_par_gen(std::string chemname, const DType decay,
+    const DType diffusion, const bool dbc, fCalcTSrce srceFun ) {
+  std::map<std::string, ChemPar>::iterator it = chempars.find( chemname );
+  if ( it != chempars.end() ) {
+    std::string error_message = "TDSolveSacado::setup_chem_par - chemoattractant/opn parameter for " + chemname + " has already been setup.\n";
+    throw std::runtime_error( error_message );
+  }
+  ChemPar chemPar;
+  chemPar.decay        = decay;
+  chemPar.diffusion    = diffusion;
+  chemPar.dirichlet_bc = dbc;
+  chemPar.F_chemBC     = NULL;
+  chemPar.srceFun      = srceFun;
+
+  chempars.insert( std::pair<std::string, ChemPar>( chemname, chemPar ) );
+  return true;
 }
 
 void TDSolveSacado::setic_unif_cell(std::string name, DType val, int nt) {
@@ -2619,7 +2646,8 @@ void TDSolveSacado::compute_source_chem_prob(const int nt, const DType tsol_loc)
   for ( it_name = chemnames.begin(); it_name != chemnames.end(); it_name++ ) {
     if ( check_chem_skip( *it_name ) )
       continue;
-    calc_srce_chem_var( *it_name, nt, tsol_loc );
+    (this->*chempars[*it_name].srceFun)( *it_name, nt, tsol_loc );
+    //calc_srce_chem_var( *it_name, nt, tsol_loc );
   }
   return;
 }
@@ -2642,6 +2670,60 @@ void TDSolveSacado::calc_srce_chem_var(std::string chemname, const int nt, const
   for ( int i = 0; i < num_cell; i++ ) {
     s_srce[i] += l_x_c[i] * l_x_c[i] * data_r[nt] * data_r[nt] * 
       ( ( chemPar.mm_ceil * s_cell[i] ) / ( chemPar.mm_half + s_cell[i] ) );
+  }
+
+  return;
+}
+
+void TDSolveSacado::calc_chem_srce_vi_oncolytic(std::string chemname, const int nt, const DType tsol_loc) {
+  // assert( chemname.compare("Vi") == 0 );
+  SacadoDepVarArray& s_srce  = S_srce_chem[chemname];
+  DType*             l_x_c   = varcoord[chemname];
+  ChemPar&           chemPar = chempars[chemname];
+  SacadoIndVarArray& s_chem  = S_data_var[chemname];
+  SacadoIndVarArray& s_h     = S_data_var["H"];
+
+  DType theta  = tdCoef->theta;
+  DType prod_h = tdCoef->probVarParVals[prob_name][chemname]["prod_h_pos"] * theta;
+  DType decay  = chemPar.decay;
+
+  int num = s_chem.size();
+
+  for ( int i = 0; i < num; i++ ) {
+    s_srce[i] += (l_x_c[i] * l_x_c[i] * data_r[nt] * data_r[nt]) * 
+      ( prod_h * s_h[i] - decay * s_chem[i] );
+  }
+
+  return;
+}
+
+void TDSolveSacado::calc_chem_srce_a_oncolytic(std::string chemname, const int nt, const DType tsol_loc) {
+  // assert( chemname.compare("A") == 0 );
+  SacadoDepVarArray& s_srce  = S_srce_chem[chemname];
+  DType*             l_x_c   = varcoord[chemname];
+  ChemPar&           chemPar = chempars[chemname];
+  SacadoIndVarArray& s_chem  = S_data_var[chemname];
+  SacadoIndVarArray& s_b     = S_data_var["B"];
+  SacadoIndVarArray& s_h     = S_data_var["H"];
+  SacadoIndVarArray& s_mv    = S_data_var["Mv"];
+  SacadoIndVarArray& s_mb    = S_data_var["Mb"];
+  SacadoIndVarArray& s_g     = S_data_var["G"];
+
+  DType theta   = tdCoef->theta;
+  DType mm_half = tdCoef->probVarParVals[prob_name][chemname]["mm_half"];
+  DType coef_b  = tdCoef->probVarParVals[prob_name][chemname]["mm_ceil_coef_b_neg"] * theta;
+  DType coef_h  = tdCoef->probVarParVals[prob_name][chemname]["mm_ceil_coef_h_neg"] * theta;
+  DType coef_mv = tdCoef->probVarParVals[prob_name][chemname]["mm_ceil_coef_mv_neg"] * theta;
+  DType coef_mb = tdCoef->probVarParVals[prob_name][chemname]["mm_ceil_coef_mb_neg"] * theta;
+  DType prod_g  = tdCoef->probVarParVals[prob_name][chemname]["prod_g_neg"] * theta;
+  DType prod    = tdCoef->probVarParVals[prob_name][chemname]["prod_constant"];
+
+  int num = s_chem.size();
+
+  for ( int i = 0; i < num; i++ ) {
+    s_srce[i] += (l_x_c[i] * l_x_c[i] * data_r[nt] * data_r[nt]) *
+      ( prod - prod_g * s_g[i] - (s_chem[i]/(mm_half+s_chem[i])) * 
+        (coef_b * s_b[i] + coef_h * s_h[i] + coef_mv * s_mv[i] + coef_mb * s_mb[i]) );
   }
 
   return;
