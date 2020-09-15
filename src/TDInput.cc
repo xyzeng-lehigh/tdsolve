@@ -47,6 +47,7 @@ TDInput::TDInput(void) {
   tdCoef.treatP1_h   = 1.0;
   tdCoef.treatP1_bc  = 0.0;
   tdCoef.treatP1_t0.clear();
+  tdCoef.use_dbc_P1  = false;
   tdCoef.probVarParVals.clear();
 
   tdMesh.x_l     = 0.0;
@@ -314,6 +315,7 @@ void TDInput::setup_toggles(void) {
   tdToggles.clear();
   tdToggles["use_treatment_P1"]   = &tdCoef.treatP1;
   tdToggles["use_treatmentBC_P1"] = &tdCoef.treatP1BC;
+  tdToggles["use_P1_dbc"]         = &tdCoef.use_dbc_P1;
   tdToggles["vel_couple"]         = &tdSetup.vCoup;
   tdToggles["v_conv_only"]        = &tdSetup.vOnly;
   tdToggles["Jacobian_limiter"]   = &tdSetup.jac_lim;

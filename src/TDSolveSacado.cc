@@ -612,7 +612,8 @@ bool TDSolveSacado::setup_var_opn(void) {
   add_cellular_var( chemnames, "P2", Nx, x_c, x_f );
 
   setup_chem_par( "A", tdCoef->gamma_a, tdCoef->D, "G", tdCoef->alpha_a, tdCoef->beta_a/tdCoef->theta, true );
-  setup_chem_par( "P1", tdCoef->gamma_1, tdCoef->D_1, "N", tdCoef->alpha_1, tdCoef->beta_1/tdCoef->theta, false );
+  //setup_chem_par( "P1", tdCoef->gamma_1, tdCoef->D_1, "N", tdCoef->alpha_1, tdCoef->beta_1/tdCoef->theta, false );
+  setup_chem_par( "P1", tdCoef->gamma_1, tdCoef->D_1, "N", tdCoef->alpha_1, tdCoef->beta_1/tdCoef->theta, tdCoef->use_dbc_P1 );
   setup_chem_par( "P2", tdCoef->gamma_2, tdCoef->D_2, "G", tdCoef->alpha_2, tdCoef->beta_2/tdCoef->theta, false );
   if ( tdCoef->treatP1BC )
     chempars["P1"].F_chemBC = &TDSolveSacado::calc_treatment_P1;
@@ -2782,8 +2783,12 @@ DType TDSolveSacado::calc_treatment_P1(const DType tsol_loc) {
 
   if ( pass_count%2 == 0 )
     return 0.0;
-  else
-    return T * ( 1.0 + std::cos(2.0*PI*tsol_loc/h) );
+  else {
+    if ( h <= 0.0 )
+      return T;
+    else
+      return T * ( 1.0 + std::cos(2.0*PI*tsol_loc/h) );
+  }
 }
 
 void TDSolveSacado::reset_srce_max(void) {

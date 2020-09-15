@@ -63,6 +63,7 @@ struct TDCoef {
   DType omega;
   DType treatP1_T, treatP1_h, treatP1_bc;
   std::vector<DType> treatP1_t0;
+  bool  use_dbc_P1;
   bool  treatP1, treatP1BC;
 
   // Modularized coefficients containers
