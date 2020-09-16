@@ -467,7 +467,7 @@ void TDInput::parse(void) {
 
   fin.close();
 
-  display_prob_var_par();
+  //display_prob_var_par();
 
   return;
 }

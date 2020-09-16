@@ -747,7 +747,7 @@ bool TDSolveSacado::setup_ic_oncolytic(void) {
     case 0:
       for ( std::map<std::string,HVEC**>::iterator it = H_data_var.begin();
             it != H_data_var.end(); it++ )
-        *(it->second)[0] = tdCoef->probVarParVals[prob_name][it->first]["init"] / theta;
+        *(it->second)[0] = tdCoef->probVarParVals[prob_name][it->first]["init"];
       break;
     default:
       invalid_ic = true;
@@ -2685,7 +2685,8 @@ void TDSolveSacado::calc_chem_srce_vi_oncolytic(std::string chemname, const int 
   SacadoIndVarArray& s_h     = S_data_var["H"];
 
   DType theta  = tdCoef->theta;
-  DType prod_h = tdCoef->probVarParVals[prob_name][chemname]["prod_h_pos"] * theta;
+  DType prod_h = tdCoef->probVarParVals[prob_name][chemname]["prod_growth_h_pos"] * 
+                 tdCoef->probVarParVals[prob_name][chemname]["growth_h"] * theta;
   DType decay  = chemPar.decay;
 
   int num = s_chem.size();
@@ -2712,10 +2713,14 @@ void TDSolveSacado::calc_chem_srce_a_oncolytic(std::string chemname, const int n
 
   DType theta   = tdCoef->theta;
   DType mm_half = tdCoef->probVarParVals[prob_name][chemname]["mm_half"];
-  DType coef_b  = tdCoef->probVarParVals[prob_name][chemname]["mm_ceil_coef_b_neg"] * theta;
-  DType coef_h  = tdCoef->probVarParVals[prob_name][chemname]["mm_ceil_coef_h_neg"] * theta;
-  DType coef_mv = tdCoef->probVarParVals[prob_name][chemname]["mm_ceil_coef_mv_neg"] * theta;
-  DType coef_mb = tdCoef->probVarParVals[prob_name][chemname]["mm_ceil_coef_mb_neg"] * theta;
+  DType coef_b  = tdCoef->probVarParVals[prob_name][chemname]["coef_mm_b_neg"] * 
+                  tdCoef->probVarParVals[prob_name][chemname]["mm_ceil_b"] * theta;
+  DType coef_h  = tdCoef->probVarParVals[prob_name][chemname]["coef_mm_h_neg"] * 
+                  tdCoef->probVarParVals[prob_name][chemname]["mm_ceil_h"] * theta;
+  DType coef_mv = tdCoef->probVarParVals[prob_name][chemname]["coef_mm_mv_neg"] * 
+                  tdCoef->probVarParVals[prob_name][chemname]["mm_ceil_mv"] * theta;
+  DType coef_mb = tdCoef->probVarParVals[prob_name][chemname]["coef_mm_mb_neg"] * 
+                  tdCoef->probVarParVals[prob_name][chemname]["mm_ceil_mb"] * theta;
   DType prod_g  = tdCoef->probVarParVals[prob_name][chemname]["prod_g_neg"] * theta;
   DType prod    = tdCoef->probVarParVals[prob_name][chemname]["prod_constant"];
 
