@@ -1,0 +1,4 @@
+export OMP_NUM_THREADS=$1
+export CSUPP=$CSUPPROOT/gcc-9.3.0
+export LD_LIBRARY_PATH=$CSUPP/gcc/lib64:$LD_LIBRARY_PATH
+./TestSacado 3
