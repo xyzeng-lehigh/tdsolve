@@ -2561,7 +2561,6 @@ void TDSolveSacado::calc_srce_n_oncolytic(SacadoDepVarArray& s_srce, const DType
 
 void TDSolveSacado::calc_srce_g_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc) {
   reset_sacado_dep_array(s_srce);
-  if (!in_oncolytic_stage[1]) return;
 
   DType theta  = tdCoef->theta;
   DType coef_b = tdCoef->probVarParVals[prob_name]["G"]["coef_b_pos"] * theta;
