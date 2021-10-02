@@ -7,16 +7,17 @@ then
 fi
 
 cd ${BDIR}
-NP=1
+NP=2
 case ${OSTYPE//[0-9.]/} in
   darwin)
     export 
-    cmake \
-      -DCMAKE_C_COMPILER=$CSUPPROOT/gcc-9.3.0/gcc/bin/gcc \
-      -DCMAKE_CXX_COMPILER=$CSUPPROOT/gcc-9.3.0/gcc/bin/g++ \
-      -DTrilinos_DIR:PATH=$CSUPPROOT/gcc-9.3.0/trilinos-12.7 \
+    /opt/homebrew/bin/cmake \
+      -DCMAKE_C_COMPILER=/opt/homebrew/bin/gcc-11 \
+      -DCMAKE_CXX_COMPILER=/opt/homebrew/bin/g++-11 \
+      -DTrilinos_DIR:PATH=$CSUPPROOT/gcc-10.2.1/trilinos-13.0.1 \
+      -DCMAKE_CXX_EXTENSIONS=Off \
       ../
-    NP=2
+    NP=4
     ;;
   linux-gnu)
     cmake3 \

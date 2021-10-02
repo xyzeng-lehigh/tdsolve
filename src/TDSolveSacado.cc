@@ -1447,12 +1447,12 @@ void TDSolveSacado::LimFun_PPM_BC(DType dval_c, DType dval_r, SacadoDepVar& s_li
 }
 
 void TDSolveSacado::LimFun_PPM_BC(SacadoDepVar& s_dval_c, SacadoDepVar& s_dval_r, SacadoDepVar& s_lim) {
-  if ( Sacado::Fad::fabs(s_dval_c)<TOL_ZERO && Sacado::Fad::fabs(s_dval_r)<TOL_ZERO )
+  if ( std::fabs(s_dval_c)<TOL_ZERO && std::fabs(s_dval_r)<TOL_ZERO )
     s_lim = 1.0;
-  else if ( s_dval_c * s_dval_r <= 0.0 || 3.0*Sacado::Fad::fabs(s_dval_r) <= 8.0*Sacado::Fad::fabs(s_dval_c) )
+  else if ( s_dval_c * s_dval_r <= 0.0 || 3.0*std::fabs(s_dval_r) <= 8.0*std::fabs(s_dval_c) )
     s_lim = 0.0;
   else
-    s_lim = Sacado::Fad::min(1.0, 5.0/(Sacado::Fad::fabs(s_dval_r)/Sacado::Fad::fabs(s_dval_c)-1.0));
+    s_lim = std::min(1.0, 5.0/(std::fabs(s_dval_r)/std::fabs(s_dval_c)-1.0));
   return;
 }
 
@@ -1673,7 +1673,7 @@ void TDSolveSacado::calc_ppm_lim_var(SacadoIndVarArray& s_var, SacadoDepVarArray
         s_lim_r[i] = 0.0;
       }
       else {
-        s_alpha1 = 2.0*Sacado::Fad::fabs(s_diff_l)/Sacado::Fad::fabs(s_diff_r);
+        s_alpha1 = 2.0*std::fabs(s_diff_l)/std::fabs(s_diff_r);
         s_alpha2 = 0.25 * s_alpha1;
         if ( tdSetup->jac_lim ) LimFun_PPM_INT( s_alpha1, s_alpha2, s_lim_l[i], s_lim_r[i] );
         else LimFun_PPM_INT( s_alpha1.val(), s_alpha2.val(), s_lim_l[i], s_lim_r[i] );
@@ -1690,8 +1690,8 @@ void TDSolveSacado::calc_ppm_lim_var(SacadoIndVarArray& s_var, SacadoDepVarArray
         (*set_zero)[i] = true;
       }
       else {
-        s_alpha[0][i] = Sacado::Fad::min( s_alpha[0][i], s_alpha1 );
-        s_alpha[1][i] = Sacado::Fad::max( s_alpha[1][i], s_alpha2 );
+        s_alpha[0][i] = std::min( s_alpha[0][i], s_alpha1 );
+        s_alpha[1][i] = std::max( s_alpha[1][i], s_alpha2 );
       }
     }
   }
@@ -1707,7 +1707,7 @@ void TDSolveSacado::calc_ppm_lim_sync(SacadoDepVarArray* s_sync, SacadoDepVarMap
   {
     s_sync[0][0] = 0.0;
     for ( SacadoDepVarMap::iterator it = s_lims[1].begin(); it != s_lims[1].end(); it++ ) {
-      s_sync[1][0] = Sacado::Fad::min( s_sync[1][0], it->second[0] );
+      s_sync[1][0] = std::min( s_sync[1][0], it->second[0] );
     }
   }
   // - all but left boundary

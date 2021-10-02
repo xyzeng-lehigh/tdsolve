@@ -4,6 +4,7 @@
 #include <iostream>
 #include <cstdio>
 #include <cstring>
+#include <set>
 #include "Data_Type.h"
 #include "TDSolve.h"
 #include "Sacado.hpp"
