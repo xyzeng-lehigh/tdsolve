@@ -29,6 +29,11 @@ case ${OSTYPE//[0-9.]/} in
     ;;
 esac
 make -j ${NP}
-cp ${PROG} ../
-cp ${PROGPAR} ../
+cd ../
+if [ ! -f ${PROG} ];
+then
+  ln -s ${BDIR}/${PROG} ./
+fi
+#cp ${PROG} ../
+#cp ${PROGPAR} ../
 cd ../

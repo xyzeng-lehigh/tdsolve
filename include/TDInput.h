@@ -85,6 +85,8 @@ struct TDMesh {
 
 struct TDSetup {
   int   frame;
+  int   dim;     // dim=1: 1D problem; dim=2: radial symmetric problem; dim=3: spherical symmetric
+  DType sweight; // surface weight
   DType cfl;
   int   ic;
   int   scell, schem, vel, rbc, lbc;
@@ -93,6 +95,8 @@ struct TDSetup {
   int   tmeth;
   int   assemb;
   int   ppm_reset_num;
+  bool  fix_domain;
+  bool  cellmotion;
 
   // PMC for iterates (velocity, radius, etc.)
   bool  vCoup;

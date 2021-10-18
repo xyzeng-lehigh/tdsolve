@@ -60,16 +60,19 @@ class TDSolveSacado : public TDSolve {
     bool setup_var_pdgf(void);
     bool setup_var_opn(void);
     bool setup_var_oncolytic(void);
+    bool setup_var_potassium(void);
 
     bool setup_ic_model(void);
     bool setup_ic_pdgf(void);
     bool setup_ic_opn(void);
     bool setup_ic_oncolytic(void);
+    bool setup_ic_potassium(void);
 
     bool setup_srce_model(void);
     bool setup_srce_pdgf(void);
     bool setup_srce_opn(void);
     bool setup_srce_oncolytic(void);
+    bool setup_srce_potassium(void);
 
     bool add_vupdate_uflx(void);
 
@@ -304,6 +307,10 @@ class TDSolveSacado : public TDSolve {
     void calc_srce_mv_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
     void calc_srce_mb_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
 
+    void calc_srce_b1_potassium(SacadoDepVarArray& s_srce, const DType tsol_loc);
+    void calc_srce_b2_potassium(SacadoDepVarArray& s_srce, const DType tsol_loc);
+    void calc_srce_b3_potassium(SacadoDepVarArray& s_srce, const DType tsol_loc);
+
     inline SacadoDepVar icalc_scal_logist_mm(DType,Sacado::Fad::DFad<DType>,DType,DType,DType,Sacado::Fad::DFad<DType>);
 
     void compute_source_chem_prob(const int nt, const DType tsol_loc);
@@ -311,6 +318,11 @@ class TDSolveSacado : public TDSolve {
 
     void calc_chem_srce_vi_oncolytic(std::string chemname, const int nt, const DType tsol_loc);
     void calc_chem_srce_a_oncolytic(std::string chemname, const int nt, const DType tsol_loc);
+
+    void calc_chem_srce_p_potassium(std::string chemname, const int nt, const DType tsol_loc);
+    void calc_chem_srce_v_potassium(std::string chemname, const int nt, const DType tsol_loc);
+
+    inline SacadoDepVar icalc_scal_block_potassium(DType,DType,Sacado::Fad::DFad<DType>);
 
     // Other functions
     DType calc_n_bc( const DType tsol_loc );
@@ -352,6 +364,7 @@ class TDSolveSacado : public TDSolve {
 };
 
 inline DType TDSolveSacado::calc_wupw( const DType l_x, const DType l_dx ) {
+  // XYZ - NEED TO MODIFY IT FOR GENERAL tdSetup->dim 
   return l_x * ( l_x * l_x - 0.25 * l_dx * l_dx );
 }
 
@@ -363,6 +376,12 @@ inline TDSolveSacado::SacadoDepVar TDSolveSacado::icalc_scal_logist_mm(DType sca
     s_val = scal * (mm_const + mm_ceil * s_mm/(mm_half+s_mm));
   else
     s_val = scal * (1.0-s_logist) * (mm_const + mm_ceil * s_mm/(mm_half+s_mm));
+  return s_val;
+}
+
+inline TDSolveSacado::SacadoDepVar TDSolveSacado::icalc_scal_block_potassium(DType k, DType Ps, Sacado::Fad::DFad<DType> s_P) {
+  SacadoDepVar s_val;
+  s_val = 1.0 - 1.0/(1.0+std::exp(-2.0*k*(s_P-Ps)));
   return s_val;
 }
 

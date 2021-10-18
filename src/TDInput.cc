@@ -63,6 +63,7 @@ TDInput::TDInput(void) {
 
 
   tdSetup.frame  = 0;
+  tdSetup.dim    = 3;
   tdSetup.cfl    = 0.9;
   tdSetup.ic     = 0;
   tdSetup.schem  = 0;
@@ -125,6 +126,8 @@ TDInput::TDInput(void) {
   tdSetup.pos_fix     = 0; // 0, no positivity fix
                            // 1, positivity fix in calc_dt
                            // 2. positivity fix in both calc_dt and ppm
+  tdSetup.fix_domain  = false;
+  tdSetup.cellmotion  = true;
 
   tdLin.Type      = LSYS_TYPE_DIR;
   tdLin.Print     = true;
@@ -281,6 +284,7 @@ void TDInput::setup_options(void) {
   tdOptions["Nx"]            = &tdMesh.Nx;
   tdOptions["A_Multiplier"]  = &tdMesh.Na_m;
   tdOptions["framework"]     = &tdSetup.frame;
+  tdOptions["dimension"]     = &tdSetup.dim;
   tdOptions["ic"]            = &tdSetup.ic;
   tdOptions["space_cell"]    = &tdSetup.scell;
   tdOptions["space_chem"]    = &tdSetup.schem;
@@ -464,6 +468,21 @@ void TDInput::parse(void) {
     tdMesh.x_a_f[i] = tdMesh.x_l + i * tdMesh.dx;
   for ( int i = 0; i < tdMesh.Na; i++ )
     tdMesh.x_a_c[i] = tdMesh.x_l + (i+0.5) * tdMesh.dx;
+
+  switch ( tdSetup.dim ) {
+    case 1:
+      tdSetup.sweight = 2.0;
+      break;
+    case 2:
+      tdSetup.sweight = M_PI;
+      break;
+    case 3:
+      tdSetup.sweight = 4.0*M_PI/3.0;
+      break;
+    default:
+      tdSetup.sweight = 4.0*M_PI/3.0;
+      break;
+  }
 
   fin.close();
 
