@@ -4,7 +4,7 @@
 #include <cmath>
 #include "Sacado.hpp"
 #define DType double
-#define NTEST 2
+#define NTEST 3
 #define NVAR  4
 
 // Test 1:
@@ -13,6 +13,10 @@
 // Test 2:
 //   g(x,y,z,w) = exp( x * y * z * w );
 //   (x,y,z,w) = (0.0, 2.0, 4.0, 6.0);
+// Test 3:
+//   h(x,y,z,w) = log( x + y ) + z / w^1.2;
+//   (x,y,z,w) = (0.0, 1.0, 2.0, 3.0);
+//   Hess(h) = [-1 -1 0 0; -1 -1 0 0; 0 0 0 -0.1070; 0 0 -0.1070 0.1570]
 // Both evaluated at:
 
 int main(int argc, char** argv) {
@@ -25,8 +29,10 @@ int main(int argc, char** argv) {
   std::vector<std::vector<Sacado::Fad::DFad<Sacado::Fad::DFad<DType>>>> S_AllVars;
   for ( int t = 0; t < NTEST; t++ ) {
     S_AllVars.push_back( S_vars );
-    for ( int n = 0; n < NVAR; n++ )
-      S_AllVars[t][n] *= (double)(t+1);
+    if ( t < 2 ) {
+      for ( int n = 0; n < NVAR; n++ )
+        S_AllVars[t][n] *= (double)(t+1);
+    }
   }
 
   // Dependent variables
@@ -43,6 +49,8 @@ int main(int argc, char** argv) {
   for ( int n = 0; n < NVAR; n++ ) 
     S_vals[1] *= S_AllVars[1][n];
   S_vals[1] = std::exp( S_vals[1] ); 
+
+  S_vals[2] = std::log( S_AllVars[2][0] + S_AllVars[2][1] ) + S_AllVars[2][2] / std::pow( S_AllVars[2][3], 1.2 );
 
   // Display the results
   for ( int t = 0; t < NTEST; t++ ) {
