@@ -1,6 +1,21 @@
-function make_mov_sol_1d_sacado(data_file,mov_id_c,mov_id_f,frate,interval)
+function make_mov_sol_1d_sacado(data_file,mov_id_c,mov_id_f,frate,interval,varargin)
 % This is specifically designed to read the data
 % computed from TDSolveSacado
+% make_mov_sol_1d_sacado(data_file,mov_id_c,mov_id_f,frate,interval,varargin)
+% varargin{1} = opt
+% opt{1} : ylim for _id_c
+% opt{2} : ylim for _id_f
+% opt{3} : xlabel
+% opt{4} : ylabel for _id_c
+% opt{5} : ylabel for _id_f
+% opt{6} : Font size for title/label
+% opt{7} : Font size for ticks
+
+if nargin == 5
+  opt = {};
+else
+  opt = varargin{1};
+end
 
 [data_c, data_f, time, radius, cols_c, cols_f] = read_sol_1d_sacado(data_file);
 Nd_c = size(data_c,2);
@@ -30,6 +45,13 @@ for nm = 1:(Nm_c+Nm_f)
     cols   = cols_c;
     names  = keys(cols);
     index  = values(cols);
+    if isempty(opt)
+      opt_ylim = {};
+      opt_ylab = {};
+    else
+      opt_ylim = opt{1}{nm};
+      opt_ylab = opt{4}{nm};
+    end
   else
     % Node-centered data
     sum_id = mov_id_f{nm-Nm_c};
@@ -40,6 +62,13 @@ for nm = 1:(Nm_c+Nm_f)
     cols   = cols_f;
     names  = keys(cols);
     index  = values(cols);
+    if isempty(opt)
+      opt_ylim = {};
+      opt_ylab = {};
+    else
+      opt_ylim = opt{2}{nm-Nm_c};
+      opt_ylab = opt{5}{nm-Nm_c};
+    end
   end
   pdata = zeros(Nt,Nx);
   tosum = zeros(Nt,Nx);
@@ -70,8 +99,8 @@ for nm = 1:(Nm_c+Nm_f)
   D = zeros(1,Nx);
   X = zeros(1,Nx);
 
-  mov_title = sprintf('movie_%d.avi', nm);
-  vObj = VideoWriter(mov_title);
+  mov_title = sprintf('movie_%d.mp4', nm);
+  vObj = VideoWriter(mov_title, 'MPEG-4');
   vObj.FrameRate = frate;
   open(vObj);
 
@@ -82,8 +111,33 @@ for nm = 1:(Nm_c+Nm_f)
   
     plot(X,D,'r-x','LineWidth',1.2,'MarkerSize',8);
     xlim([xmin xmax]);
-    ylim([ymin ymax]);
-    title([dname sprintf(', time-stamp %f',time(t))]);
+    if isempty(opt_ylim)
+      ylim([ymin ymax]);
+    else
+      ylim(opt_ylim);
+    end
+    if ~(isempty(opt) || isempty(opt{3}))
+      if isempty(opt) || isempty(opt{6})
+        xlabel(opt{3});
+      else
+        xlabel(opt{3},'FontSize',opt{6});
+      end
+    end
+    if ~isempty(opt_ylab)
+      if isempty(opt) || isempty(opt{6})
+        ylabel(opt_ylab);
+      else
+        ylabel(opt_ylab,'FontSize',opt{6});
+      end
+    end
+    if isempty(opt) || isempty(opt{6})
+      title([dname sprintf(', time-stamp %f',time(t))]);
+    else
+      title([dname sprintf(', time-stamp %f',time(t))],'FontSize',opt{6});
+    end
+    if ~(isempty(opt) || isempty(opt{7}))
+      set(gca, 'FontSize', opt{7});
+    end
 
     frame = getframe(gcf);
     writeVideo(vObj,frame);

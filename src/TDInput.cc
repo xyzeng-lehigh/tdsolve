@@ -149,6 +149,7 @@ TDInput::TDInput(void) {
   probNames.push_back( "pdgf" );
   probNames.push_back( "opn" );
   probNames.push_back( "oncolytic" );
+  probNames.push_back( "potassium" );
 
   setup_parameters();
   setup_options();

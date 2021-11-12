@@ -197,10 +197,10 @@ void TDSolveSacado::calc_dt(const int nt) {
   if ( !tdSetup->fix_domain ) {
     if ( data_r[nt] <= tdSetup->Rdead || data_r[nt] >= tdSetup->Rterm )
       reach_term_now = true;
-
-    if ( reach_term_next )
-      reach_term_now = true;
   }
+
+  if ( reach_term_next )
+    reach_term_now = true;
 
   DType dtn_trial = DTYPE_MAX;
   DType dtn_cfl1  = DTYPE_MAX; // dtn corresponding to CFL 1
@@ -670,8 +670,7 @@ bool TDSolveSacado::setup_var_potassium(void) {
   setup_chem_par_gen( "P", tdCoef->probVarParVals[prob_name]["P"]["grow_neg"],
       tdCoef->probVarParVals[prob_name]["P"]["diffusion"], 
       false, &TDSolveSacado::calc_chem_srce_p_potassium ); // false -> do not use Dirichlet bc
-  setup_chem_par_gen( "V", tdCoef->probVarParVals[prob_name]["V"]["grow_neg"],
-      tdCoef->probVarParVals[prob_name]["V"]["diffusion"], 
+  setup_chem_par_gen( "V", 0.0, tdCoef->probVarParVals[prob_name]["V"]["diffusion"], 
       false, &TDSolveSacado::calc_chem_srce_v_potassium ); // false -> do not use Dirichlet bc
   return true;
 }
@@ -799,7 +798,7 @@ bool TDSolveSacado::setup_ic_potassium(void) {
   setic_unif_cell("P", 0.0);
   setic_unif_cell("V", 0.0);
   (*(H_data_var["V"])[0])[0] = tdCoef->probVarParVals[prob_name]["V"]["init_num"] / tdSetup->sweight / std::pow(tdCoef->R_0*dx,tdSetup->dim);
-  return true;
+  return invalid_ic;
 }
 
 bool TDSolveSacado::setup_srce_model(void) {
@@ -1860,7 +1859,7 @@ void TDSolveSacado::calc_dflux_chem_var(std::string chemname, const int nt, cons
   }
   // - interior points
   for ( int i = 1; i < num; i++ ) {
-    s_flx[i] = - dcoef * std::pow( l_x_f[i], tdSetup->dim-1 ) * (s_var[i] - s_var[i-1]) / dx;
+    s_flx[i] = - dcoef * std::pow( l_x_f[i] * data_r[nt], tdSetup->dim-1 ) / data_r[nt] / data_r[nt] * (s_var[i] - s_var[i-1]) / dx;
     //s_flx[i] = - dcoef * l_x_f[i] * l_x_f[i] * (s_var[i] - s_var[i-1]) / dx;
   }
   // - right boundary
@@ -1869,11 +1868,11 @@ void TDSolveSacado::calc_dflux_chem_var(std::string chemname, const int nt, cons
     if ( chempars[chemname].F_chemBC != NULL )
       chem_bc = (this->*(chempars[chemname].F_chemBC))(tsol_loc);
     if ( dbc ) { // Dirichlet b.c. 
-      s_flx[num] = - dcoef * std::pow( l_x_f[num], tdSetup->dim-1 ) * (chem_bc - s_var[num-1]) / dx;
+      s_flx[num] = - dcoef * std::pow( l_x_f[num] * data_r[nt], tdSetup->dim-1 ) / data_r[nt] / data_r[nt] * (chem_bc - s_var[num-1]) / dx;
       //s_flx[num] = - dcoef * l_x_f[num] * l_x_f[num] * (chem_bc - s_var[num-1]) / dx;
     }
     else { // Neumann b.c.
-      s_flx[num] = - dcoef * std::pow( l_x_f[num], tdSetup->dim-1 ) * data_r[nt] * chem_bc;
+      s_flx[num] = - dcoef * std::pow( l_x_f[num] * data_r[nt], tdSetup->dim-1 ) / data_r[nt] * chem_bc;
       //s_flx[num] = - dcoef * l_x_f[num] * l_x_f[num] * data_r[nt] * chem_bc;
     }
   }
@@ -2925,7 +2924,6 @@ void TDSolveSacado::calc_chem_srce_v_potassium(std::string chemname, const int n
   // assert( chemname.compare("V") == 0 );
   SacadoDepVarArray& s_srce  = S_srce_chem[chemname];
   DType*             l_x_c   = varcoord[chemname];
-  ChemPar&           chemPar = chempars[chemname];
   SacadoIndVarArray& s_chem  = S_data_var[chemname];
   SacadoIndVarArray& s_p     = S_data_var["P"];
   SacadoIndVarArray& s_b1    = S_data_var["B1"];
