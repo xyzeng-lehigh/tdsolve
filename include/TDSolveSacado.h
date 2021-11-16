@@ -381,7 +381,16 @@ inline TDSolveSacado::SacadoDepVar TDSolveSacado::icalc_scal_logist_mm(DType sca
 
 inline TDSolveSacado::SacadoDepVar TDSolveSacado::icalc_scal_block_potassium(DType k, DType Ps, Sacado::Fad::DFad<DType> s_P) {
   SacadoDepVar s_val;
-  s_val = 1.0 - 1.0/(1.0+std::exp(-2.0*k*(s_P-Ps)));
+  if ( k > 0.0 )
+    s_val = 1.0 - 1.0/(1.0+std::exp(-2.0*k*(s_P-Ps)));
+  else {
+    if ( s_P < Ps )
+      s_val = 1.0;
+    else
+      s_val = 0.0;
+  }
+  //if ( s_val.val() < 1.0 - 1.0e-10 )
+  //  printf( "k = %1.10f, F = %1.20f.\n", k, s_val.val() );
   return s_val;
 }
 
