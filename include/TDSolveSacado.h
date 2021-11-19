@@ -383,6 +383,9 @@ inline TDSolveSacado::SacadoDepVar TDSolveSacado::icalc_scal_block_potassium(DTy
   SacadoDepVar s_val;
   if ( k > 0.0 )
     s_val = 1.0 - 1.0/(1.0+std::exp(-2.0*k*(s_P-Ps)));
+  else if ( k == 0.0 ) {
+    s_val = 0.5;
+  }
   else {
     if ( s_P < Ps )
       s_val = 1.0;
