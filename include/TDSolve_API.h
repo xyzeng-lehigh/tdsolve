@@ -40,6 +40,7 @@ class TDFactory {
 
     bool run_pdgf(DType& Tterm, DType& Gperc, DType& Nperc);
     bool run_opn(DType& Tterm, DType& Gperc, DType& Nperc);
+    bool run_potassium(DType& B2peak, DType& B2vol, DType& B3vol, DType& Pvol, DType& Vvol);
 };
 
 #endif

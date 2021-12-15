@@ -217,7 +217,9 @@ void usage(void) {
   printf("  -m    Fitting method (LS0D,LS1D,LS2D,LS3D,LS4D,LS5D) - degree of poly\n");
   printf("                       (LS0T,LS1T,LS2T,LS3T,LS4T,LS5T) - degree in each var\n");
   printf("  -n    Problem name -- decide which solver to use and the outputs\n");
-  printf("          PDGF - PDGF/Tterm, Nperc\n");
+  printf("          PDGF - PDGF/Tterm, Gperc, Nperc\n");
+  printf("          OPN  - OPN/Tterm, Gperc, Nperc\n");
+  printf("          Potassium - Potassium/B2peak, B2vol, B3vol, Pvol, Vvol\n");
   printf("  -o    Specify the output file to store fitting information\n");
   printf("  -p    Specify the parametric input file name\n");
   printf("  -r    Specify the output reference values\n");

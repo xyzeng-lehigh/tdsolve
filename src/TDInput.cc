@@ -472,16 +472,20 @@ void TDInput::parse(void) {
 
   switch ( tdSetup.dim ) {
     case 1:
+      tdSetup.vweight = 2.0;
       tdSetup.sweight = 2.0;
       break;
     case 2:
-      tdSetup.sweight = M_PI;
+      tdSetup.vweight = M_PI;
+      tdSetup.sweight = 2.0*M_PI; 
       break;
     case 3:
-      tdSetup.sweight = 4.0*M_PI/3.0;
+      tdSetup.vweight = 4.0*M_PI/3.0;
+      tdSetup.sweight = 4.0*M_PI;
       break;
     default:
-      tdSetup.sweight = 4.0*M_PI/3.0;
+      tdSetup.vweight = 4.0*M_PI/3.0;
+      tdSetup.sweight = 4.0*M_PI;
       break;
   }
 

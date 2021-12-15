@@ -43,9 +43,11 @@ class TDSolveSacado : public TDSolve {
     // After calling, (*data_v)[to] will be filled
     void update_vel(const int fr, const int to, const DType shift_dt=0.0, const bool last_iter=false);
 
-    // Functions called by APE
+    // Functions called by API
     DType get_gperc(const int nt);
     DType get_nperc(const int nt);
+    DType get_argmax(const std::string name, const int nt);
+    DType get_total(const std::string name, const int nt);
 
   protected:
     // Specific toggle options for oncolytic model
@@ -384,7 +386,7 @@ inline TDSolveSacado::SacadoDepVar TDSolveSacado::icalc_scal_block_potassium(DTy
   if ( k > 0.0 )
     s_val = 1.0 - 1.0/(1.0+std::exp(-2.0*k*(s_P-Ps)));
   else if ( k == 0.0 ) {
-    s_val = 0.5;
+    s_val = 1.0;
   }
   else {
     if ( s_P < Ps )
@@ -392,8 +394,6 @@ inline TDSolveSacado::SacadoDepVar TDSolveSacado::icalc_scal_block_potassium(DTy
     else
       s_val = 0.0;
   }
-  //if ( s_val.val() < 1.0 - 1.0e-10 )
-  //  printf( "k = %1.10f, F = %1.20f.\n", k, s_val.val() );
   return s_val;
 }
 

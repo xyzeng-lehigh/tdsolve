@@ -43,6 +43,13 @@ TDFactory::TDFactory(TDInput* tdInput_in, const char* probName_in)  {
     okeys.insert("Gperc");
     okeys.insert("Nperc");
   }
+  else if ( std::strcmp( probName, "Potassium" ) == 0 ) {
+    okeys.insert("B2peak");
+    okeys.insert("B2ttl");
+    okeys.insert("B3ttl");
+    okeys.insert("Pttl");
+    okeys.insert("Vttl");
+  }
 
   for ( std::set<std::string>::iterator it = okeys.begin();
         it != okeys.end(); it++ )
@@ -72,6 +79,16 @@ bool TDFactory::run(void) {
     sols["Tterm"] = Tterm;
     sols["Gperc"] = Gperc;
     sols["Nperc"] = Nperc;
+  }
+
+  if ( std::strcmp( probName, "Potassium" ) == 0 ) {
+    DType B2peak, B2ttl, B3ttl, Pttl, Vttl;
+    success = run_potassium(B2peak, B2ttl, B3ttl, Pttl, Vttl);
+    sols["B2peak"] = B2peak;
+    sols["B2ttl"]  = B2ttl;
+    sols["B3ttl"]  = B3ttl;
+    sols["Pttl"]   = Pttl;
+    sols["Vttl"]   = Vttl;
   }
 
   return success;
@@ -236,5 +253,40 @@ bool TDFactory::run_opn(DType& Tterm, DType& Gperc, DType& Nperc) {
   }
 
   return run_success;
+}
+
+bool TDFactory::run_potassium(DType& B2peak, DType& B2ttl, DType& B3ttl, DType& Pttl, DType& Vttl) {
+  tdSolve->setup();
+  tdSolve->set_ic();
+  tdSolve->calc_dt(0);
+  tdSolve->diagnostic(0);
+
+  assert( classical_tmeth ); // A cleaner version
+  
+  while ( tdSolve->nextIter() ) {
+    switch ( tdInput->tdSetup.tmeth ) {
+      case 0:
+        tdSolve->update_sol(0,1);
+        break;
+      default:
+        tdSolve->update_sol(0,1);
+        break;
+    }
+    tdSolve->output(0);
+    tdSolve->copy_data(1,0);
+    tdSolve->calc_dt(0);
+    tdSolve->diagnostic(0);
+  }
+
+  tdSolve->update_vel(0,1,0.0,true);
+  tdSolve->output(0);
+
+  B2peak = tdSolve->get_argmax("B2",0);
+  B2ttl  = tdSolve->get_total( "B2",0);
+  B3ttl  = tdSolve->get_total( "B3",0);
+  Pttl   = tdSolve->get_total( "P" ,0);
+  Vttl   = tdSolve->get_total( "V" ,0);
+
+  return true;
 }
 

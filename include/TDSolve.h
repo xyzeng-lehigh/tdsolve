@@ -74,6 +74,8 @@ class TDSolve {
     DType get_tsol(void) {return tsol;}
     virtual DType get_gperc(const int nt) {return 0.0;};
     virtual DType get_nperc(const int nt) {return 0.0;};
+    virtual DType get_argmax(const std::string name, const int nt) {return 0.0;};
+    virtual DType get_total(const std::string name, const int nt) {return 0.0;};
 
     void downscale_sol(const int s_nt, const int r_nt);
     void upscale_sol(const int s_nt, const int r_nt);

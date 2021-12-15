@@ -566,6 +566,42 @@ DType TDSolveSacado::get_nperc(const int nt) {
   return get_cell_perc("N",nt);
 }
 
+DType TDSolveSacado::get_argmax(const std::string name, const int nt) {
+  std::vector<std::string>::iterator it = std::find( cellnames.begin(), cellnames.end(), name );
+  if ( it == cellnames.end() ) {
+    std::cout << " Warning: the cell variable name " << name << " is not registered." << std::endl;
+    return 0.0;
+  }
+  int num = varsizes[name];
+  DType max_val = -DTYPE_MAX;
+  int i_max = -1;
+  DType* l_x_c = varcoord[name];
+  for ( int i = 0; i < num; i++ ) {
+    if ( max_val < (*H_data_var[name][nt])[i] ) {
+      max_val = (*H_data_var[name][nt])[i];
+      i_max = i;
+    }
+  }
+  return data_r[nt] * l_x_c[i_max];
+}
+
+DType TDSolveSacado::get_total(const std::string name, const int nt) {
+  std::vector<std::string>::iterator it = std::find( cellnames.begin(), cellnames.end(), name );
+  if ( it == cellnames.end() ) {
+    std::cout << " Warning: the cell variable name " << name << " is not registered." << std::endl;
+    return 0.0;
+  }
+  int num = varsizes[name];
+  DType* l_x_c = varcoord[name];
+  DType tot_var = 0.0;
+  DType dr = data_r[nt] * dx;
+  for ( int i = 0; i < num; i++ ) {
+    DType r_loc = data_r[nt] * l_x_c[i];
+    tot_var += dr * tdSetup->sweight * std::pow(r_loc,tdSetup->dim-1) * (*H_data_var[name][nt])[i];
+  }
+  return tot_var;
+}
+
 void TDSolveSacado::add_cellular_var(std::vector<std::string>& names, std::string name, const int size, DType* x_var, DType* x_flx) {
   names.push_back( name );
   varsizes.insert(std::pair<std::string,int>(name,size));
@@ -666,6 +702,10 @@ bool TDSolveSacado::setup_var_potassium(void) {
   add_cellular_var( cellnames, "B3", Nx, x_c, x_f );
   add_cellular_var( chemnames, "P", Nx, x_c, x_f );
   add_cellular_var( chemnames, "V", Nx, x_c, x_f );
+  
+  if ( tdCoef->probVarParVals[prob_name]["P"]["slope"] == 0.0 ) {
+    std::cout << " Warning: Setting the P.slope to zero will turn off the blocking of potassium entirely instead of using the smoothed Heaviside function." << std::endl;
+  }
 
   setup_chem_par_gen( "P", tdCoef->probVarParVals[prob_name]["P"]["grow_neg"],
       tdCoef->probVarParVals[prob_name]["P"]["diffusion"], 
@@ -797,7 +837,7 @@ bool TDSolveSacado::setup_ic_potassium(void) {
   setic_unif_cell("B3",0.0);
   setic_unif_cell("P", 0.0);
   setic_unif_cell("V", 0.0);
-  (*(H_data_var["V"])[0])[0] = tdCoef->probVarParVals[prob_name]["V"]["init_num"] / tdSetup->sweight / std::pow(tdCoef->R_0*dx,tdSetup->dim);
+  (*(H_data_var["V"])[0])[0] = tdCoef->probVarParVals[prob_name]["V"]["init_num"] / tdSetup->vweight / std::pow(tdCoef->R_0*dx,tdSetup->dim);
   return invalid_ic;
 }
 
@@ -2963,16 +3003,18 @@ DType TDSolveSacado::get_cell_perc(std::string cellname, const int nt) {
   DType tot_cell = 0.0;
   DType tot_all  = 0.0;
 
-  DType pi4 = 4.0 * PI;
+  //DType pi4 = 4.0 * PI;
   
   for ( std::vector<std::string>::iterator it = cellnames.begin();
         it != cellnames.end(); it++ ) {
     int num = varsizes[*it];
     DType* l_x_c = varcoord[*it];
     DType tot_loc = 0.0;
+    DType dr = data_r[nt] * dx;
     for ( int i = 0; i < num; i++ ) {
       DType r_loc = data_r[nt] * l_x_c[i];
-      tot_loc += pi4 * r_loc * r_loc * (*H_data_var[*it][nt])[i];
+      tot_loc += dr * tdSetup->sweight * std::pow(r_loc,tdSetup->dim-1) * (*H_data_var[*it][nt])[i];
+      //tot_loc += dr * pi4 * r_loc * r_loc * (*H_data_var[*it][nt])[i];
     }
     tot_all += tot_loc;
     if ( *it == cellname )

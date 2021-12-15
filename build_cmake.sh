@@ -34,6 +34,10 @@ if [ ! -f ${PROG} ];
 then
   ln -s ${BDIR}/${PROG} ./
 fi
+#if [ ! -f ${PROGPAR} ];
+#then
+#  ln -s ${BDIR}/${PROGPAR} ./
+#fi
 #cp ${PROG} ../
 #cp ${PROGPAR} ../
 cd ../
