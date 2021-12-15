@@ -710,7 +710,8 @@ bool TDSolveSacado::setup_var_potassium(void) {
   setup_chem_par_gen( "P", tdCoef->probVarParVals[prob_name]["P"]["grow_neg"],
       tdCoef->probVarParVals[prob_name]["P"]["diffusion"], 
       false, &TDSolveSacado::calc_chem_srce_p_potassium ); // false -> do not use Dirichlet bc
-  setup_chem_par_gen( "V", 0.0, tdCoef->probVarParVals[prob_name]["V"]["diffusion"], 
+  setup_chem_par_gen( "V", tdCoef->probVarParVals[prob_name]["V"]["grow_neg"], 
+      tdCoef->probVarParVals[prob_name]["V"]["diffusion"], 
       false, &TDSolveSacado::calc_chem_srce_v_potassium ); // false -> do not use Dirichlet bc
   return true;
 }
@@ -2964,6 +2965,7 @@ void TDSolveSacado::calc_chem_srce_v_potassium(std::string chemname, const int n
   // assert( chemname.compare("V") == 0 );
   SacadoDepVarArray& s_srce  = S_srce_chem[chemname];
   DType*             l_x_c   = varcoord[chemname];
+  ChemPar&           chemPar = chempars[chemname];
   SacadoIndVarArray& s_chem  = S_data_var[chemname];
   SacadoIndVarArray& s_p     = S_data_var["P"];
   SacadoIndVarArray& s_b1    = S_data_var["B1"];
@@ -2972,7 +2974,8 @@ void TDSolveSacado::calc_chem_srce_v_potassium(std::string chemname, const int n
   DType theta   = tdCoef->theta;
   DType prod_b2 = tdCoef->probVarParVals[prob_name][chemname]["burst"] *
                   tdCoef->probVarParVals[prob_name]["B2"]["grow_neg"] * theta;
-  DType decay   = tdCoef->probVarParVals[prob_name]["B1"]["grow_neg_virus"] * theta;
+  DType decay_b = tdCoef->probVarParVals[prob_name]["B1"]["grow_neg_virus"] * theta;
+  DType decay   = chemPar.decay;
   DType k       = tdCoef->probVarParVals[prob_name]["P"]["slope"];
   DType Ps      = tdCoef->probVarParVals[prob_name]["P"]["threshold"];
 
@@ -2980,7 +2983,8 @@ void TDSolveSacado::calc_chem_srce_v_potassium(std::string chemname, const int n
 
   for ( int i = 0; i < num; i++ ) {
     s_srce[i] += std::pow( l_x_c[i] * data_r[nt], tdSetup->dim-1 ) *
-      icalc_scal_block_potassium( k, Ps, s_p[i] ) * ( prod_b2 * s_b2[i] - decay * s_b1[i] * s_chem[i] );
+      ( icalc_scal_block_potassium( k, Ps, s_p[i] ) * ( prod_b2 * s_b2[i] - decay_b * s_b1[i] * s_chem[i] ) 
+        - decay * s_chem[i] );
   }
 
   return;
