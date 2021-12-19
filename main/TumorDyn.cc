@@ -67,8 +67,11 @@ int main(int argc, char** argv) {
   if (classical_tmeth) { // A cleaner version
     while ( tdSolve->nextIter() ) {
       switch ( tdInput.tdSetup.tmeth ) {
-        case 0:  // First-order explicit/implicit Euler
+        case 0: // First-order explicit/implicit Euler
+        case 1:
           tdSolve->update_sol(0,1);
+          break;
+        case 2: // An A-stable DIRK2
           break;
         default:
           tdSolve->update_sol(0,1);

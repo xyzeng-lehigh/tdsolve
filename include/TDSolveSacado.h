@@ -271,12 +271,12 @@ class TDSolveSacado : public TDSolve {
     void update_cells_by_res(const int nt);
     void update_sol_by_res_var_exp(HVEC& h_var, HVEC& h_res, DType h_r, DType* l_x_c, const int num);
 
-    void update_cells_by_res_imp(const int nt);
+    void update_cells_by_res_imp(const int nt, DType& cur_res);
     void update_cell_linsys_by_res_var(HVEC& h_res, DType h_r, DType* l_x_c, SacadoDepVarArray& s_flx, SacadoDepVarArray& s_src, const int num, const int s_offset, const int l_offset, LSPack& lsPack);
-    void update_hsol_by_linsol(HVEC& h_var, const int l_offset, const int num, LSPack& lsPack);
+    void update_hsol_by_linsol(HVEC& h_var, const int l_offset, const int num, LSPack& lsPack, DType& cur_res);
 
-    void update_chems_by_res_imp(const int nt);
-    void update_chem_by_res_var_imp(HVEC& h_var, HVEC& h_res, DType h_r, DType* l_x_c, SacadoDepVarArray& s_flx, SacadoDepVarArray& s_src, const int num, const int offset, LSPack& lsPack);
+    void update_chems_by_res_imp(const int nt, DType& loc_res);
+    void update_chem_by_res_var_imp(HVEC& h_var, HVEC& h_res, DType h_r, DType* l_x_c, SacadoDepVarArray& s_flx, SacadoDepVarArray& s_src, const int num, const int offset, LSPack& lsPack, DType& loc_res);
 
     void compute_rad(const int fr, const int to);
 

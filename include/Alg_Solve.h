@@ -92,6 +92,7 @@ class LinVec {
 
         // 2-norm
         DType getNorm(void);
+        DType getInfNorm(void);
         // this = vec_in
         void copy(LinVec& vec_in);
         // this = a*this

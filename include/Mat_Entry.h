@@ -207,6 +207,8 @@ class VComp {
             return *data;}
         DType getNorm(void) {
             return data->norm();}
+        DType getInfNorm(void) {
+            return data->norm(0);}
         VComp& operator= (const HVEC& in_data) {
             assert(dim==in_data.size());
             *data = in_data;

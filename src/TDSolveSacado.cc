@@ -386,6 +386,8 @@ bool TDSolveSacado::update_sol(const int fr, const int to, const DType shift_dt_
   // Setup updates schemes
   int  numIter  = 1;
   bool assembleJacobian = false;
+  DType ntTol, cur_res=DTYPE_MAX;
+  bool displayNewton = false;
   // Time argument for prescribed functions
   DType shift_dt_space = shift_dt_to;
   switch ( tdSetup->assemb ) {
@@ -397,10 +399,13 @@ bool TDSolveSacado::update_sol(const int fr, const int to, const DType shift_dt_
     case 1: // implicit
       numIter = tdSetup->ntIter;
       assembleJacobian = true;
+      ntTol = tdSetup->ntTol;
+      displayNewton = true;
       break;
     case 2: // PMC - just add for fun, not really using
       numIter = tdSetup->ntIter;
       assembleJacobian = false;
+      ntTol = -1.0;
       shift_dt_space = shift_dt_fr;
       break;
     default:
@@ -409,8 +414,10 @@ bool TDSolveSacado::update_sol(const int fr, const int to, const DType shift_dt_
 
   // ! All fluxes are on the left-hand side, including the diffusion ones
   // ! All source terms are on the right-hand side.
-  for ( int iter = 0; iter < numIter; iter++ ) {
-    // Step 0. Setup the Sacado variables
+  int iter = 0;
+  while ( iter < numIter && cur_res > ntTol ) {
+    // Step 0. Setup the Sacado variables and initialize local inf-res
+    DType loc_res = 0.0;
     reset_sacado_ind_array();
     reset_sacado_dep_array();
     // Set the independent variables iterates to [to] 
@@ -463,7 +470,7 @@ bool TDSolveSacado::update_sol(const int fr, const int to, const DType shift_dt_
     if ( assembleJacobian ) {
       // Assemble the Jacobian, solve for one Newton iteration
       // 6.1 - Implicit updates of cell numbers 
-      update_cells_by_res_imp( to );
+      update_cells_by_res_imp( to, loc_res );
     }
     else {
       // This will use data_r instead of S_data_r
@@ -508,7 +515,7 @@ bool TDSolveSacado::update_sol(const int fr, const int to, const DType shift_dt_
 
     // Step X. Update the solution/iterates for chems
     // X-1. Implicit updates of chemicals
-    update_chems_by_res_imp( to );
+    update_chems_by_res_imp( to, loc_res );
     // X-2. Make consistent the velocity for dtn
     reset_sacado_ind_array();
     reset_sacado_dep_array();
@@ -517,6 +524,13 @@ bool TDSolveSacado::update_sol(const int fr, const int to, const DType shift_dt_
     update_vel( to, to, shift_dt_to );
     set_from_sacado_vel(to);
     compute_rad( to, to );
+    
+    cur_res = loc_res;
+    iter++;
+  }
+
+  if ( displayNewton ) {
+    fprintf( stdout, "    --- Newton method: %3d iterations, Linf residual %e.\n", iter, cur_res );
   }
 
   // Aux variables
@@ -2149,7 +2163,7 @@ void TDSolveSacado::update_sol_by_res_var_exp(HVEC& h_var, HVEC& h_res, DType h_
   return;
 }
 
-void TDSolveSacado::update_cells_by_res_imp(const int nt) {
+void TDSolveSacado::update_cells_by_res_imp(const int nt, DType& loc_res) {
   cell_lspack.mat->reset( 0.0 );
   cell_lspack.rhs->reset( 0.0 );
   cell_lspack.sol->reset( 0.0 );
@@ -2170,7 +2184,7 @@ void TDSolveSacado::update_cells_by_res_imp(const int nt) {
     HVEC& h_var = *H_data_var[*it][nt];
     int l_offset = H_cell_offset[*it];
     int num = varsizes[*it];
-    update_hsol_by_linsol( h_var, l_offset, num, cell_lspack );
+    update_hsol_by_linsol( h_var, l_offset, num, cell_lspack, loc_res );
   }
 
   return;
@@ -2244,8 +2258,10 @@ void TDSolveSacado::update_cell_linsys_by_res_var(HVEC& h_res, DType h_r, DType*
   return;
 }
 
-void TDSolveSacado::update_hsol_by_linsol(HVEC& h_var, const int l_offset, const int num, LSPack& lsPack) {
+void TDSolveSacado::update_hsol_by_linsol(HVEC& h_var, const int l_offset, const int num, LSPack& lsPack, DType& loc_res) {
   VComp comp(1,0.0);
+
+  loc_res = std::max(loc_res, lsPack.sol->getInfNorm());
 
   for ( int i = 0; i < num; i++ ) {
     comp = lsPack.sol->get(l_offset+i);
@@ -2257,7 +2273,7 @@ void TDSolveSacado::update_hsol_by_linsol(HVEC& h_var, const int l_offset, const
   return;
 }
 
-void TDSolveSacado::update_chems_by_res_imp(const int nt) {
+void TDSolveSacado::update_chems_by_res_imp(const int nt, DType& loc_res) {
   std::vector<std::string>::iterator it;
   for ( it = chemnames.begin(); it != chemnames.end(); it++ ) {
     if ( check_chem_skip( *it ) )
@@ -2266,12 +2282,12 @@ void TDSolveSacado::update_chems_by_res_imp(const int nt) {
     HVEC& h_res = *H_data_res[*it][0];
     DType h_r   = data_r[nt];
     int s_offset = S_data_offset[*it];
-    update_chem_by_res_var_imp( h_var, h_res, h_r, varcoord[*it], S_flux_chem[*it], S_srce_chem[*it], varsizes[*it], s_offset, varlspacks[*it] );
+    update_chem_by_res_var_imp( h_var, h_res, h_r, varcoord[*it], S_flux_chem[*it], S_srce_chem[*it], varsizes[*it], s_offset, varlspacks[*it], loc_res );
   }
   return;
 }
 
-void TDSolveSacado::update_chem_by_res_var_imp(HVEC& h_var, HVEC& h_res, DType h_r, DType* l_x_c, SacadoDepVarArray& s_flx, SacadoDepVarArray& s_src, const int num, const int s_offset, LSPack& lsPack) {
+void TDSolveSacado::update_chem_by_res_var_imp(HVEC& h_var, HVEC& h_res, DType h_r, DType* l_x_c, SacadoDepVarArray& s_flx, SacadoDepVarArray& s_src, const int num, const int s_offset, LSPack& lsPack, DType& loc_res) {
   lsPack.mat->reset( 0.0 );
   lsPack.rhs->reset( 0.0 );
   lsPack.sol->reset( 0.0 );
@@ -2318,6 +2334,8 @@ void TDSolveSacado::update_chem_by_res_var_imp(HVEC& h_var, HVEC& h_res, DType h
 
   // Solve the linear system
   lsPack.linSolve->solve();
+
+  loc_res = std::max(loc_res, lsPack.sol->getInfNorm());
 
   // Fetch and update solution
   for ( int i = 0; i < num; i++ ) {

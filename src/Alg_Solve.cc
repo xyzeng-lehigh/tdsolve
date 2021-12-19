@@ -55,6 +55,15 @@ DType LinVec::getNorm(void) {
     return sqrt(val);
 }
 
+DType LinVec::getInfNorm(void) {
+    DType val = 0.0;
+    for (int i=0; i<size; i++) {
+        DType loc_norm = (*vec[i]).getInfNorm();
+        val = std::max( val, loc_norm );
+    }
+    return val;
+}
+
 void LinVec::copy(LinVec& vec_in) {
     assert( &vec_in != this );
     assert( size == vec_in.getSize() );
