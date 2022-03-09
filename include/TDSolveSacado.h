@@ -324,7 +324,7 @@ class TDSolveSacado : public TDSolve {
     void calc_chem_srce_p_potassium(std::string chemname, const int nt, const DType tsol_loc);
     void calc_chem_srce_v_potassium(std::string chemname, const int nt, const DType tsol_loc);
 
-    inline SacadoDepVar icalc_scal_block_potassium(DType,DType,Sacado::Fad::DFad<DType>);
+    inline SacadoDepVar icalc_scal_block_potassium(DType,DType,Sacado::Fad::DFad<DType>,DType heaviside_scale = 1.0);
 
     // Other functions
     DType calc_n_bc( const DType tsol_loc );
@@ -381,10 +381,10 @@ inline TDSolveSacado::SacadoDepVar TDSolveSacado::icalc_scal_logist_mm(DType sca
   return s_val;
 }
 
-inline TDSolveSacado::SacadoDepVar TDSolveSacado::icalc_scal_block_potassium(DType k, DType Ps, Sacado::Fad::DFad<DType> s_P) {
+inline TDSolveSacado::SacadoDepVar TDSolveSacado::icalc_scal_block_potassium(DType k, DType Ps, Sacado::Fad::DFad<DType> s_P, DType heaviside_scale) {
   SacadoDepVar s_val;
   if ( k > 0.0 )
-    s_val = 1.0 - 1.0/(1.0+std::exp(-2.0*k*(s_P-Ps)));
+    s_val = 1.0 - heaviside_scale/(1.0+std::exp(-2.0*k*(s_P-Ps)));
   else if ( k == 0.0 ) {
     s_val = 1.0;
   }
@@ -392,7 +392,7 @@ inline TDSolveSacado::SacadoDepVar TDSolveSacado::icalc_scal_block_potassium(DTy
     if ( s_P < Ps )
       s_val = 1.0;
     else
-      s_val = 0.0;
+      s_val = 1.0 - heaviside_scale;
   }
   return s_val;
 }
