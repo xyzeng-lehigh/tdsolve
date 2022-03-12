@@ -144,6 +144,7 @@ class TDSolve {
     bool   reach_output_now;
     bool   reach_output_next;
     bool   reach_term_now;
+    bool   force_nextIter;
     bool   use_tfreq;
 
     // Used by check_conv_radau

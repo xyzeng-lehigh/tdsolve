@@ -114,7 +114,7 @@ struct TDSetup {
   DType Rterm, Rdead;
   int   freq;
   int   maxit;
-  DType dTinit, dTgrow, dTmax;
+  DType dTinit, dTgrow, dTmax, dTmin;
   int   dr_opt, r_opt;
   bool  jac_lim;
   bool  jac_vel;

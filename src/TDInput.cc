@@ -98,6 +98,7 @@ TDInput::TDInput(void) {
   tdSetup.dTinit = 1e-10;
   tdSetup.dTgrow = 1.2;
   tdSetup.dTmax  = DTYPE_MAX;
+  tdSetup.dTmin  = 0.0;
   tdSetup.dr_opt = 0; // 0, default, dr = V
                       // 1, dx independent, dR = V(1+0.5*dt*V/R)
                       // 2, dx dependent, dR = (1/1-dx^2/4)V
@@ -273,6 +274,7 @@ void TDInput::setup_parameters(void) {
   tdParameters["dt_init"]         = &tdSetup.dTinit;
   tdParameters["dt_growth"]       = &tdSetup.dTgrow;
   tdParameters["dt_max"]          = &tdSetup.dTmax;
+  tdParameters["dt_min"]          = &tdSetup.dTmin;
   tdParameters["chemo_range"]     = &tdSetup.chemo_L;
   tdParameters["init_u_par"]      = &tdSetup.init_u_par;
   tdParameters["lsysTargetRes"]   = &tdLin.TargetRes;

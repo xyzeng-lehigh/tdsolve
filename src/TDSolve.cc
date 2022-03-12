@@ -26,6 +26,7 @@ TDSolve::TDSolve(TDInput* tdInput_ptr) {
 
   reach_term_now  = tdSetup->Tterm <= tsol;
   reach_term_next = false;
+  force_nextIter  = false;
 
   mat = NULL;
   prc = NULL;
@@ -475,9 +476,16 @@ void TDSolve::check_conv_radius(const RKButcher& rkButcher, int& n_iter,
 }
 
 void TDSolve::reduce_dtn(const DType scale) {
-  scale_dtn( scale );
+  DType loc_scale = scale;
+  force_nextIter = false;
+  scale_dtn( loc_scale );
+  if ( dtn < tdSetup->dTmin ) {
+    scale_dtn( tdSetup->dTmin/dtn );
+    loc_scale *= tdSetup->dTmin/dtn;
+    force_nextIter = true;
+  }
   dtn_old = dtn;
-  cur_cfl *= scale;
+  cur_cfl *= loc_scale;
   reach_term_next = false;
   reach_output_next = false;
   return;

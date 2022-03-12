@@ -11,6 +11,7 @@ TDSolveSacado::TDSolveSacado(TDInput* tdInput_ptr) :
   data_inc   = NULL;
   S_data_num = 0;
   prob_name = "";
+  force_nextIter = false;
   cellnames.clear();
   cellnames_u.clear();
   velnames.clear();
@@ -191,6 +192,7 @@ void TDSolveSacado::set_ic(void) {
 }
 
 void TDSolveSacado::calc_dt(const int nt) {
+  force_nextIter = false;
   if ( iter != 0 )
     tsol += dtn;
 
@@ -237,6 +239,11 @@ void TDSolveSacado::calc_dt(const int nt) {
   else
     dtn = min( dtn_old * tdSetup->dTgrow, dtn_trial );
   dtn = min( dtn, tdSetup->dTmax );
+  if ( dtn < tdSetup->dTmin ) {
+    fprintf( stdout, "    --- Time step size too small, switch to minimum value.\n" );
+    dtn = tdSetup->dTmin;
+    force_nextIter = true;
+  }
   dtn_old = dtn;
 
   if ( use_tfreq ) {
@@ -539,7 +546,7 @@ bool TDSolveSacado::update_sol(const int fr, const int to, const DType shift_dt_
   if ( it != setupAuxMap.end() )
     (this->*setupAuxMap[tdSetup->prob_id])(tsol+shift_dt_to*dtn);
 
-  if ( !tdSetup->auto_red_dt ) // Ignore convergence of Newton solve
+  if ( !tdSetup->auto_red_dt || force_nextIter ) // Ignore convergence of Newton solve
     return true;
   else if ( iter == numIter && cur_res > ntTol ) { // Non-convergent Newton solve
     fprintf( stdout, "    --- Newton method not converging, reduce dt by half.\n" );
@@ -2269,7 +2276,7 @@ void TDSolveSacado::update_cell_linsys_by_res_var(HVEC& h_res, DType h_r, DType*
 void TDSolveSacado::update_hsol_by_linsol(HVEC& h_var, const int l_offset, const int num, LSPack& lsPack, DType& loc_res) {
   VComp comp(1,0.0);
 
-  loc_res = std::max(loc_res, lsPack.sol->getInfNorm());
+  loc_res = std::max(loc_res, lsPack.sol->getInfNorm() / std::max( h_var.norm(-1), 1.0 ) );
 
   for ( int i = 0; i < num; i++ ) {
     comp = lsPack.sol->get(l_offset+i);
@@ -2343,7 +2350,7 @@ void TDSolveSacado::update_chem_by_res_var_imp(HVEC& h_var, HVEC& h_res, DType h
   // Solve the linear system
   lsPack.linSolve->solve();
 
-  loc_res = std::max(loc_res, lsPack.sol->getInfNorm());
+  loc_res = std::max(loc_res, lsPack.sol->getInfNorm() / std::max( h_var.norm(-1), 1.0 ) );
 
   // Fetch and update solution
   for ( int i = 0; i < num; i++ ) {
