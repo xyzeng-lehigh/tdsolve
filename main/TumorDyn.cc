@@ -76,7 +76,10 @@ int main(int argc, char** argv) {
               if ( !newton_converge && tdInput.tdSetup.auto_red_dt ) {
                 tdSolve->reduce_dtn( 0.5 );
                 tdSolve->diagnostic(0);
+                continue;
               }
+              else
+                break;
             }
           }
           break;
