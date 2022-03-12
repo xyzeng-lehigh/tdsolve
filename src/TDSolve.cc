@@ -480,6 +480,7 @@ void TDSolve::reduce_dtn(const DType scale) {
   cur_cfl *= scale;
   reach_term_next = false;
   reach_output_next = false;
+  return;
 }
 
 bool TDSolve::check_Rterm(const int nt) {

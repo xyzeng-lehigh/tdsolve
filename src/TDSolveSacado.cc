@@ -236,6 +236,7 @@ void TDSolveSacado::calc_dt(const int nt) {
     dtn = min( dtn_trial, dtn );
   else
     dtn = min( dtn_old * tdSetup->dTgrow, dtn_trial );
+  dtn = min( dtn, tdSetup->dTmax );
   dtn_old = dtn;
 
   if ( use_tfreq ) {
@@ -538,7 +539,14 @@ bool TDSolveSacado::update_sol(const int fr, const int to, const DType shift_dt_
   if ( it != setupAuxMap.end() )
     (this->*setupAuxMap[tdSetup->prob_id])(tsol+shift_dt_to*dtn);
 
-  return true;
+  if ( !tdSetup->auto_red_dt ) // Ignore convergence of Newton solve
+    return true;
+  else if ( iter == numIter && cur_res > ntTol ) { // Non-convergent Newton solve
+    fprintf( stdout, "    --- Newton method not converging, reduce dt by half.\n" );
+    return false;
+  }
+  else // Successful Newton solve
+    return true;
 }
 
 void TDSolveSacado::copy_data(const int fr, const int to) {
