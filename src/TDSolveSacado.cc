@@ -2844,6 +2844,9 @@ void TDSolveSacado::calc_srce_b2_potassium(SacadoDepVarArray& s_srce, const DTyp
   DType decay_b1 = tdCoef->probVarParVals[prob_name]["B1"]["grow_neg_virus"];
   DType k        = tdCoef->probVarParVals[prob_name]["P"]["slope"];
   DType Ps       = tdCoef->probVarParVals[prob_name]["P"]["threshold"];
+  DType B2Ps    = ( tdCoef->probVarParVals[prob_name]["B2"].find( "threshold" ) ==
+                    tdCoef->probVarParVals[prob_name]["B2"].end() ) ?  Ps :
+                  tdCoef->probVarParVals[prob_name]["B2"]["threshold"];
   DType decay_b2 = tdCoef->probVarParVals[prob_name]["B2"]["grow_neg"];
   DType p_block = ( tdCoef->probVarParVals[prob_name]["B2"].find( "grow_block" ) == 
                     tdCoef->probVarParVals[prob_name]["B2"].end() ) ? 0.0 : 
@@ -2859,7 +2862,7 @@ void TDSolveSacado::calc_srce_b2_potassium(SacadoDepVarArray& s_srce, const DTyp
   for ( int i = 0; i < num; i++ ) {
     s_srce[i] += std::pow( l_x_c[i] * S_data_r, tdSetup->dim-1 ) * 
       ( decay_b1 * icalc_scal_block_potassium( k, Ps, s_p[i] ) * s_b1[i] * s_v[i] - 
-        decay_b2 * icalc_scal_block_potassium( k, Ps, s_p[i], p_block ) * s_b2[i] );
+        decay_b2 * icalc_scal_block_potassium( k, B2Ps, s_p[i], p_block ) * s_b2[i] );
   }
 
   return;
@@ -2870,6 +2873,9 @@ void TDSolveSacado::calc_srce_b3_potassium(SacadoDepVarArray& s_srce, const DTyp
 
   DType k        = tdCoef->probVarParVals[prob_name]["P"]["slope"];
   DType Ps       = tdCoef->probVarParVals[prob_name]["P"]["threshold"];
+  DType B2Ps    = ( tdCoef->probVarParVals[prob_name]["B2"].find( "threshold" ) ==
+                    tdCoef->probVarParVals[prob_name]["B2"].end() ) ?  Ps :
+                  tdCoef->probVarParVals[prob_name]["B2"]["threshold"];
   DType decay_b2 = tdCoef->probVarParVals[prob_name]["B2"]["grow_neg"];
   DType p_block = ( tdCoef->probVarParVals[prob_name]["B2"].find( "grow_block" ) == 
                     tdCoef->probVarParVals[prob_name]["B2"].end() ) ? 0.0 : 
@@ -2882,7 +2888,7 @@ void TDSolveSacado::calc_srce_b3_potassium(SacadoDepVarArray& s_srce, const DTyp
 
   for ( int i = 0; i < num; i++ ) {
     s_srce[i] += std::pow( l_x_c[i] * S_data_r, tdSetup->dim-1 ) * ( decay_b2 * 
-        icalc_scal_block_potassium( k, Ps, s_p[i], p_block ) * s_b2[i] );
+        icalc_scal_block_potassium( k, B2Ps, s_p[i], p_block ) * s_b2[i] );
   }
 
   return;
@@ -2992,6 +2998,9 @@ void TDSolveSacado::calc_chem_srce_p_potassium(std::string chemname, const int n
   DType theta   = tdCoef->theta;
   DType k       = tdCoef->probVarParVals[prob_name]["P"]["slope"];
   DType Ps      = tdCoef->probVarParVals[prob_name]["P"]["threshold"];
+  DType B2Ps    = ( tdCoef->probVarParVals[prob_name]["B2"].find( "threshold" ) ==
+                    tdCoef->probVarParVals[prob_name]["B2"].end() ) ?  Ps :
+                  tdCoef->probVarParVals[prob_name]["B2"]["threshold"];
   DType prod_b2 = tdCoef->probVarParVals[prob_name][chemname]["burst"] *
                   tdCoef->probVarParVals[prob_name]["B2"]["grow_neg"] * theta;
   DType p_block = ( tdCoef->probVarParVals[prob_name]["B2"].find( "grow_block" ) == 
@@ -3003,7 +3012,7 @@ void TDSolveSacado::calc_chem_srce_p_potassium(std::string chemname, const int n
   
   for ( int i = 0; i < num; i++ ) {
     s_srce[i] += std::pow( l_x_c[i] * data_r[nt], tdSetup->dim-1 ) *
-      ( prod_b2 * icalc_scal_block_potassium( k, Ps, s_chem[i], p_block ) * s_b2[i] - decay * s_chem[i] );
+      ( prod_b2 * icalc_scal_block_potassium( k, B2Ps, s_chem[i], p_block ) * s_b2[i] - decay * s_chem[i] );
   }
 
   return;
@@ -3029,13 +3038,16 @@ void TDSolveSacado::calc_chem_srce_v_potassium(std::string chemname, const int n
   DType decay   = chemPar.decay;
   DType k       = tdCoef->probVarParVals[prob_name]["P"]["slope"];
   DType Ps      = tdCoef->probVarParVals[prob_name]["P"]["threshold"];
+  DType B2Ps    = ( tdCoef->probVarParVals[prob_name]["B2"].find( "threshold" ) ==
+                    tdCoef->probVarParVals[prob_name]["B2"].end() ) ?  Ps :
+                  tdCoef->probVarParVals[prob_name]["B2"]["threshold"];
 
   int num = s_chem.size();
 
   for ( int i = 0; i < num; i++ ) {
     s_srce[i] += std::pow( l_x_c[i] * data_r[nt], tdSetup->dim-1 ) *
       ( icalc_scal_block_potassium( k, Ps, s_p[i] ) * ( prod_b2 * 
-        icalc_scal_block_potassium( k, Ps, s_p[i], p_block ) * s_b2[i] - decay_b * s_b1[i] * s_chem[i] ) 
+        icalc_scal_block_potassium( k, B2Ps, s_p[i], p_block ) * s_b2[i] - decay_b * s_b1[i] * s_chem[i] ) 
         - decay * s_chem[i] );
   }
 
