@@ -867,7 +867,12 @@ bool TDSolveSacado::setup_ic_potassium(void) {
   setic_unif_cell("B3",0.0);
   setic_unif_cell("P", 0.0);
   setic_unif_cell("V", 0.0);
-  (*(H_data_var["V"])[0])[0] = tdCoef->probVarParVals[prob_name]["V"]["init_num"] / tdSetup->vweight / std::pow(tdCoef->R_0*dx,tdSetup->dim);
+  DType rho     = 1.0;
+  if (tdCoef->probVarParVals[prob_name].find("global") != tdCoef->probVarParVals[prob_name].end() &&
+      tdCoef->probVarParVals[prob_name]["global"].find("ie_ratio") != tdCoef->probVarParVals[prob_name]["global"].end()) {
+    rho = tdCoef->probVarParVals[prob_name]["global"]["ie_ratio"];
+  }
+  (*(H_data_var["V"])[0])[0] = rho * tdCoef->probVarParVals[prob_name]["V"]["init_num"] / tdSetup->vweight / std::pow(tdCoef->R_0*dx,tdSetup->dim);
   return invalid_ic;
 }
 
@@ -2996,12 +3001,19 @@ void TDSolveSacado::calc_chem_srce_p_potassium(std::string chemname, const int n
   SacadoIndVarArray& s_b2    = S_data_var["B2"];
 
   DType theta   = tdCoef->theta;
+  DType rho     = 1.0;
+  if (tdCoef->probVarParVals[prob_name].find("global") != tdCoef->probVarParVals[prob_name].end() &&
+      tdCoef->probVarParVals[prob_name]["global"].find("ie_ratio") != tdCoef->probVarParVals[prob_name]["global"].end()) {
+    rho = tdCoef->probVarParVals[prob_name]["global"]["ie_ratio"];
+    theta = theta * rho / (1.0+rho);
+  }
+
   DType k       = tdCoef->probVarParVals[prob_name]["P"]["slope"];
   DType Ps      = tdCoef->probVarParVals[prob_name]["P"]["threshold"];
   DType B2Ps    = ( tdCoef->probVarParVals[prob_name]["B2"].find( "threshold" ) ==
                     tdCoef->probVarParVals[prob_name]["B2"].end() ) ?  Ps :
                   tdCoef->probVarParVals[prob_name]["B2"]["threshold"];
-  DType prod_b2 = tdCoef->probVarParVals[prob_name][chemname]["burst"] *
+  DType prod_b2 = rho * tdCoef->probVarParVals[prob_name][chemname]["burst"] *
                   tdCoef->probVarParVals[prob_name]["B2"]["grow_neg"] * theta;
   DType p_block = ( tdCoef->probVarParVals[prob_name]["B2"].find( "grow_block" ) == 
                     tdCoef->probVarParVals[prob_name]["B2"].end() ) ? 0.0 : 
@@ -3029,7 +3041,14 @@ void TDSolveSacado::calc_chem_srce_v_potassium(std::string chemname, const int n
   SacadoIndVarArray& s_b2    = S_data_var["B2"];
 
   DType theta   = tdCoef->theta;
-  DType prod_b2 = tdCoef->probVarParVals[prob_name][chemname]["burst"] *
+  DType rho     = 1.0;
+  if (tdCoef->probVarParVals[prob_name].find("global") != tdCoef->probVarParVals[prob_name].end() &&
+      tdCoef->probVarParVals[prob_name]["global"].find("ie_ratio") != tdCoef->probVarParVals[prob_name]["global"].end()) {
+    rho = tdCoef->probVarParVals[prob_name]["global"]["ie_ratio"];
+    theta = theta * rho / (1.0+rho);
+  }
+
+  DType prod_b2 = rho * tdCoef->probVarParVals[prob_name][chemname]["burst"] *
                   tdCoef->probVarParVals[prob_name]["B2"]["grow_neg"] * theta;
   DType p_block = ( tdCoef->probVarParVals[prob_name]["B2"].find( "grow_block" ) == 
                     tdCoef->probVarParVals[prob_name]["B2"].end() ) ? 0.0 : 
