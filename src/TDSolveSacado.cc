@@ -32,6 +32,7 @@ TDSolveSacado::TDSolveSacado(TDInput* tdInput_ptr) :
   setupVelUMap.clear();
   setupExtraVFlxMap.clear();
   setupAuxMap.clear();
+  enable_time_delay = false;
 
   setupVarMap.insert( std::pair<int, fSetupFun>(-1, &TDSolveSacado::setup_var_model) );
   setupVarMap.insert( std::pair<int, fSetupFun>( 0, &TDSolveSacado::setup_var_pdgf) );
@@ -120,6 +121,8 @@ TDSolveSacado::~TDSolveSacado(void) {
       delete[] dx_ale[i];
     }
   }
+  for ( int i = 0; i < prev_cell.size(); i++ )
+    clear_prev_cell( i );
 }
 
 void TDSolveSacado::setup(void) {
@@ -391,6 +394,12 @@ bool TDSolveSacado::update_sol(const int fr, const int to, const DType shift_dt_
   // to - solution at t_{n+1}/Newton iterates
   copy_data( fr, to );
 
+  // Add current solution to previous solutions
+  if ( enable_time_delay ) { 
+    // This may be problematic if shift_dt_fr is not zero, or not explicit time-integrator 
+    push_to_prev_cells( tsol+shift_dt_fr*dtn, fr ); 
+  }
+
   // Setup updates schemes
   int  numIter  = 1;
   bool assembleJacobian = false;
@@ -631,6 +640,102 @@ DType TDSolveSacado::get_total(const std::string name, const int nt) {
   return tot_var;
 }
 
+void TDSolveSacado::clear_prev_cell(int i) {
+  if ( i<0 || i>=prev_cell.size() )
+    return;
+  std::map<std::string,HVEC*>& tmp = prev_cell[i];
+  for ( std::map<std::string,HVEC*>::iterator it = tmp.begin();
+        it != tmp.end(); it++ ) {
+    delete it->second;
+  }
+  return;
+}
+
+void TDSolveSacado::push_to_prev_cells(DType cur_time, int nt) {
+  if ( !enable_time_delay || time_delay_max <= 0.0 )
+    return;
+  if ( cur_time <= prev_time[prev_time.size()-1] ) {
+    throw std::runtime_error( "Error: TDSolveSacado::push_to_prev_cells cur_time needs to be larger than previous times.\n" );
+  }
+  // First, remove all old times that are smaller than cur_time-time_delay_max
+  while ( prev_time.size() > 0 && prev_time[0] < cur_time-time_delay_max ) {
+    clear_prev_cell( 0 );
+    for ( int i = 0; i < prev_time.size()-1; i++ ) {
+      prev_time[i] = prev_time[i+1];
+      prev_cell[i] = prev_cell[i+1];
+    }
+    prev_time.pop_back();
+    prev_cell.pop_back();
+  }
+  // Next, add cur_time and H_data_var[][nt] to prev_time and prev_cell
+  prev_time.push_back( cur_time );
+  std::map<std::string,HVEC*> tmp_data_var; // A copy of H_data_var[][nt]
+  for ( std::map<std::string,HVEC**>::iterator it = H_data_var.begin();
+        it != H_data_var.end(); it++ ) {
+    std::string name = it->first;
+    HVEC* data = new HVEC(varsizes[name],0.0);
+    *data = *H_data_var[name][nt];
+    tmp_data_var.insert(std::pair<std::string,HVEC*>(name,data));
+  }
+  prev_cell.push_back( tmp_data_var );
+  return;
+}
+
+bool TDSolveSacado::get_prev_cell(DType pst_time, std::map<std::string,HVEC*>& pst_cell) {
+  if ( !enable_time_delay || time_delay_max <= 0.0 || prev_time.size() == 0 || prev_cell.size() == 0 )
+    return false;
+  int num_prev = prev_time.size();
+  if ( pst_time < prev_time[0] || pst_time > prev_time[num_prev-1] ) {
+    throw std::runtime_error( "Error: TDSolveSacado::get_prev_cell pst_time not in the range of prev_time. Check if time step size is too large.\n" );
+    return false;
+  }
+  int i_rght = 0;
+  while ( pst_time >= prev_time[i_rght] )
+    i_rght++;
+  int i_left = i_rght - 1;
+  pst_cell.clear();
+  std::map<std::string,HVEC*>& data_left = prev_cell[i_left];
+  std::map<std::string,HVEC*>& data_rght = prev_cell[i_rght];
+  DType coef_left = (prev_time[i_rght]-pst_time)/(prev_time[i_rght]-prev_time[i_left]);
+  DType coef_rght = (pst_time-prev_time[i_left])/(prev_time[i_rght]-prev_time[i_left]);
+
+  for ( std::map<std::string,HVEC*>::iterator it = data_left.begin();
+        it != data_left.end(); it++ ) {
+    std::string name = it->first;
+    HVEC* data = new HVEC(varsizes[name],0.0);
+    *data = coef_left * (*data_left[name]) + coef_rght * (*data_rght[name]);
+    pst_cell.insert(std::pair<std::string,HVEC*>(name,data));
+  }
+  return true;
+}
+
+bool TDSolveSacado::get_prev_cell(DType pst_time, int i, std::map<std::string,DType>& pst_data) {
+  if ( !enable_time_delay || time_delay_max <= 0.0 || prev_time.size() == 0 || prev_cell.size() == 0 )
+    return false;
+  int num_prev = prev_time.size();
+  if ( pst_time < prev_time[0] || pst_time > prev_time[num_prev-1] ) {
+    throw std::runtime_error( "Error: TDSolveSacado::get_prev_cell pst_time not in the range of prev_time. Check if time step size is too large.\n" );
+    return false;
+  }
+  int i_rght = 0;
+  while ( pst_time >= prev_time[i_rght] )
+    i_rght++;
+  int i_left = i_rght - 1;
+  pst_data.clear();
+  std::map<std::string,HVEC*>& data_left = prev_cell[i_left];
+  std::map<std::string,HVEC*>& data_rght = prev_cell[i_rght];
+  DType coef_left = (prev_time[i_rght]-pst_time)/(prev_time[i_rght]-prev_time[i_left]);
+  DType coef_rght = (pst_time-prev_time[i_left])/(prev_time[i_rght]-prev_time[i_left]);
+
+  for ( std::map<std::string,HVEC*>::iterator it = data_left.begin();
+        it != data_left.end(); it++ ) {
+    std::string name = it->first;
+    DType data = coef_left * (*data_left[name])[i] + coef_rght * (*data_rght[name])[i];
+    pst_data.insert(std::pair<std::string,DType>(name,data));
+  }
+  return true;
+}
+
 void TDSolveSacado::add_cellular_var(std::vector<std::string>& names, std::string name, const int size, DType* x_var, DType* x_flx) {
   names.push_back( name );
   varsizes.insert(std::pair<std::string,int>(name,size));
@@ -742,6 +847,24 @@ bool TDSolveSacado::setup_var_potassium(void) {
   setup_chem_par_gen( "V", tdCoef->probVarParVals[prob_name]["V"]["grow_neg"], 
       tdCoef->probVarParVals[prob_name]["V"]["diffusion"], 
       false, &TDSolveSacado::calc_chem_srce_v_potassium ); // false -> do not use Dirichlet bc
+
+  // Time-delay terms
+  if (tdCoef->probVarParVals[prob_name].find("global") != tdCoef->probVarParVals[prob_name].end() && 
+      tdCoef->probVarParVals[prob_name]["global"].find("enable_delay") != tdCoef->probVarParVals[prob_name]["global"].end()) {
+    enable_time_delay = tdCoef->probVarParVals[prob_name]["global"]["enable_delay"] != 0;
+  }
+  if ( enable_time_delay ) {
+    DType decay_b2 = tdCoef->probVarParVals[prob_name]["B2"]["grow_neg"];
+    DType p_block = ( tdCoef->probVarParVals[prob_name]["B2"].find( "grow_block" ) == 
+                      tdCoef->probVarParVals[prob_name]["B2"].end() ) ? 0.0 : 
+                      tdCoef->probVarParVals[prob_name]["B2"]["grow_block"];
+    if ( p_block >= 1.0-(1e-3) ) {
+      time_delay_max = DTYPE_MAX;
+      std::cout << " Warning: TDSolveSacado::setup_var_potassium - time delay max is close to infinity, memory will be consumed quickly." << std::endl;
+    }
+    else
+      time_delay_max = 1.0/decay_b2/(1.0-p_block);
+  }
   return true;
 }
 
@@ -2998,7 +3121,6 @@ void TDSolveSacado::calc_chem_srce_p_potassium(std::string chemname, const int n
   DType*             l_x_c   = varcoord[chemname];
   ChemPar&           chemPar = chempars[chemname];
   SacadoIndVarArray& s_chem  = S_data_var[chemname]; // This is just "P"
-  SacadoIndVarArray& s_b2    = S_data_var["B2"];
 
   DType theta   = tdCoef->theta;
   DType rho     = 1.0;
@@ -3019,12 +3141,29 @@ void TDSolveSacado::calc_chem_srce_p_potassium(std::string chemname, const int n
                     tdCoef->probVarParVals[prob_name]["B2"].end() ) ? 0.0 : 
                     tdCoef->probVarParVals[prob_name]["B2"]["grow_block"];
   DType decay   = chemPar.decay;
-
   int num = s_chem.size();
-  
-  for ( int i = 0; i < num; i++ ) {
-    s_srce[i] += std::pow( l_x_c[i] * data_r[nt], tdSetup->dim-1 ) *
-      ( prod_b2 * icalc_scal_block_potassium( k, B2Ps, s_chem[i], p_block ) * s_b2[i] - decay * s_chem[i] );
+
+  if ( enable_time_delay ) {
+    DType delay_loc_base = 1.0/tdCoef->probVarParVals[prob_name]["B2"]["grow_neg"];
+
+    for ( int i = 0; i < num; i++ ) {
+      s_srce[i] += std::pow( l_x_c[i] * data_r[nt], tdSetup->dim-1 ) * ( - decay * s_chem[i] );
+
+      DType delay_loc = delay_loc_base/icalc_scal_block_potassium( k, B2Ps, s_chem[i], p_block ).val();
+      std::map<std::string,DType> pst_data;
+      bool find_prev = get_prev_cell( tsol_loc-delay_loc, i, pst_data );
+      if ( find_prev ) {
+        s_srce[i] += std::pow( l_x_c[i] * data_r[nt], tdSetup->dim-1 ) * prod_b2 * icalc_scal_block_potassium( k, B2Ps, s_chem[i], p_block ) * pst_data["B2"];
+      }
+    }
+  }
+  else {
+    SacadoIndVarArray& s_b2 = S_data_var["B2"];
+
+    for ( int i = 0; i < num; i++ ) {
+      s_srce[i] += std::pow( l_x_c[i] * data_r[nt], tdSetup->dim-1 ) *
+        ( prod_b2 * icalc_scal_block_potassium( k, B2Ps, s_chem[i], p_block ) * s_b2[i] - decay * s_chem[i] );
+    }
   }
 
   return;
@@ -3035,10 +3174,8 @@ void TDSolveSacado::calc_chem_srce_v_potassium(std::string chemname, const int n
   SacadoDepVarArray& s_srce  = S_srce_chem[chemname];
   DType*             l_x_c   = varcoord[chemname];
   ChemPar&           chemPar = chempars[chemname];
-  SacadoIndVarArray& s_chem  = S_data_var[chemname];
+  SacadoIndVarArray& s_chem  = S_data_var[chemname]; // This is "V"
   SacadoIndVarArray& s_p     = S_data_var["P"];
-  SacadoIndVarArray& s_b1    = S_data_var["B1"];
-  SacadoIndVarArray& s_b2    = S_data_var["B2"];
 
   DType theta   = tdCoef->theta;
   DType rho     = 1.0;
@@ -3063,11 +3200,36 @@ void TDSolveSacado::calc_chem_srce_v_potassium(std::string chemname, const int n
 
   int num = s_chem.size();
 
-  for ( int i = 0; i < num; i++ ) {
-    s_srce[i] += std::pow( l_x_c[i] * data_r[nt], tdSetup->dim-1 ) *
-      ( icalc_scal_block_potassium( k, Ps, s_p[i] ) * ( prod_b2 * 
-        icalc_scal_block_potassium( k, B2Ps, s_p[i], p_block ) * s_b2[i] - decay_b * s_b1[i] * s_chem[i] ) 
-        - decay * s_chem[i] );
+  if ( enable_time_delay ) {
+    DType delay_loc_base = 1.0/tdCoef->probVarParVals[prob_name]["B2"]["grow_neg"];
+
+    for ( int i = 0; i < num; i++ ) {
+      s_srce[i] += std::pow( l_x_c[i] * data_r[nt], tdSetup->dim-1 ) * ( - decay * s_chem[i] );
+
+      DType delay_loc = delay_loc_base/icalc_scal_block_potassium( k, B2Ps, s_p[i], p_block ).val();
+      std::map<std::string,DType> pst_data;
+      bool find_prev = get_prev_cell( tsol_loc-delay_loc, i, pst_data );
+      if ( find_prev ) {
+        s_srce[i] += std::pow( l_x_c[i] * data_r[nt], tdSetup->dim-1 ) * 
+          ( prod_b2 * icalc_scal_block_potassium( k, B2Ps, s_p[i], p_block ) * pst_data["B2"] - 
+            decay_b * icalc_scal_block_potassium( k, Ps, s_p[i] ) * pst_data["B1"] * pst_data["V"] );
+      }
+    }
+  }
+  else {
+    SacadoIndVarArray& s_b1 = S_data_var["B1"];
+    SacadoIndVarArray& s_b2 = S_data_var["B2"];
+
+    for ( int i = 0; i < num; i++ ) {
+      s_srce[i] += std::pow( l_x_c[i] * data_r[nt], tdSetup->dim-1 ) *
+        ( prod_b2 * icalc_scal_block_potassium( k, B2Ps, s_p[i], p_block ) * s_b2[i] - 
+          decay_b * icalc_scal_block_potassium( k, Ps, s_p[i] ) * s_b1[i] * s_chem[i] -
+          decay * s_chem[i] );
+        // Below is used in <= r168, but may not be reasonable
+        //( icalc_scal_block_potassium( k, Ps, s_p[i] ) * ( prod_b2 * 
+        //  icalc_scal_block_potassium( k, B2Ps, s_p[i], p_block ) * s_b2[i] - decay_b * s_b1[i] * s_chem[i] ) 
+        //  - decay * s_chem[i] );
+    }
   }
 
   return;

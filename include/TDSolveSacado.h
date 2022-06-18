@@ -50,6 +50,15 @@ class TDSolveSacado : public TDSolve {
     DType get_total(const std::string name, const int nt);
 
   protected:
+    bool enable_time_delay;
+    DType time_delay_max;
+    std::vector<DType>                       prev_time; // Decreasing order
+    std::vector<std::map<std::string,HVEC*>> prev_cell;
+    void clear_prev_cell(int i);
+    void push_to_prev_cells(DType cur_time, int nt);
+    bool get_prev_cell(DType pst_time, std::map<std::string,HVEC*>& pst_cell);
+    bool get_prev_cell(DType pst_time, int i, std::map<std::string,DType>& pst_data);
+    
     // Specific toggle options for oncolytic model
     bool in_oncolytic_stage[3];
 
