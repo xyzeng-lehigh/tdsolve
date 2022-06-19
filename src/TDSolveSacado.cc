@@ -654,7 +654,7 @@ void TDSolveSacado::clear_prev_cell(int i) {
 void TDSolveSacado::push_to_prev_cells(DType cur_time, int nt) {
   if ( !enable_time_delay || time_delay_max <= 0.0 )
     return;
-  if ( cur_time <= prev_time[prev_time.size()-1] ) {
+  if ( prev_time.size() > 0 && cur_time <= prev_time[prev_time.size()-1] ) {
     throw std::runtime_error( "Error: TDSolveSacado::push_to_prev_cells cur_time needs to be larger than previous times.\n" );
   }
   // First, remove all old times that are smaller than cur_time-time_delay_max
@@ -685,6 +685,8 @@ bool TDSolveSacado::get_prev_cell(DType pst_time, std::map<std::string,HVEC*>& p
   if ( !enable_time_delay || time_delay_max <= 0.0 || prev_time.size() == 0 || prev_cell.size() == 0 )
     return false;
   int num_prev = prev_time.size();
+  if ( pst_time < tdSetup->Tinit )
+    return false;
   if ( pst_time < prev_time[0] || pst_time > prev_time[num_prev-1] ) {
     throw std::runtime_error( "Error: TDSolveSacado::get_prev_cell pst_time not in the range of prev_time. Check if time step size is too large.\n" );
     return false;
@@ -713,6 +715,8 @@ bool TDSolveSacado::get_prev_cell(DType pst_time, int i, std::map<std::string,DT
   if ( !enable_time_delay || time_delay_max <= 0.0 || prev_time.size() == 0 || prev_cell.size() == 0 )
     return false;
   int num_prev = prev_time.size();
+  if ( pst_time < tdSetup->Tinit )
+    return false;
   if ( pst_time < prev_time[0] || pst_time > prev_time[num_prev-1] ) {
     throw std::runtime_error( "Error: TDSolveSacado::get_prev_cell pst_time not in the range of prev_time. Check if time step size is too large.\n" );
     return false;
@@ -3151,6 +3155,7 @@ void TDSolveSacado::calc_chem_srce_p_potassium(std::string chemname, const int n
 
       DType delay_loc = delay_loc_base/icalc_scal_block_potassium( k, B2Ps, s_chem[i], p_block ).val();
       std::map<std::string,DType> pst_data;
+      pst_data.clear();
       bool find_prev = get_prev_cell( tsol_loc-delay_loc, i, pst_data );
       if ( find_prev ) {
         s_srce[i] += std::pow( l_x_c[i] * data_r[nt], tdSetup->dim-1 ) * prod_b2 * icalc_scal_block_potassium( k, B2Ps, s_chem[i], p_block ) * pst_data["B2"];
@@ -3208,6 +3213,7 @@ void TDSolveSacado::calc_chem_srce_v_potassium(std::string chemname, const int n
 
       DType delay_loc = delay_loc_base/icalc_scal_block_potassium( k, B2Ps, s_p[i], p_block ).val();
       std::map<std::string,DType> pst_data;
+      pst_data.clear();
       bool find_prev = get_prev_cell( tsol_loc-delay_loc, i, pst_data );
       if ( find_prev ) {
         s_srce[i] += std::pow( l_x_c[i] * data_r[nt], tdSetup->dim-1 ) * 
