@@ -657,8 +657,8 @@ void TDSolveSacado::push_to_prev_cells(DType cur_time, int nt) {
   if ( prev_time.size() > 0 && cur_time <= prev_time[prev_time.size()-1] ) {
     throw std::runtime_error( "Error: TDSolveSacado::push_to_prev_cells cur_time needs to be larger than previous times.\n" );
   }
-  // First, remove all old times that are smaller than cur_time-time_delay_max
-  while ( prev_time.size() > 0 && prev_time[0] < cur_time-time_delay_max ) {
+  // First, remove all old times except one that are smaller than cur_time-time_delay_max
+  while ( prev_time.size() > 1 && prev_time[1] < cur_time-time_delay_max ) {
     clear_prev_cell( 0 );
     for ( int i = 0; i < prev_time.size()-1; i++ ) {
       prev_time[i] = prev_time[i+1];
@@ -717,7 +717,7 @@ bool TDSolveSacado::get_prev_cell(DType pst_time, int i, std::map<std::string,DT
   int num_prev = prev_time.size();
   if ( pst_time < tdSetup->Tinit )
     return false;
-  // XYZ - this is incorrect if there is only one piece of data!
+  // - For now, this is incorrect if there is only one piece of data!
   if ( pst_time < prev_time[0] || pst_time > prev_time[num_prev-1] ) {
     throw std::runtime_error( "Error: TDSolveSacado::get_prev_cell pst_time not in the range of prev_time. Check if time step size is too large.\n" );
     return false;
@@ -867,8 +867,10 @@ bool TDSolveSacado::setup_var_potassium(void) {
       time_delay_max = DTYPE_MAX;
       std::cout << " Warning: TDSolveSacado::setup_var_potassium - time delay max is close to infinity, memory will be consumed quickly." << std::endl;
     }
-    else
-      time_delay_max = 1.0/decay_b2/(1.0-b2_block);
+    else {
+      // 10 percent more for better flexibility, otherwise should be 1.0/...
+      time_delay_max = 1.1/decay_b2/(1.0-b2_block); 
+    }
   }
   return true;
 }
