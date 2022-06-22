@@ -333,7 +333,8 @@ class TDSolveSacado : public TDSolve {
     void calc_chem_srce_p_potassium(std::string chemname, const int nt, const DType tsol_loc);
     void calc_chem_srce_v_potassium(std::string chemname, const int nt, const DType tsol_loc);
 
-    inline SacadoDepVar icalc_scal_block_potassium(DType,DType,Sacado::Fad::DFad<DType>,DType heaviside_scale = 1.0);
+    inline SacadoDepVar icalc_scal_block_potassium(DType,DType,Sacado::Fad::DFad<DType>,DType heaviside_scale);
+    //inline SacadoDepVar icalc_scal_block_potassium(DType,DType,Sacado::Fad::DFad<DType>,DType heaviside_scale = 1.0);
 
     // Other functions
     DType calc_n_bc( const DType tsol_loc );

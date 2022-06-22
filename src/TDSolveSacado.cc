@@ -717,6 +717,7 @@ bool TDSolveSacado::get_prev_cell(DType pst_time, int i, std::map<std::string,DT
   int num_prev = prev_time.size();
   if ( pst_time < tdSetup->Tinit )
     return false;
+  // XYZ - this is incorrect if there is only one piece of data!
   if ( pst_time < prev_time[0] || pst_time > prev_time[num_prev-1] ) {
     throw std::runtime_error( "Error: TDSolveSacado::get_prev_cell pst_time not in the range of prev_time. Check if time step size is too large.\n" );
     return false;
@@ -859,15 +860,15 @@ bool TDSolveSacado::setup_var_potassium(void) {
   }
   if ( enable_time_delay ) {
     DType decay_b2 = tdCoef->probVarParVals[prob_name]["B2"]["grow_neg"];
-    DType p_block = ( tdCoef->probVarParVals[prob_name]["B2"].find( "grow_block" ) == 
-                      tdCoef->probVarParVals[prob_name]["B2"].end() ) ? 0.0 : 
-                      tdCoef->probVarParVals[prob_name]["B2"]["grow_block"];
-    if ( p_block >= 1.0-(1e-3) ) {
+    DType b2_block = ( tdCoef->probVarParVals[prob_name]["B2"].find( "grow_block" ) == 
+                       tdCoef->probVarParVals[prob_name]["B2"].end() ) ? 0.0 : 
+                       tdCoef->probVarParVals[prob_name]["B2"]["grow_block"];
+    if ( b2_block >= 1.0-(1e-3) ) {
       time_delay_max = DTYPE_MAX;
       std::cout << " Warning: TDSolveSacado::setup_var_potassium - time delay max is close to infinity, memory will be consumed quickly." << std::endl;
     }
     else
-      time_delay_max = 1.0/decay_b2/(1.0-p_block);
+      time_delay_max = 1.0/decay_b2/(1.0-b2_block);
   }
   return true;
 }
@@ -2959,12 +2960,16 @@ void TDSolveSacado::calc_srce_b1_potassium(SacadoDepVarArray& s_srce, const DTyp
   SacadoIndVarArray& s_p  = S_data_var["P"];
   SacadoIndVarArray& s_v  = S_data_var["V"];
 
+  DType b1_block = ( tdCoef->probVarParVals[prob_name]["B1"].find( "grow_block" ) == 
+                     tdCoef->probVarParVals[prob_name]["B1"].end() ) ? 1.0 : 
+                     tdCoef->probVarParVals[prob_name]["B1"]["grow_block"];
+
   int    num   = varsizes["B1"];
   DType* l_x_c = varcoord["B1"];
 
   for ( int i = 0; i < num; i++ ) {
     s_srce[i] += std::pow( l_x_c[i] * S_data_r, tdSetup->dim-1 ) * 
-      ( - decay * icalc_scal_block_potassium( k, Ps, s_p[i] ) * s_b1[i] * s_v[i] );
+      ( - decay * icalc_scal_block_potassium( k, Ps, s_p[i], b1_block ) * s_b1[i] * s_v[i] );
   }
 
   return;
@@ -2980,9 +2985,12 @@ void TDSolveSacado::calc_srce_b2_potassium(SacadoDepVarArray& s_srce, const DTyp
                     tdCoef->probVarParVals[prob_name]["B2"].end() ) ?  Ps :
                   tdCoef->probVarParVals[prob_name]["B2"]["threshold"];
   DType decay_b2 = tdCoef->probVarParVals[prob_name]["B2"]["grow_neg"];
-  DType p_block = ( tdCoef->probVarParVals[prob_name]["B2"].find( "grow_block" ) == 
-                    tdCoef->probVarParVals[prob_name]["B2"].end() ) ? 0.0 : 
-                    tdCoef->probVarParVals[prob_name]["B2"]["grow_block"];
+  DType b1_block = ( tdCoef->probVarParVals[prob_name]["B1"].find( "grow_block" ) == 
+                     tdCoef->probVarParVals[prob_name]["B1"].end() ) ? 1.0 : 
+                     tdCoef->probVarParVals[prob_name]["B1"]["grow_block"];
+  DType b2_block = ( tdCoef->probVarParVals[prob_name]["B2"].find( "grow_block" ) == 
+                     tdCoef->probVarParVals[prob_name]["B2"].end() ) ? 0.0 : 
+                     tdCoef->probVarParVals[prob_name]["B2"]["grow_block"];
   SacadoIndVarArray& s_b1 = S_data_var["B1"];
   SacadoIndVarArray& s_b2 = S_data_var["B2"];
   SacadoIndVarArray& s_p  = S_data_var["P"];
@@ -2993,8 +3001,8 @@ void TDSolveSacado::calc_srce_b2_potassium(SacadoDepVarArray& s_srce, const DTyp
 
   for ( int i = 0; i < num; i++ ) {
     s_srce[i] += std::pow( l_x_c[i] * S_data_r, tdSetup->dim-1 ) * 
-      ( decay_b1 * icalc_scal_block_potassium( k, Ps, s_p[i] ) * s_b1[i] * s_v[i] - 
-        decay_b2 * icalc_scal_block_potassium( k, B2Ps, s_p[i], p_block ) * s_b2[i] );
+      ( decay_b1 * icalc_scal_block_potassium( k, Ps, s_p[i], b1_block ) * s_b1[i] * s_v[i] - 
+        decay_b2 * icalc_scal_block_potassium( k, B2Ps, s_p[i], b2_block ) * s_b2[i] );
   }
 
   return;
@@ -3009,18 +3017,19 @@ void TDSolveSacado::calc_srce_b3_potassium(SacadoDepVarArray& s_srce, const DTyp
                     tdCoef->probVarParVals[prob_name]["B2"].end() ) ?  Ps :
                   tdCoef->probVarParVals[prob_name]["B2"]["threshold"];
   DType decay_b2 = tdCoef->probVarParVals[prob_name]["B2"]["grow_neg"];
-  DType p_block = ( tdCoef->probVarParVals[prob_name]["B2"].find( "grow_block" ) == 
-                    tdCoef->probVarParVals[prob_name]["B2"].end() ) ? 0.0 : 
-                    tdCoef->probVarParVals[prob_name]["B2"]["grow_block"];
+  DType b2_block = ( tdCoef->probVarParVals[prob_name]["B2"].find( "grow_block" ) == 
+                     tdCoef->probVarParVals[prob_name]["B2"].end() ) ? 0.0 : 
+                     tdCoef->probVarParVals[prob_name]["B2"]["grow_block"];
   SacadoIndVarArray& s_b2 = S_data_var["B2"];
   SacadoIndVarArray& s_p  = S_data_var["P"];
+
 
   int    num   = varsizes["B3"];
   DType* l_x_c = varcoord["B3"];
 
   for ( int i = 0; i < num; i++ ) {
     s_srce[i] += std::pow( l_x_c[i] * S_data_r, tdSetup->dim-1 ) * ( decay_b2 * 
-        icalc_scal_block_potassium( k, B2Ps, s_p[i], p_block ) * s_b2[i] );
+        icalc_scal_block_potassium( k, B2Ps, s_p[i], b2_block ) * s_b2[i] );
   }
 
   return;
@@ -3141,9 +3150,9 @@ void TDSolveSacado::calc_chem_srce_p_potassium(std::string chemname, const int n
                   tdCoef->probVarParVals[prob_name]["B2"]["threshold"];
   DType prod_b2 = rho * tdCoef->probVarParVals[prob_name][chemname]["burst"] *
                   tdCoef->probVarParVals[prob_name]["B2"]["grow_neg"] * theta;
-  DType p_block = ( tdCoef->probVarParVals[prob_name]["B2"].find( "grow_block" ) == 
-                    tdCoef->probVarParVals[prob_name]["B2"].end() ) ? 0.0 : 
-                    tdCoef->probVarParVals[prob_name]["B2"]["grow_block"];
+  DType b2_block = ( tdCoef->probVarParVals[prob_name]["B2"].find( "grow_block" ) == 
+                     tdCoef->probVarParVals[prob_name]["B2"].end() ) ? 0.0 : 
+                     tdCoef->probVarParVals[prob_name]["B2"]["grow_block"];
   DType decay   = chemPar.decay;
   int num = s_chem.size();
 
@@ -3153,12 +3162,12 @@ void TDSolveSacado::calc_chem_srce_p_potassium(std::string chemname, const int n
     for ( int i = 0; i < num; i++ ) {
       s_srce[i] += std::pow( l_x_c[i] * data_r[nt], tdSetup->dim-1 ) * ( - decay * s_chem[i] );
 
-      DType delay_loc = delay_loc_base/icalc_scal_block_potassium( k, B2Ps, s_chem[i], p_block ).val();
+      DType delay_loc = delay_loc_base/icalc_scal_block_potassium( k, B2Ps, s_chem[i], b2_block ).val();
       std::map<std::string,DType> pst_data;
       pst_data.clear();
       bool find_prev = get_prev_cell( tsol_loc-delay_loc, i, pst_data );
       if ( find_prev ) {
-        s_srce[i] += std::pow( l_x_c[i] * data_r[nt], tdSetup->dim-1 ) * prod_b2 * icalc_scal_block_potassium( k, B2Ps, s_chem[i], p_block ) * pst_data["B2"];
+        s_srce[i] += std::pow( l_x_c[i] * data_r[nt], tdSetup->dim-1 ) * prod_b2 * icalc_scal_block_potassium( k, B2Ps, s_chem[i], b2_block ) * pst_data["B2"];
       }
     }
   }
@@ -3167,7 +3176,7 @@ void TDSolveSacado::calc_chem_srce_p_potassium(std::string chemname, const int n
 
     for ( int i = 0; i < num; i++ ) {
       s_srce[i] += std::pow( l_x_c[i] * data_r[nt], tdSetup->dim-1 ) *
-        ( prod_b2 * icalc_scal_block_potassium( k, B2Ps, s_chem[i], p_block ) * s_b2[i] - decay * s_chem[i] );
+        ( prod_b2 * icalc_scal_block_potassium( k, B2Ps, s_chem[i], b2_block ) * s_b2[i] - decay * s_chem[i] );
     }
   }
 
@@ -3192,9 +3201,12 @@ void TDSolveSacado::calc_chem_srce_v_potassium(std::string chemname, const int n
 
   DType prod_b2 = rho * tdCoef->probVarParVals[prob_name][chemname]["burst"] *
                   tdCoef->probVarParVals[prob_name]["B2"]["grow_neg"] * theta;
-  DType p_block = ( tdCoef->probVarParVals[prob_name]["B2"].find( "grow_block" ) == 
-                    tdCoef->probVarParVals[prob_name]["B2"].end() ) ? 0.0 : 
-                    tdCoef->probVarParVals[prob_name]["B2"]["grow_block"];
+  DType b1_block = ( tdCoef->probVarParVals[prob_name]["B1"].find( "grow_block" ) == 
+                     tdCoef->probVarParVals[prob_name]["B1"].end() ) ? 1.0 : 
+                     tdCoef->probVarParVals[prob_name]["B1"]["grow_block"];
+  DType b2_block = ( tdCoef->probVarParVals[prob_name]["B2"].find( "grow_block" ) == 
+                     tdCoef->probVarParVals[prob_name]["B2"].end() ) ? 0.0 : 
+                     tdCoef->probVarParVals[prob_name]["B2"]["grow_block"];
   DType decay_b = tdCoef->probVarParVals[prob_name]["B1"]["grow_neg_virus"] * theta;
   DType decay   = chemPar.decay;
   DType k       = tdCoef->probVarParVals[prob_name]["P"]["slope"];
@@ -3211,14 +3223,14 @@ void TDSolveSacado::calc_chem_srce_v_potassium(std::string chemname, const int n
     for ( int i = 0; i < num; i++ ) {
       s_srce[i] += std::pow( l_x_c[i] * data_r[nt], tdSetup->dim-1 ) * ( - decay * s_chem[i] );
 
-      DType delay_loc = delay_loc_base/icalc_scal_block_potassium( k, B2Ps, s_p[i], p_block ).val();
+      DType delay_loc = delay_loc_base/icalc_scal_block_potassium( k, B2Ps, s_p[i], b2_block ).val();
       std::map<std::string,DType> pst_data;
       pst_data.clear();
       bool find_prev = get_prev_cell( tsol_loc-delay_loc, i, pst_data );
       if ( find_prev ) {
         s_srce[i] += std::pow( l_x_c[i] * data_r[nt], tdSetup->dim-1 ) * 
-          ( prod_b2 * icalc_scal_block_potassium( k, B2Ps, s_p[i], p_block ) * pst_data["B2"] - 
-            decay_b * icalc_scal_block_potassium( k, Ps, s_p[i] ) * pst_data["B1"] * pst_data["V"] );
+          ( prod_b2 * icalc_scal_block_potassium( k, B2Ps, s_p[i], b2_block ) * pst_data["B2"] - 
+            decay_b * icalc_scal_block_potassium( k, Ps, s_p[i], b1_block ) * pst_data["B1"] * pst_data["V"] );
       }
     }
   }
@@ -3228,12 +3240,12 @@ void TDSolveSacado::calc_chem_srce_v_potassium(std::string chemname, const int n
 
     for ( int i = 0; i < num; i++ ) {
       s_srce[i] += std::pow( l_x_c[i] * data_r[nt], tdSetup->dim-1 ) *
-        ( prod_b2 * icalc_scal_block_potassium( k, B2Ps, s_p[i], p_block ) * s_b2[i] - 
-          decay_b * icalc_scal_block_potassium( k, Ps, s_p[i] ) * s_b1[i] * s_chem[i] -
+        ( prod_b2 * icalc_scal_block_potassium( k, B2Ps, s_p[i], b2_block ) * s_b2[i] - 
+          decay_b * icalc_scal_block_potassium( k, Ps, s_p[i], b1_block ) * s_b1[i] * s_chem[i] -
           decay * s_chem[i] );
         // Below is used in <= r168, but may not be reasonable
-        //( icalc_scal_block_potassium( k, Ps, s_p[i] ) * ( prod_b2 * 
-        //  icalc_scal_block_potassium( k, B2Ps, s_p[i], p_block ) * s_b2[i] - decay_b * s_b1[i] * s_chem[i] ) 
+        //( icalc_scal_block_potassium( k, Ps, s_p[i], b1_block ) * ( prod_b2 * 
+        //  icalc_scal_block_potassium( k, B2Ps, s_p[i], b2_block ) * s_b2[i] - decay_b * s_b1[i] * s_chem[i] ) 
         //  - decay * s_chem[i] );
     }
   }
