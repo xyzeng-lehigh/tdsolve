@@ -3203,6 +3203,9 @@ void TDSolveSacado::calc_chem_srce_v_potassium(std::string chemname, const int n
 
   DType prod_b2 = rho * tdCoef->probVarParVals[prob_name][chemname]["burst"] *
                   tdCoef->probVarParVals[prob_name]["B2"]["grow_neg"] * theta;
+  DType v_block  = ( tdCoef->probVarParVals[prob_name]["V"].find( "burst_block" ) ==
+                     tdCoef->probVarParVals[prob_name]["V"].end() ) ? 0.0 :
+                     tdCoef->probVarParVals[prob_name]["V"]["burst_block"];
   DType b1_block = ( tdCoef->probVarParVals[prob_name]["B1"].find( "grow_block" ) == 
                      tdCoef->probVarParVals[prob_name]["B1"].end() ) ? 1.0 : 
                      tdCoef->probVarParVals[prob_name]["B1"]["grow_block"];
@@ -3231,7 +3234,8 @@ void TDSolveSacado::calc_chem_srce_v_potassium(std::string chemname, const int n
       bool find_prev = get_prev_cell( tsol_loc-delay_loc, i, pst_data );
       if ( find_prev ) {
         s_srce[i] += std::pow( l_x_c[i] * data_r[nt], tdSetup->dim-1 ) * 
-          ( prod_b2 * icalc_scal_block_potassium( k, B2Ps, s_p[i], b2_block ) * pst_data["B2"] - 
+          ( prod_b2 * icalc_scal_block_potassium( k, Ps, s_p[i], v_block ) 
+                    * icalc_scal_block_potassium( k, B2Ps, s_p[i], b2_block ) * pst_data["B2"] - 
             decay_b * icalc_scal_block_potassium( k, Ps, s_p[i], b1_block ) * pst_data["B1"] * pst_data["V"] );
       }
     }
@@ -3242,7 +3246,8 @@ void TDSolveSacado::calc_chem_srce_v_potassium(std::string chemname, const int n
 
     for ( int i = 0; i < num; i++ ) {
       s_srce[i] += std::pow( l_x_c[i] * data_r[nt], tdSetup->dim-1 ) *
-        ( prod_b2 * icalc_scal_block_potassium( k, B2Ps, s_p[i], b2_block ) * s_b2[i] - 
+        ( prod_b2 * icalc_scal_block_potassium( k, Ps, s_p[i], v_block )
+                  * icalc_scal_block_potassium( k, B2Ps, s_p[i], b2_block ) * s_b2[i] - 
           decay_b * icalc_scal_block_potassium( k, Ps, s_p[i], b1_block ) * s_b1[i] * s_chem[i] -
           decay * s_chem[i] );
         // Below is used in <= r168, but may not be reasonable
