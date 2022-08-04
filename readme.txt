@@ -10,6 +10,6 @@ To visualize the data, use matlab and refer to the scripts in tools
 -------------------------------------------------------------------
 Author: 
 Xianyi Zeng
-Department of Mathematical Sciences
-University of Texas, El Paso
-xzeng@utep.edu
+Department of Mathematics
+Lehigh University
+xyzeng@lehigh.edu

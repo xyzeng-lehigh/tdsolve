@@ -52,7 +52,7 @@ string (REPLACE ";" " " CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
 target_link_libraries(TumorDynRun ${Trilinos_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -lgfortran")
 
 # Configure file that pass CMake settings to the source
 #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fopenmp")

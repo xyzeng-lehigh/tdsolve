@@ -7,14 +7,14 @@ then
 fi
 
 cd ${BDIR}
-NP=2
+NP=4
 case ${OSTYPE//[0-9.]/} in
   darwin)
     export 
     /opt/homebrew/bin/cmake \
-      -DCMAKE_C_COMPILER=/opt/homebrew/bin/gcc-11 \
-      -DCMAKE_CXX_COMPILER=/opt/homebrew/bin/g++-11 \
-      -DTrilinos_DIR:PATH=$CSUPPROOT/gcc-10.2.1/trilinos-13.0.1 \
+      -DCMAKE_C_COMPILER=/opt/homebrew/bin/gcc-12 \
+      -DCMAKE_CXX_COMPILER=/opt/homebrew/bin/g++-12 \
+      -DTrilinos_DIR:PATH=$CSUPPROOT/gcc-12/trilinos-13.4.0 \
       -DCMAKE_CXX_EXTENSIONS=Off \
       ../
     NP=4
