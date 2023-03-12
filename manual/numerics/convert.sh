@@ -1,26 +1,59 @@
-rm numerics.toc
-rm numerics.lot
-rm numerics.lof
-rm numerics.aux
+#!/bin/bash
+#Arguments -r                  : build with non-bib cross reference (3 passes)
+#          -f                  : build with bib cross references (2+2+2 passes)
+#          -n                  : number of latex builds without bibtex (2 passes)
+#          -t                  : tex file name (default pap)
 
-case $1 in
--t) pdflatex numerics
-    pdflatex numerics
-    ;;
--f) pdflatex numerics
-    pdflatex numerics
-    bibtex   numerics
-    bibtex   numerics
-    pdflatex numerics
-    pdflatex numerics
-    ;;
--p) pdflatex numerics_pdgf
-    pdflatex numerics_pdgf
-    mv numerics_pdgf.pdf ../
-    ;;
-*)  pdflatex numerics
-    pdflatex numerics
-    ;;
-esac
+for f in *.toc *.lot *.lof *.aux
+do
+  if [ -f "$f" ]
+  then
+    rm $f
+  fi
+done
 
-mv numerics.pdf ../numerics_opn.pdf
+NT_BEF=3
+NT_BIB=0
+NT_AFT=0
+TEXFILE=numerics
+
+while getopts "rfs:t:" OPTION
+do
+  case $OPTION in
+    r) NT_BEF=3
+       ;;
+    f) NT_BIB=2
+       NT_AFT=2
+       ;;
+    n) NT_BEF=$OPTARG
+       ;;
+    t) TEXFILE=$OPTARG
+       ;;
+    ?) usage
+       exit
+       ;;
+  esac
+done
+
+if [ ! -f "$TEXFILE.tex" ]
+then
+  echo "Error: $TEXFILE.tex does not exist!"
+  exit
+fi
+
+for (( n=1; n<=$NT_BEF; n++ ))
+do
+  pdflatex $TEXFILE
+done
+
+for (( n=1; n<=$NT_BIB; n++ ))
+do
+  bibtex $TEXFILE
+done
+
+for (( n=1; n<=$NT_AFT; n++ ))
+do
+  pdflatex $TEXFILE
+done
+
+cp $TEXFILE.pdf ../${TEXFILE}.pdf

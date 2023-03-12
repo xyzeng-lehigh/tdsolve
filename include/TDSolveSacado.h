@@ -59,8 +59,8 @@ class TDSolveSacado : public TDSolve {
     bool get_prev_cell(DType pst_time, std::map<std::string,HVEC*>& pst_cell);
     bool get_prev_cell(DType pst_time, int i, std::map<std::string,DType>& pst_data);
     
-    // Specific toggle options for oncolytic model
-    bool in_oncolytic_stage[3];
+    // Specific toggle options for oncolyticOld model
+    bool in_oncolyticOld_stage[3];
 
   protected:
     // Setting up variables
@@ -70,26 +70,32 @@ class TDSolveSacado : public TDSolve {
     bool setup_var_model(void);
     bool setup_var_pdgf(void);
     bool setup_var_opn(void);
-    bool setup_var_oncolytic(void);
+    bool setup_var_oncolyticOld(void);
     bool setup_var_potassium(void);
+    bool setup_var_oncolytic(void);
 
     bool setup_ic_model(void);
     bool setup_ic_pdgf(void);
     bool setup_ic_opn(void);
-    bool setup_ic_oncolytic(void);
+    bool setup_ic_oncolyticOld(void);
     bool setup_ic_potassium(void);
+    bool setup_ic_oncolytic(void);
 
     bool setup_srce_model(void);
     bool setup_srce_pdgf(void);
     bool setup_srce_opn(void);
-    bool setup_srce_oncolytic(void);
+    bool setup_srce_oncolyticOld(void);
     bool setup_srce_potassium(void);
+    bool setup_srce_oncolytic(void);
 
     bool add_vupdate_uflx(void);
+    bool add_vupdate_uflx_oncolytic(void);
+    bool add_vupdate_uflx_gen(std::string velname, std::string cellname);
 
     bool compute_extra_vflx_infiltration(const DType);
+    bool compute_extra_vflx_oncolytic(const DType);
 
-    bool setup_aux_oncolytic(const DType);
+    bool setup_aux_oncolyticOld(const DType);
 
   protected:
     // Dependent variables
@@ -235,11 +241,17 @@ class TDSolveSacado : public TDSolve {
     void calc_total_inc_viol(const int nt);
     void compute_vel_u(const DType tsol_loc);
     bool compute_vel_u_pres(const DType tsol_loc);
-    bool compute_vel_u_chem(const DType tsol_loc);
+    bool compute_vel_u_pdgf(const DType tsol_loc);
+    bool compute_vel_u_oncolytic(const DType tsol_loc); 
+
+    // mode = 'Y': Stencil of driving variable is large enough
+    //        'D': Dirichlet data
+    //        'N': Neumann data
+    void compute_vel_grad(const char mode, std::string velname, std::vector<DType> coef, std::vector<std::string> trgtnames, const DType bcVal = 0.0);
 
     void compute_vel_v(void);
 
-    void compute_cells_varflux(std::string velname, std::string cellname, const DType tsol_loc, const bool rbc=false);
+    void compute_cells_varflux(std::string velname, std::string cellname, const DType tsol_loc, fCalcBC bcFun = NULL);
     void compute_cells_varflux_upw(SacadoDepVarArray& s_vel, SacadoIndVarArray& s_var, SacadoDepVarArray& s_flux, const DType* rdata=NULL);
 
     void compute_cells_vflux(void);
@@ -311,27 +323,44 @@ class TDSolveSacado : public TDSolve {
     void calc_srce_h_opn(SacadoDepVarArray& s_srce, const DType tsol_loc);
     void calc_srce_n_opn(SacadoDepVarArray& s_srce, const DType tsol_loc);
 
-    void calc_srce_b_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
-    void calc_srce_h_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
-    void calc_srce_n_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
-    void calc_srce_g_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
-    void calc_srce_mv_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
-    void calc_srce_mb_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
+    void calc_srce_b_oncolyticOld(SacadoDepVarArray& s_srce, const DType tsol_loc);
+    void calc_srce_h_oncolyticOld(SacadoDepVarArray& s_srce, const DType tsol_loc);
+    void calc_srce_n_oncolyticOld(SacadoDepVarArray& s_srce, const DType tsol_loc);
+    void calc_srce_g_oncolyticOld(SacadoDepVarArray& s_srce, const DType tsol_loc);
+    void calc_srce_mv_oncolyticOld(SacadoDepVarArray& s_srce, const DType tsol_loc);
+    void calc_srce_mb_oncolyticOld(SacadoDepVarArray& s_srce, const DType tsol_loc);
 
     void calc_srce_b1_potassium(SacadoDepVarArray& s_srce, const DType tsol_loc);
     void calc_srce_b2_potassium(SacadoDepVarArray& s_srce, const DType tsol_loc);
     void calc_srce_b3_potassium(SacadoDepVarArray& s_srce, const DType tsol_loc);
 
     inline SacadoDepVar icalc_scal_logist_mm(DType,Sacado::Fad::DFad<DType>,DType,DType,DType,Sacado::Fad::DFad<DType>);
+    inline SacadoDepVar icalc_mm(DType mm_ceil, DType mm_half, Sacado::Fad::DFad<DType> s_var) {
+      return mm_ceil * s_var / ( mm_half + s_var );
+    }
+
+    void calc_srce_b_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
+    void calc_srce_h_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
+    void calc_srce_q_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
+    inline SacadoDepVar icalc_q_growth_oncolytic(Sacado::Fad::DFad<DType> s_q) { SacadoDepVar val = s_q * 0.0; return val;}
+    void calc_srce_n_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
+    void calc_srce_m1_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
+    void calc_srce_m1e_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
+    void calc_srce_m2_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
+    void calc_srce_m2e_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
+    void calc_srce_m3_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
+    void calc_srce_m3e_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
 
     void compute_source_chem_prob(const int nt, const DType tsol_loc);
     void calc_srce_chem_var(std::string chemname, const int nt, const DType tsol_loc);
 
-    void calc_chem_srce_vi_oncolytic(std::string chemname, const int nt, const DType tsol_loc);
-    void calc_chem_srce_a_oncolytic(std::string chemname, const int nt, const DType tsol_loc);
+    void calc_chem_srce_vi_oncolyticOld(std::string chemname, const int nt, const DType tsol_loc);
+    void calc_chem_srce_a_oncolyticOld(std::string chemname, const int nt, const DType tsol_loc);
 
     void calc_chem_srce_p_potassium(std::string chemname, const int nt, const DType tsol_loc);
     void calc_chem_srce_v_potassium(std::string chemname, const int nt, const DType tsol_loc);
+
+    void calc_chem_srce_vi_oncolytic(std::string chemname, const int nt, const DType tsol_loc );
 
     inline SacadoDepVar icalc_scal_block_potassium(DType,DType,Sacado::Fad::DFad<DType>,DType heaviside_scale);
     //inline SacadoDepVar icalc_scal_block_potassium(DType,DType,Sacado::Fad::DFad<DType>,DType heaviside_scale = 1.0);
@@ -340,6 +369,18 @@ class TDSolveSacado : public TDSolve {
     DType calc_n_bc( const DType tsol_loc );
     DType get_cell_perc(std::string cellname, const int nt);
     DType calc_treatment_P1(const DType tsol_loc);
+    DType calc_m1_bc_oncolytic( const DType tsol_loc ) {
+      //std::cout << "Warning: bc for M1 in the Oncolytic model needs to be implemented." << std::endl;
+      return 0.0;
+    }
+    DType calc_m2_bc_oncolytic( const DType tsol_loc ) {
+      //std::cout << "Warning: bc for M2 in the Oncolytic model needs to be implemented." << std::endl;
+      return 0.0;
+    }
+    DType calc_m3_bc_oncolytic( const DType tsol_loc ) {
+      //std::cout << "Warning: bc for M3 in the Oncolytic model needs to be implemented." << std::endl;
+      return 0.0;
+    }
 
     HVEC** srce_max; // Incompressibility violation
     void reset_srce_max(void);
