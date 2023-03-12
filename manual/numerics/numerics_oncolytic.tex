@@ -1,4 +1,4 @@
-\documentclass{amsart}
+\documentclass[reqno]{amsart}
 \usepackage{mathptmx}      % use Times fonts if available on your TeX system
 \usepackage{latexsym}
 \usepackage{amssymb}
@@ -177,9 +177,43 @@ In the list below, we list all parameters in the model as well as their correspo
   \item {\color{cyan}$\gamma=\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["Vi"]["grow\_neg"]}}.
   \item {\color{cyan}$b=\textrm{virus}\cdot\textrm{cell}^{-1}$}; accessed by {\color{green}\texttt{["Vi"]["burst\_h"]}}.
 \end{itemize}
+Due to the radial symmetry assumption, we adopt the no-flux conditions for cell number densities and virus at $r=0$:
+\begin{align}
+  \label{eq:eqn_pde_cbc}
+  &\left.\pp{B}{r}\right|_{r=0} = 
+  \left.\pp{H}{r}\right|_{r=0} = 
+  \left.\pp{N}{r}\right|_{r=0} = 
+  \left.\pp{Q}{r}\right|_{r=0} = 
+  \left.\pp{M_k}{r}\right|_{r=0} = 
+  \left.\pp{M_k^0}{r}\right|_{r=0} = 0\;,\quad k=1,2,3\;, \\
+  \label{eq:eqn_pde_vbc}
+  &\left.\pp{V}{r}\right|_{r=0} = 0\;;
+\end{align}
+to this end, the advective velocities are naturally zero at this location: $U_1(0,t)=U_2(0,t)=U_3(0,t)=0$.
+The mean velocity $E(r,t)$ is computed by integrating~(\ref{eq:eqn_pde_vel_e}) from the tumor center to $r$, with the boundary condition:
+\begin{equation}\label{eq:eqn_pde_ebc}
+  E(0,t) = 0\;.
+\end{equation}
+Because the tumor boundary is defined by the mean velocity, no boundary condition is required for cells that are entirely transported by $E$, i.e., $B$, $H$, $Q$, $N$, and $M_k^0$, $k=1,2,3$.
+The immune cells $M_k$, $k=1,2,3$ enters the tumor through the boundary, which leads to a Dirichlet type condition at $r=R(t)$:
+\begin{equation}\label{eq:eqn_pde_rbc}
+  M_1(R(t),t) = M_2(R(t),t) = M_3(R(t),t) = \frac{1}{3}M_{\textrm{bc}}(t)\;,
+\end{equation}
+where $M_{\textrm{bc}}(t)$ is a prescribed function that is potentially time-dependent and it designates the rate at which immune cells enter the tumor.
 
-\color{red}
+{\bf \color{red} These questions need to be answered:}
+\begin{itemize}
+  \item What boundary condition do we use for virus at $r=R(t)$? $\partial V/\partial r|_{r=R(t)}=0$?
+  \item Initially, all cells are melanoma tumor cells, i.e., $B(r,0)=1$ and $H=Q=N=M_k=M_k^0=0$, $k=1,2,3$, when $t=0$, is this correct?
+  \item What is the initial tumro size $R(0)=R_0$?
+  \item It is reasonable to assume that initially virus exists at the external ring of the tumor, something like:
+    \begin{displaymath}
+      V(r,0) = \frac{V_0}{4\pi r^2}\delta(r-R_0)\;,
+    \end{displaymath}
+    where $\delta(\cdot)$ is the Dirac delta measure on $\mathbb{R}$ and $V_0$ is the total amount of virus inside the tumor initially.
+\end{itemize}
 
+\begin{comment}
 Furthermore, we have the boundary conditions:
 \begin{align}
 \label{eq:eqn_pde_rad_vbc}
@@ -609,6 +643,7 @@ Especially, because all the diffusion terms are treated implicitly, we set the C
 \end{equation}
 where $\alpha_{\textrm{cfl}}$ is the Courant number specified by the user, which typically takes a value smaller than $1$ for partially explicit computations and can take any value when everything is implicit.
 Note that if we drop the advection velocity for $A$ because this term is always treated implicitly.
+\end{comment}
 
 \end{document}
 
