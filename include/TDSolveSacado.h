@@ -21,7 +21,8 @@ class TDSolveSacado : public TDSolve {
     std::map<int, fSetupFun> setupVarMap;
     std::map<int, fSetupFun> setupICMap;
     std::map<int, fSetupFun> setupSrceMap;
-    std::map<int, fSetupFun> setupVelUFlxMap;
+    std::map<int, fSetupFun> allocVelUVarMap;
+    std::map<int, fSetupFun> computeVelUFlxMap;
 
     typedef bool (TDSolveSacado::*fSetupTFun)(const DType);
     std::map<int, fSetupTFun> setupVelUMap;
@@ -87,6 +88,9 @@ class TDSolveSacado : public TDSolve {
     bool setup_srce_oncolyticOld(void);
     bool setup_srce_potassium(void);
     bool setup_srce_oncolytic(void);
+
+    bool alloc_uvel_map_all(void);
+    bool alloc_uvel_map_oncolytic(void);
 
     bool add_vupdate_uflx(void);
     bool add_vupdate_uflx_oncolytic(void);
@@ -336,7 +340,12 @@ class TDSolveSacado : public TDSolve {
 
     inline SacadoDepVar icalc_scal_logist_mm(DType,Sacado::Fad::DFad<DType>,DType,DType,DType,Sacado::Fad::DFad<DType>);
     inline SacadoDepVar icalc_mm(DType mm_ceil, DType mm_half, Sacado::Fad::DFad<DType> s_var) {
-      return mm_ceil * s_var / ( mm_half + s_var );
+      SacadoDepVar result = 0.0;
+      if ( std::fabs( s_var ) > 1e-10 )
+        result = mm_ceil * ( 1.0 / ( (mm_half/s_var) + 1.0 ) );
+      else if ( s_var != 0.0 )
+        result = mm_ceil * ( s_var / (mm_half + s_var) );
+      return result;
     }
 
     void calc_srce_b_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
@@ -369,18 +378,9 @@ class TDSolveSacado : public TDSolve {
     DType calc_n_bc( const DType tsol_loc );
     DType get_cell_perc(std::string cellname, const int nt);
     DType calc_treatment_P1(const DType tsol_loc);
-    DType calc_m1_bc_oncolytic( const DType tsol_loc ) {
-      //std::cout << "Warning: bc for M1 in the Oncolytic model needs to be implemented." << std::endl;
-      return 0.0;
-    }
-    DType calc_m2_bc_oncolytic( const DType tsol_loc ) {
-      //std::cout << "Warning: bc for M2 in the Oncolytic model needs to be implemented." << std::endl;
-      return 0.0;
-    }
-    DType calc_m3_bc_oncolytic( const DType tsol_loc ) {
-      //std::cout << "Warning: bc for M3 in the Oncolytic model needs to be implemented." << std::endl;
-      return 0.0;
-    }
+    DType calc_m1_bc_oncolytic( const DType tsol_loc ); 
+    DType calc_m2_bc_oncolytic( const DType tsol_loc ); 
+    DType calc_m3_bc_oncolytic( const DType tsol_loc ); 
 
     HVEC** srce_max; // Incompressibility violation
     void reset_srce_max(void);

@@ -86,6 +86,7 @@
 
 \section{Governing Equations of the Oncolytic Viral Therapy}
 \label{sec:eqn}
+{\bf The governing equations}.
 The PDE for normalized cell number densities in radial coordinate is given by:
 \begin{subequations}\label{eq:eqn_pde_cell}
   \begin{align}
@@ -140,43 +141,46 @@ Lastly, all equations are defined on the domain $r\in[0,\;R(t)]$, where $R(t)$ i
   \dot{R}(t) = E(R(t),t)\;.
 \end{equation}
 
+{\bf Parameters}. 
 In the list below, we list all parameters in the model as well as their corresponding variables in the program.
 \begin{itemize}
-  \item {\color{cyan}$\theta=10^6\textrm{cell}\cdot\textrm{mm}^{-3}$}; accessed by {\color{green}\texttt{tdCoef->theta}}.
-  \item {\color{cyan}$\lambda=\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["B"]["grow\_pos"]}}.
-  \item {\color{cyan}$\beta=\textrm{mm}^3\cdot\textrm{virus}^{-1}\cdot\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["B"]["coef\_vi\_neg"]}}.
-  \item {\color{cyan}$k_2=\textrm{mm}^3\cdot\textrm{cell}^{-1}\cdot\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["B"]["coef\_m2\_neg"]}}.
-  \item {\color{cyan}$k_1=\textrm{mm}^3\cdot\textrm{cell}^{-1}\cdot\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["H"]["coef\_m1\_neg"]}}.
-  \item {\color{cyan}$k_3=\textrm{mm}^3\cdot\textrm{cell}^{-1}\cdot\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["H"]["coef\_m2\_neg"]}}.
-  \item {\color{cyan}$\delta=\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["H"]["grow\_neg"]}}.
-  \item {\color{cyan}$k_4=\textrm{mm}^3\cdot\textrm{cell}^{-1}\cdot\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["Q"]["coef\_m3\_neg"]}}.
-  \item {\color{cyan}$\rho=\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["N"]["grow\_neg"]}}.
-  \item {\color{cyan}$s_1=\textrm{mm}^3\cdot\textrm{cell}^{-1}\cdot\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M1"]["coef\_h\_pos"]}}.
-  \item {\color{cyan}$c_1=\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M1"]["grow\_neg"]}}.
-  \item {\color{cyan}$p_H=\textrm{unitless}$}; accessed by {\color{green}\texttt{["M1"]["mm\_slope"]}} and {\color{green}\texttt{["M2"]["mm\_slope\_h"]}}.
-  \item {\color{cyan}$K_1=\textrm{unitless}$}; accessed by {\color{green}\texttt{["M1"]["mm\_half"]}}.
-  \item {\color{cyan}$\alpha_1=\textrm{mm}^5\cdot\textrm{cell}^{-1}\cdot\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M1"]["vel\_grad\_h"]}}.
-  \item {\color{cyan}$d_1=\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M1"]["grow\_exhaust\_neg"]}}.
-  \item {\color{cyan}$s_2=\textrm{mm}^3\cdot\textrm{cell}^{-1}\cdot\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M2"]["coef\_bh\_pos"]}}.
-  \item {\color{cyan}$c_2=\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M2"]["grow\_neg"]}}.
-  \item {\color{cyan}$p_B=\textrm{unitless}$}; accessed by {\color{green}\texttt{["M2"]["mm\_slope\_b"]}}.
-  \item {\color{cyan}$K_2=\textrm{unitless}$}; accessed by {\color{green}\texttt{["M2"]["mm\_half"]}}.
-  \item {\color{cyan}$\hat{\alpha}_2=\textrm{mm}^5\cdot\textrm{cell}^{-1}\cdot\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M2"]["vel\_grad\_b"]}}.
-  \item {\color{cyan}$\alpha_2=\textrm{mm}^5\cdot\textrm{cell}^{-1}\cdot\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M2"]["vel\_grad\_h"]}}.
-  \item {\color{cyan}$d_2=\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M2"]["grow\_exhaust\_neg"]}}.
-  \item {\color{cyan}$s_3=\textrm{mm}^3\cdot\textrm{cell}^{-1}\cdot\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M3"]["coef\_q\_pos"]}}.
-  \item {\color{cyan}$c_3=\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M3"]["grow\_neg"]}}.
-  \item {\color{cyan}$p_Q=\textrm{unitless}$}; accessed by {\color{green}\texttt{["M3"]["mm\_slope"]}}.
-  \item {\color{cyan}$K_3=\textrm{unitless}$}; accessed by {\color{green}\texttt{["M3"]["mm\_half"]}}.
-  \item {\color{cyan}$\alpha_3=\textrm{mm}^5\cdot\textrm{cell}^{-1}\cdot\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M3"]["vel\_grad\_q"]}}.
-  \item {\color{cyan}$d_3=\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M3"]["grow\_exhaust\_neg"]}}.
-  \item {\color{cyan}$c_1^0=\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M1E"]["grow\_neg"]}}.
-  \item {\color{cyan}$c_2^0=\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M2E"]["grow\_neg"]}}.
-  \item {\color{cyan}$c_3^0=\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M3E"]["grow\_neg"]}}.
-  \item {\color{cyan}$D_1=\textrm{mm}^2\cdot\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["Vi"]["diffusion"]}}.
-  \item {\color{cyan}$\gamma=\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["Vi"]["grow\_neg"]}}.
-  \item {\color{cyan}$b=\textrm{virus}\cdot\textrm{cell}^{-1}$}; accessed by {\color{green}\texttt{["Vi"]["burst\_h"]}}.
+  \item {\color{cyan}$\theta=10^6\;\textrm{cell}\cdot\textrm{mm}^{-3}$}; accessed by {\color{green}\texttt{tdCoef->theta}}.
+  \item {\color{cyan}$\lambda=0.042\;\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["B"]["grow\_pos"]}}.
+  \item {\color{cyan}$\beta=0.1\times10^{-6}\;\textrm{mm}^3\cdot\textrm{virus}^{-1}\cdot\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["B"]["coef\_vi\_neg"]}}.
+  \item {\color{cyan}$k_2=1.2\times10^{-6}\;\textrm{mm}^3\cdot\textrm{cell}^{-1}\cdot\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["B"]["coef\_m2\_neg"]}}.
+  \item {\color{cyan}$k_1=1.2\times10^{-6}\;\textrm{mm}^3\cdot\textrm{cell}^{-1}\cdot\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["H"]["coef\_m1\_neg"]}}.
+  \item {\color{cyan}$k_3=1.2\times10^{-6}\;\textrm{mm}^3\cdot\textrm{cell}^{-1}\cdot\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["H"]["coef\_m2\_neg"]}}.
+  \item {\color{cyan}$\delta=0.042\;\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["H"]["grow\_neg"]}}.
+  \item {\color{cyan}$k_4=1.2\times10^{-6}\;\textrm{mm}^3\cdot\textrm{cell}^{-1}\cdot\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["Q"]["coef\_m3\_neg"]}}.
+  \item {\color{cyan}$\rho=0.67\;\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["N"]["grow\_neg"]}}.
+  \item {\color{cyan}$s_1=0.5\times10^{-6}\;\textrm{mm}^3\cdot\textrm{cell}^{-1}\cdot\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M1"]["coef\_h\_pos"]}}.
+  \item {\color{cyan}$c_1=0.0075\;\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M1"]["grow\_neg"]}}.
+  \item {\color{cyan}$p_H=7\times10^6$}; accessed by {\color{green}\texttt{["M1"]["mm\_slope"]}} and {\color{green}\texttt{["M2"]["mm\_slope\_h"]}}.
+  \item {\color{cyan}$K_1=10\times10^{15}$}; accessed by {\color{green}\texttt{["M1"]["mm\_half"]}}.
+  \item {\color{cyan}$\alpha_1=1.0\times10^{-6}\;\textrm{mm}^5\cdot\textrm{cell}^{-1}\cdot\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M1"]["vel\_grad\_h"]}}.
+  \item {\color{cyan}$d_1=0.0083\;\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M1"]["grow\_exhaust\_neg"]}}.
+  \item {\color{cyan}$s_2=0.5\times10^{-6}\;\textrm{mm}^3\cdot\textrm{cell}^{-1}\cdot\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M2"]["coef\_bh\_pos"]}}.
+  \item {\color{cyan}$c_2=0.0075\;\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M2"]["grow\_neg"]}}.
+  \item {\color{cyan}$p_B=7\times10^6$}; accessed by {\color{green}\texttt{["M2"]["mm\_slope\_b"]}}.
+  \item {\color{cyan}$K_2=10\times10^{15}$}; accessed by {\color{green}\texttt{["M2"]["mm\_half"]}}.
+  \item {\color{cyan}$\hat{\alpha}_2=1.0\times10^{-6}\;\textrm{mm}^5\cdot\textrm{cell}^{-1}\cdot\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M2"]["vel\_grad\_b"]}}.
+  \item {\color{cyan}$\alpha_2=1.0\times10^{-6}\;\textrm{mm}^5\cdot\textrm{cell}^{-1}\cdot\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M2"]["vel\_grad\_h"]}}.
+  \item {\color{cyan}$d_2=0.0083\;\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M2"]["grow\_exhaust\_neg"]}}.
+  \item {\color{cyan}$s_3=0.5\times10^{-6}\;\textrm{mm}^3\cdot\textrm{cell}^{-1}\cdot\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M3"]["coef\_q\_pos"]}}.
+  \item {\color{cyan}$c_3=0.0075\;\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M3"]["grow\_neg"]}}.
+  \item {\color{cyan}$p_Q=7\times10^6$}; accessed by {\color{green}\texttt{["M3"]["mm\_slope"]}}.
+  \item {\color{cyan}$K_3=10\times10^{15}$}; accessed by {\color{green}\texttt{["M3"]["mm\_half"]}}.
+  \item {\color{cyan}$\alpha_3=1.0\times10^{-6}\;\textrm{mm}^5\cdot\textrm{cell}^{-1}\cdot\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M3"]["vel\_grad\_q"]}}.
+  \item {\color{cyan}$d_3=0.0083\;\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M3"]["grow\_exhaust\_neg"]}}.
+  \item {\color{cyan}$c_1^0=0.0075\;\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M1E"]["grow\_neg"]}}.
+  \item {\color{cyan}$c_2^0=0.0075\;\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M2E"]["grow\_neg"]}}.
+  \item {\color{cyan}$c_3^0=0.0075\;\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M3E"]["grow\_neg"]}}.
+  \item {\color{cyan}$D_1=0.01\;\textrm{mm}^2\cdot\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["Vi"]["diffusion"]}}.
+  \item {\color{cyan}$\gamma=0.013\;\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["Vi"]["grow\_neg"]}}.
+  \item {\color{cyan}$b=300\;\textrm{virus}\cdot\textrm{cell}^{-1}$}; accessed by {\color{green}\texttt{["Vi"]["burst\_h"]}}.
 \end{itemize}
+
+{\bf Boundary conditions}. 
 Due to the radial symmetry assumption, we adopt the no-flux conditions for cell number densities and virus at $r=0$:
 \begin{align}
   \label{eq:eqn_pde_cbc}
@@ -200,18 +204,32 @@ The immune cells $M_k$, $k=1,2,3$ enters the tumor through the boundary, which l
   M_1(R(t),t) = M_2(R(t),t) = M_3(R(t),t) = \frac{1}{3}M_{\textrm{bc}}(t)\;,
 \end{equation}
 where $M_{\textrm{bc}}(t)$ is a prescribed function that is potentially time-dependent and it designates the rate at which immune cells enter the tumor.
+For now, we consider a simple constant function defined as follows:
+\begin{equation}\label{eq:eqn_pde_tcell_bcval}
+  {\color{cyan}M_{\textrm{bc}}(t) = 0.05}\;,
+\end{equation}
+that is, the tumor is exposed to immune cells with concentration $5\%$ at all times (they will not enter the tumor, however, unless there is a gradient of the corresponding driving cell type at tumor boundary).
 
-{\bf \color{red} These questions need to be answered:}
-\begin{itemize}
-  \item What boundary condition do we use for virus at $r=R(t)$? $\partial V/\partial r|_{r=R(t)}=0$?
-  \item Initially, all cells are melanoma tumor cells, i.e., $B(r,0)=1$ and $H=Q=N=M_k=M_k^0=0$, $k=1,2,3$, when $t=0$, is this correct?
-  \item What is the initial tumro size $R(0)=R_0$?
-  \item It is reasonable to assume that initially virus exists at the external ring of the tumor, something like:
-    \begin{displaymath}
-      V(r,0) = \frac{V_0}{4\pi r^2}\delta(r-R_0)\;,
-    \end{displaymath}
-    where $\delta(\cdot)$ is the Dirac delta measure on $\mathbb{R}$ and $V_0$ is the total amount of virus inside the tumor initially.
-\end{itemize}
+It is assumed that virus stays inside the tumor, hence homogeneous Dirichlet boundary condition for virus concentration is applied at the tumor boundary:
+\begin{equation}\label{eq:eqn_pde_virus_dbc}
+  V(R(t),t) = 0\;.
+\end{equation}
+
+{\bf Initial conditions}.
+Lastly, we assume at the beginning, all cells are melanoma tumor cells, hence for all $0\le r\le R_0$:
+\begin{equation}\label{eq:eqn_pde_cell_ic}
+  B(r,0) = 1\;,\ 
+  H(r,0) = Q(r,0) = N(r,0) = M_k(r,0) = M_k^0(r,0) = 0\;,\ 
+  k = 1,2,3,
+\end{equation}
+where {\color{cyan}$R(0) = R_0 = 5\textrm{mm}$} is the initial radius of the tumor.
+
+The virus is injected at the tumor center at $t=0$, which gives rise to the initial condition:
+\begin{equation}\label{eq:eqn_pde_virus_ic}
+  V(r,0) = \frac{V_0}{4\pi r^2}\delta_0(r)\;,\quad0\le r\le R_0\;.
+\end{equation}
+for the virus concentration.
+Here {\color{cyan}$V_0 = 10^4\textrm{virus}$} is the total amount of injected viruses.
 
 \begin{comment}
 Furthermore, we have the boundary conditions:

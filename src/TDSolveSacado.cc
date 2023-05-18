@@ -28,7 +28,8 @@ TDSolveSacado::TDSolveSacado(TDInput* tdInput_ptr) :
   setupVarMap.clear();
   setupICMap.clear();
   setupSrceMap.clear();
-  setupVelUFlxMap.clear();
+  allocVelUVarMap.clear();
+  computeVelUFlxMap.clear();
   setupVelUMap.clear();
   setupExtraVFlxMap.clear();
   setupAuxMap.clear();
@@ -58,10 +59,16 @@ TDSolveSacado::TDSolveSacado(TDInput* tdInput_ptr) :
   setupSrceMap.insert( std::pair<int, fSetupFun>( 3, &TDSolveSacado::setup_srce_potassium) );
   setupSrceMap.insert( std::pair<int, fSetupFun>( 4, &TDSolveSacado::setup_srce_oncolytic) );
 
-  setupVelUFlxMap.insert( std::pair<int, fSetupFun>(-1, &TDSolveSacado::add_vupdate_uflx) );
-  setupVelUFlxMap.insert( std::pair<int, fSetupFun>( 0, &TDSolveSacado::add_vupdate_uflx) );
-  setupVelUFlxMap.insert( std::pair<int, fSetupFun>( 1, &TDSolveSacado::add_vupdate_uflx) );
-  setupVelUFlxMap.insert( std::pair<int, fSetupFun>( 4, &TDSolveSacado::add_vupdate_uflx_oncolytic ) );
+  allocVelUVarMap.insert( std::pair<int, fSetupFun>(-1, &TDSolveSacado::alloc_uvel_map_all) );
+  allocVelUVarMap.insert( std::pair<int, fSetupFun>( 0, &TDSolveSacado::alloc_uvel_map_all) );
+  allocVelUVarMap.insert( std::pair<int, fSetupFun>( 1, &TDSolveSacado::alloc_uvel_map_all) );
+  allocVelUVarMap.insert( std::pair<int, fSetupFun>( 2, &TDSolveSacado::alloc_uvel_map_all) );
+  allocVelUVarMap.insert( std::pair<int, fSetupFun>( 4, &TDSolveSacado::alloc_uvel_map_oncolytic) );
+
+  computeVelUFlxMap.insert( std::pair<int, fSetupFun>(-1, &TDSolveSacado::add_vupdate_uflx) );
+  computeVelUFlxMap.insert( std::pair<int, fSetupFun>( 0, &TDSolveSacado::add_vupdate_uflx) );
+  computeVelUFlxMap.insert( std::pair<int, fSetupFun>( 1, &TDSolveSacado::add_vupdate_uflx) );
+  computeVelUFlxMap.insert( std::pair<int, fSetupFun>( 4, &TDSolveSacado::add_vupdate_uflx_oncolytic ) );
 
   setupVelUMap.insert( std::pair<int, fSetupTFun>(-1, &TDSolveSacado::compute_vel_u_pres) );
   setupVelUMap.insert( std::pair<int, fSetupTFun>( 0, &TDSolveSacado::compute_vel_u_pdgf) );
@@ -1042,17 +1049,27 @@ bool TDSolveSacado::setup_ic_potassium(void) {
 
 bool TDSolveSacado::setup_ic_oncolytic(void) {
   bool invalid_ic = false;
-  setic_unif_cell("B",   1.0);
-  setic_unif_cell("H",   0.0);
-  setic_unif_cell("N",   0.0);
-  setic_unif_cell("M1",  0.0);
-  setic_unif_cell("M2",  0.0);
-  setic_unif_cell("M3",  0.0);
-  setic_unif_cell("M1E", 0.0);
-  setic_unif_cell("M2E", 0.0);
-  setic_unif_cell("M3E", 0.0);
-  setic_unif_cell("Q",   0.0);
-  setic_unif_cell("V",   0.0);
+
+  // Initialize cell numbers and viruses to some constant values
+  for ( std::map<std::string,HVEC**>::iterator it = H_data_var.begin();
+        it != H_data_var.end(); it++ ) {
+    DType init_val = 0.0;
+    if ( tdCoef->probVarParVals[prob_name][it->first].find( "init" ) != 
+         tdCoef->probVarParVals[prob_name][it->first].end() )
+      init_val = tdCoef->probVarParVals[prob_name][it->first]["init"];
+    *(it->second)[0] = init_val;
+  }
+
+  // Specific fields
+  switch ( tdSetup->ic ) {
+    case 0:
+      // Diract delta, needs to be computed
+      (*(H_data_var["Vi"])[0])[0] = tdCoef->probVarParVals[prob_name]["Vi"]["init_num"] / tdSetup->vweight / std::pow(tdCoef->R_0*dx,tdSetup->dim);
+      break;
+    default:
+      invalid_ic = true;
+      break;
+  }
   return invalid_ic;
 }
 
@@ -1107,6 +1124,57 @@ bool TDSolveSacado::setup_srce_oncolytic(void) {
   return true;
 }
 
+bool TDSolveSacado::alloc_uvel_map_all(void) {
+  bool allocate_u_var = true;
+  std::vector<std::string>::iterator it_name;
+  // Flux associated with u
+  SacadoDepVarMap S_array_u; S_array_u.clear();
+  for ( it_name = cellnames_u.begin(); it_name != cellnames_u.end(); it_name++ ) {
+    SacadoDepVarArray S_array;
+    alloc_sacado_dep_array(S_array, varsizes[*it_name]+1);
+    S_array_u.insert( std::pair<std::string, SacadoDepVarArray>(*it_name, S_array) );
+
+    add_vel_to_cellvels( *it_name, "U" );
+  }
+  S_flux_cell_v.insert( std::pair<std::string, SacadoDepVarMap>("U", S_array_u) );
+  return allocate_u_var;
+}
+
+bool TDSolveSacado::alloc_uvel_map_oncolytic(void) {
+  bool allocate_u_var = true;
+  // Flux associated with u1
+  {
+    SacadoDepVarMap S_array_u; S_array_u.clear();
+    SacadoDepVarArray S_array;
+    alloc_sacado_dep_array(S_array, varsizes["M1"]+1);
+    S_array_u.insert( std::pair<std::string, SacadoDepVarArray>("M1", S_array) );
+
+    add_vel_to_cellvels( "M1", "U1" );
+    S_flux_cell_v.insert( std::pair<std::string, SacadoDepVarMap>("U1", S_array_u) );
+  }
+  // Flux associated with u2
+  {
+    SacadoDepVarMap S_array_u; S_array_u.clear();
+    SacadoDepVarArray S_array;
+    alloc_sacado_dep_array(S_array, varsizes["M2"]+1);
+    S_array_u.insert( std::pair<std::string, SacadoDepVarArray>("M2", S_array) );
+
+    add_vel_to_cellvels( "M2", "U2" );
+    S_flux_cell_v.insert( std::pair<std::string, SacadoDepVarMap>("U2", S_array_u) );
+  }
+  // Flux associated with u3
+  {
+    SacadoDepVarMap S_array_u; S_array_u.clear();
+    SacadoDepVarArray S_array;
+    alloc_sacado_dep_array(S_array, varsizes["M3"]+1);
+    S_array_u.insert( std::pair<std::string, SacadoDepVarArray>("M3", S_array) );
+
+    add_vel_to_cellvels( "M3", "U3" );
+    S_flux_cell_v.insert( std::pair<std::string, SacadoDepVarMap>("U3", S_array_u) );
+  }
+  return allocate_u_var;
+}
+
 bool TDSolveSacado::add_vupdate_uflx(void) {
   bool vupdate = true;
   vupdate = vupdate && add_vupdate_uflx_gen("U","N");
@@ -1150,11 +1218,8 @@ bool TDSolveSacado::compute_extra_vflx_oncolytic(const DType tsol_loc) {
   compute_vel_u( tsol_loc );
   // Compute the flux associated with U
   compute_cells_varflux( "U1", "M1",  tsol_loc, &TDSolveSacado::calc_m1_bc_oncolytic );
-  compute_cells_varflux( "U1", "M1E", tsol_loc, NULL );
   compute_cells_varflux( "U2", "M2",  tsol_loc, &TDSolveSacado::calc_m2_bc_oncolytic );
-  compute_cells_varflux( "U2", "M2E", tsol_loc, NULL );
   compute_cells_varflux( "U3", "M3",  tsol_loc, &TDSolveSacado::calc_m3_bc_oncolytic );
-  compute_cells_varflux( "U3", "M3E", tsol_loc, NULL );
   return true;
 }
 
@@ -1364,16 +1429,20 @@ void TDSolveSacado::alloc_sacado_dep(void) {
     add_vel_to_cellvels( *it_name, "V" );
   }
   S_flux_cell_v.insert( std::pair<std::string, SacadoDepVarMap>("V", S_array_v) );
-  // Flux associated with u
-  SacadoDepVarMap S_array_u; S_array_u.clear();
-  for ( it_name = cellnames_u.begin(); it_name != cellnames_u.end(); it_name++ ) {
-    SacadoDepVarArray S_array;
-    alloc_sacado_dep_array(S_array, varsizes[*it_name]+1);
-    S_array_u.insert( std::pair<std::string, SacadoDepVarArray>(*it_name, S_array) );
+  //// Flux associated with u
+  //SacadoDepVarMap S_array_u; S_array_u.clear();
+  //for ( it_name = cellnames_u.begin(); it_name != cellnames_u.end(); it_name++ ) {
+  //  SacadoDepVarArray S_array;
+  //  alloc_sacado_dep_array(S_array, varsizes[*it_name]+1);
+  //  S_array_u.insert( std::pair<std::string, SacadoDepVarArray>(*it_name, S_array) );
 
-    add_vel_to_cellvels( *it_name, "U" );
-  }
-  S_flux_cell_v.insert( std::pair<std::string, SacadoDepVarMap>("U", S_array_u) );
+  //  add_vel_to_cellvels( *it_name, "U" );
+  //}
+  //S_flux_cell_v.insert( std::pair<std::string, SacadoDepVarMap>("U", S_array_u) );
+  std::map<int,fSetupFun>::iterator it = allocVelUVarMap.find( tdSetup->prob_id );
+  if ( it != allocVelUVarMap.end() )
+    (this->*allocVelUVarMap[tdSetup->prob_id])();
+
   if ( tdSetup->cell_rflux == 3 ) {
     // Reconstructed interval face value for PPM flux
     for ( it_name = cellnames.begin(); it_name != cellnames.end(); it_name++ ) {
@@ -1711,11 +1780,11 @@ bool TDSolveSacado::compute_vel_u_pdgf(const DType tsol_loc) {
 
 bool TDSolveSacado::compute_vel_u_oncolytic(const DType tsol_loc) {
   //std::cout << "Warning: oncolytic model - homogeneous Neumann condition is used for all T cells." << std::endl;
-  compute_vel_grad( 'N', "U1", std::vector<DType>{tdCoef->probVarParVals[prob_name]["M1"]["vel_grad_h"] * tdCoef->theta}, std::vector<std::string>{"H"} );
-  compute_vel_grad( 'N', "U2", std::vector<DType>{tdCoef->probVarParVals[prob_name]["M2"]["vel_grad_b"] * tdCoef->theta,
+  compute_vel_grad( 'E', "U1", std::vector<DType>{tdCoef->probVarParVals[prob_name]["M1"]["vel_grad_h"] * tdCoef->theta}, std::vector<std::string>{"H"} );
+  compute_vel_grad( 'E', "U2", std::vector<DType>{tdCoef->probVarParVals[prob_name]["M2"]["vel_grad_b"] * tdCoef->theta,
                                                   tdCoef->probVarParVals[prob_name]["M2"]["vel_grad_h"] * tdCoef->theta}, 
                                std::vector<std::string>{"B","H"} );
-  compute_vel_grad( 'N', "U3", std::vector<DType>{tdCoef->probVarParVals[prob_name]["M3"]["vel_grad_q"] * tdCoef->theta}, std::vector<std::string>{"Q"} );
+  compute_vel_grad( 'E', "U3", std::vector<DType>{tdCoef->probVarParVals[prob_name]["M3"]["vel_grad_q"] * tdCoef->theta}, std::vector<std::string>{"Q"} );
   return true;
 }
 
@@ -1736,6 +1805,9 @@ void TDSolveSacado::compute_vel_grad(const char mode, std::string velname, std::
     }
     else if ( mode == 'N' ) { // Neumann b.c.
       s_u[num-1] += coef[n] * bcVal;
+    }
+    else if ( mode == 'E' ) { // Extrapolated gradient
+      s_u[num-1] += aor * ( ( s_var[num-2] - s_var[num-3] ) / dx );
     }
     else { // Including mode == 'Y'
            // trgt domain is large enough to define gradient at last grid point
@@ -1758,9 +1830,9 @@ void TDSolveSacado::compute_vel_v(void) {
     }
   }
 
-  std::map<int,fSetupFun>::iterator it = setupVelUFlxMap.find( tdSetup->prob_id );
-  if ( it != setupVelUFlxMap.end() )
-    (this->*setupVelUFlxMap[tdSetup->prob_id])();
+  std::map<int,fSetupFun>::iterator it = computeVelUFlxMap.find( tdSetup->prob_id );
+  if ( it != computeVelUFlxMap.end() )
+    (this->*computeVelUFlxMap[tdSetup->prob_id])();
 
   assert( tdSetup->dim == 3 );
   for ( int i = 1; i < Nx+1; i++ ) {
@@ -2444,10 +2516,8 @@ void TDSolveSacado::update_cells_by_res(const int nt) {
 }
 
 void TDSolveSacado::update_sol_by_res_var_exp(HVEC& h_var, HVEC& h_res, DType h_r, DType* l_x_c, const int num) {
-  //DType h_r2 = h_r * h_r;
   for ( int i = 0; i < num; i++ ) {
     h_var[i] -= h_res[i]/std::pow( l_x_c[i]*h_r, tdSetup->dim-1 );
-    //h_var[i] -= h_res[i]/h_r2/l_x_c[i]/l_x_c[i];
   }
   return;
 }
@@ -2531,6 +2601,7 @@ void TDSolveSacado::update_cell_linsys_by_res_var(HVEC& h_res, DType h_r, DType*
     // - 3 intervals if upwind flux is used
     // - 7 intervals if ppm flux is used 
     int sten = ( tdSetup->chem_rflux == 3 ) ? 3 : 1;
+
     for ( int i = 0; i < num; i++ ) {
       int i_min = max(0,i-sten);
       DType denom = std::pow( l_x_c[i]*h_r, tdSetup->dim-1 ); 
@@ -2682,6 +2753,10 @@ void TDSolveSacado::compute_rad(const int fr, const int to) {
 void TDSolveSacado::update_source_geom(int nt) {
   if ( tdSetup->fix_domain ) 
     return;
+
+  if ( tdSetup->dim != 3 ) {
+    std::cout << "Warning: Geometric source term for non 3D computation needs revision.\n" << std::endl;
+  }
 
   if ( tdSetup->pos_fix != 0 )
     adjust_srce_max_geom();
@@ -3684,6 +3759,27 @@ DType TDSolveSacado::calc_n_bc( const DType tsol_loc ) {
     }
   }
   return n_bc;
+}
+
+DType TDSolveSacado::calc_m1_bc_oncolytic( const DType tsol_loc ) {
+  //if ( 10.0 <= tsol_loc && tsol_loc < 11.0 ) {
+    return 0.05/3.0;
+  //}
+  //return 0.0;
+}
+
+DType TDSolveSacado::calc_m2_bc_oncolytic( const DType tsol_loc ) {
+  //if ( 10.0 <= tsol_loc && tsol_loc < 11.0 ) {
+    return 0.05/3.0;
+  //}
+  //return 0.0;
+}
+
+DType TDSolveSacado::calc_m3_bc_oncolytic( const DType tsol_loc ) {
+  //if ( 10.0 <= tsol_loc && tsol_loc < 11.0 ) {
+    return 0.05/3.0;
+  //}
+  //return 0.0;
 }
 
 DType TDSolveSacado::get_cell_perc(std::string cellname, const int nt) {
