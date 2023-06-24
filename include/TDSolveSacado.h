@@ -359,6 +359,7 @@ class TDSolveSacado : public TDSolve {
     void calc_srce_m2e_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
     void calc_srce_m3_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
     void calc_srce_m3e_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
+    void calc_srce_s_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
 
     void compute_source_chem_prob(const int nt, const DType tsol_loc);
     void calc_srce_chem_var(std::string chemname, const int nt, const DType tsol_loc);
@@ -381,6 +382,9 @@ class TDSolveSacado : public TDSolve {
     DType calc_m1_bc_oncolytic( const DType tsol_loc ); 
     DType calc_m2_bc_oncolytic( const DType tsol_loc ); 
     DType calc_m3_bc_oncolytic( const DType tsol_loc ); 
+    DType calc_m1_exter_oncolytic( const DType r_loc, const DType tsol_loc );
+    DType calc_m2_exter_oncolytic( const DType r_loc, const DType tsol_loc );
+    DType calc_m3_exter_oncolytic( const DType r_loc, const DType tsol_loc );
 
     HVEC** srce_max; // Incompressibility violation
     void reset_srce_max(void);

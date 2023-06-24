@@ -99,17 +99,19 @@ The PDE for normalized cell number densities in radial coordinate is given by:
     \label{eq:eqn_pde_cell_n}
     &\pp{N}{t} + \frac{1}{r^2}\po{r}\left[r^2NE\right] = \delta H + k_1M_1\theta H + k_2M_2\theta B + k_3M_2\theta H + k_4M_3\theta Q - \rho N\;, \\
     \label{eq:eqn_pde_cell_m1}
-    &\pp{M_1}{t} + \frac{1}{r^2}\po{r}\left[r^2M_1\left(E+U_1\right)\right] = \left[s_1H\theta-c_1-f_1(H)\right]M_1\;, \\
+    &\pp{M_1}{t} + \frac{1}{r^2}\po{r}\left[r^2M_1\left(E+U_1\right)\right] = \left[s_1H\theta-c_1-f_1(H)\right]M_1 {\color{red} + h_1(r,t)}\;, \\
     \label{eq:eqn_pde_cell_m2}
-    &\pp{M_2}{t} + \frac{1}{r^2}\po{r}\left[r^2M_2\left(E+U_2\right)\right] = \left[s_2(B+H)\theta-c_2-f_2(B,H)\right]M_2\;, \\
+    &\pp{M_2}{t} + \frac{1}{r^2}\po{r}\left[r^2M_2\left(E+U_2\right)\right] = \left[s_2(B+H)\theta-c_2-f_2(B,H)\right]M_2 {\color{red} + h_2(r,t)}\;, \\
     \label{eq:eqn_pde_cell_m3}
-    &\pp{M_3}{t} + \frac{1}{r^2}\po{r}\left[r^2M_3\left(E+U_3\right)\right] = \left[s_3Q\theta-c_3-f_3(Q)\right]M_3\;, \\
+    &\pp{M_3}{t} + \frac{1}{r^2}\po{r}\left[r^2M_3\left(E+U_3\right)\right] = \left[s_3Q\theta-c_3-f_3(Q)\right]M_3 {\color{red} + h_3(r,t)}\;, \\
     \label{eq:eqn_pde_cell_m1e}
     &\pp{M_1^0}{t} + \frac{1}{r^2}\po{r}\left[r^2M_1^0E\right] = f_1(H)M_1-c_1^0M_1^0\;, \\
     \label{eq:eqn_pde_cell_m2e}
     &\pp{M_2^0}{t} + \frac{1}{r^2}\po{r}\left[r^2M_2^0E\right] = f_2(B,H)M_2-c_2^0M_2^0\;, \\
     \label{eq:eqn_pde_cell_m3e}
-    &\pp{M_3^0}{t} + \frac{1}{r^2}\po{r}\left[r^2M_3^0E\right] = f_3(Q)M_3-c_3^0M_3^0\;,
+    &\pp{M_3^0}{t} + \frac{1}{r^2}\po{r}\left[r^2M_3^0E\right] = f_3(Q)M_3-c_3^0M_3^0\;, \\
+    \label{eq:eqn_pde_cell_s}
+    &{\color{red}\pp{S}{t} + \frac{1}{r^2}\po{r}\left[r^2SE\right] = -\kappa(S-S_0) - h_1(r,t) - h_2(r,t) - h_3(r,t)}\;,
   \end{align}
 \end{subequations}
 where $\theta$ is the (constant) total cell number density; the velocities $U_1$, $U_2$, $U_3$, $E$ are:
@@ -122,7 +124,7 @@ where $\theta$ is the (constant) total cell number density; the velocities $U_1$
     \label{eq:eqn_pde_vel_e}
     &\quad = \lambda B + g(Q)Q-\rho N +s_1H\theta M_1+s_2(B+H)\theta M_2+s_3Q\theta M_3 \\
     \notag
-    &\qquad -c_1M_1-c_2M_2-c_3M_3-c_1^0M_1-c_2^0M_2-c_3^0M_3\;;
+    &\qquad -c_1M_1-c_2M_2-c_3M_3-c_1^0M_1-c_2^0M_2-c_3^0M_3{\color{red}-\kappa(S-S_0)}\;;
   \end{align}
 \end{subequations}
 and lastly the virus number density $V$ is determined by the diffusion equation:
