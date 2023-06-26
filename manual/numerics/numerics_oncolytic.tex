@@ -131,13 +131,21 @@ and lastly the virus number density $V$ is determined by the diffusion equation:
 \begin{equation}\label{eq:eqn_pde_virus}
   \pp{V}{t} = \frac{1}{r^2}\po{r}\left(D_1r^2\pp{V}{r}\right) + b\delta\theta H-\gamma V\;.
 \end{equation}
-Note that~\cref{eq:eqn_pde_vel_e} is obtained by adding all equations of~\cref{eq:eqn_pde_cell} and substitute $B+H+Q+N+M_1+M_2+M_3+M_1^0+M_2^0+M_3^0=1$ in the left hand side.
+Note that~\cref{eq:eqn_pde_vel_e} is obtained by adding all equations of~\cref{eq:eqn_pde_cell} and substitute $B+H+Q+N+M_1+M_2+M_3+M_1^0+M_2^0+M_3^0{\color{red}+S}=1$ in the left hand side.
 Meanwhile we do not specify the function $g(Q)$ as it will hold that $Q\equiv0$ throughout the computation; and the other three functions are given by:
 \begin{equation}\label{eq:eqn_pde_efun}
   f_1(H) = \frac{d_1p_H H}{K_1/\theta+p_HH}\,,\ 
   f_2(B,H) = \frac{d_2(p_BB+p_HH)}{K_2/\theta+p_BB+p_HH}\,,\ 
   f_3(Q) = \frac{d_3p_QQ}{K_3/\theta+p_QQ}\,.
 \end{equation}
+{\color{red}
+The three functions $h_1(r,t)$, $h_2(r,t)$, and $h_3(r,t)$ represent the supply of immune cells from blood veins; for now, they are set to be:
+\begin{equation}\label{eq:eqn_pde_supply}
+  h_1(r,t) = h_2(r,t) = h_3(r,t) = \sum_{l=1}^L\frac{1}{\theta}\delta_{r_l}(r)\;,
+\end{equation}
+where $r_l=5l\textrm{mm}$, $l=1,2,\cdots$ are prescribed locations inside the tumor.
+(Note that due to radial symmetry, this function indicates the entire surface with radius $r_l$ secretes immune cells uniformly.)
+}
 Lastly, all equations are defined on the domain $r\in[0,\;R(t)]$, where $R(t)$ is the radius of the tumor that is determined by:
 \begin{equation}\label{eq:eqn_pde_rad}
   \dot{R}(t) = E(R(t),t)\;.
@@ -177,6 +185,8 @@ In the list below, we list all parameters in the model as well as their correspo
   \item {\color{cyan}$c_1^0=0.0075\;\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M1E"]["grow\_neg"]}}.
   \item {\color{cyan}$c_2^0=0.0075\;\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M2E"]["grow\_neg"]}}.
   \item {\color{cyan}$c_3^0=0.0075\;\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M3E"]["grow\_neg"]}}.
+  \item {\color{red} $S_0=0.15$}; accessed by {\color{green}\texttt{["S"]["equilibrium"]}}.
+  \item {\color{red} $\kappa=10^2\;\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["S"]["elasticity"]}}.
   \item {\color{cyan}$D_1=0.01\;\textrm{mm}^2\cdot\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["Vi"]["diffusion"]}}.
   \item {\color{cyan}$\gamma=0.013\;\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["Vi"]["grow\_neg"]}}.
   \item {\color{cyan}$b=300\;\textrm{virus}\cdot\textrm{cell}^{-1}$}; accessed by {\color{green}\texttt{["Vi"]["burst\_h"]}}.
@@ -224,7 +234,7 @@ Lastly, we assume at the beginning, all cells are melanoma tumor cells, hence fo
   H(r,0) = Q(r,0) = N(r,0) = M_k(r,0) = M_k^0(r,0) = 0\;,\ 
   k = 1,2,3,
 \end{equation}
-where {\color{cyan}$R(0) = R_0 = 5\textrm{mm}$} is the initial radius of the tumor.
+where {\color{cyan}$R(0) = R_0 = 4\textrm{mm}$} is the initial radius of the tumor.
 
 The virus is injected at the tumor center at $t=0$, which gives rise to the initial condition:
 \begin{equation}\label{eq:eqn_pde_virus_ic}

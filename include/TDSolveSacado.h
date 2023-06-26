@@ -382,9 +382,9 @@ class TDSolveSacado : public TDSolve {
     DType calc_m1_bc_oncolytic( const DType tsol_loc ); 
     DType calc_m2_bc_oncolytic( const DType tsol_loc ); 
     DType calc_m3_bc_oncolytic( const DType tsol_loc ); 
-    DType calc_m1_exter_oncolytic( const DType r_loc, const DType tsol_loc );
-    DType calc_m2_exter_oncolytic( const DType r_loc, const DType tsol_loc );
-    DType calc_m3_exter_oncolytic( const DType r_loc, const DType tsol_loc );
+    DType calc_m1_exter_oncolytic( const DType r_loc, const DType dr, const DType tsol_loc );
+    DType calc_m2_exter_oncolytic( const DType r_loc, const DType dr, const DType tsol_loc );
+    DType calc_m3_exter_oncolytic( const DType r_loc, const DType dr, const DType tsol_loc );
 
     HVEC** srce_max; // Incompressibility violation
     void reset_srce_max(void);
