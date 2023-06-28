@@ -1219,9 +1219,12 @@ bool TDSolveSacado::compute_extra_vflx_oncolytic(const DType tsol_loc) {
   // Compute the velocity/velocities u using the gradient
   compute_vel_u( tsol_loc );
   // Compute the flux associated with U
-  compute_cells_varflux( "U1", "M1",  tsol_loc, &TDSolveSacado::calc_m1_bc_oncolytic );
-  compute_cells_varflux( "U2", "M2",  tsol_loc, &TDSolveSacado::calc_m2_bc_oncolytic );
-  compute_cells_varflux( "U3", "M3",  tsol_loc, &TDSolveSacado::calc_m3_bc_oncolytic );
+  //compute_cells_varflux( "U1", "M1",  tsol_loc, &TDSolveSacado::calc_m1_bc_oncolytic );
+  //compute_cells_varflux( "U2", "M2",  tsol_loc, &TDSolveSacado::calc_m2_bc_oncolytic );
+  //compute_cells_varflux( "U3", "M3",  tsol_loc, &TDSolveSacado::calc_m3_bc_oncolytic );
+  compute_cells_varflux( "U1", "M1",  0.0, NULL );
+  compute_cells_varflux( "U2", "M2",  0.0, NULL );
+  compute_cells_varflux( "U3", "M3",  0.0, NULL );
   return true;
 }
 
