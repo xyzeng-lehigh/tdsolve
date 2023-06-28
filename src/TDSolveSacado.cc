@@ -3820,10 +3820,11 @@ DType TDSolveSacado::calc_m1_exter_oncolytic( const DType r_loc, const DType dr,
   DType interval = 5.0;
   DType inject = 0.0;
   DType theta  = tdCoef->theta;
+  DType tm = tdCoef->probVarParVals[prob_name]["M1"]["popup"];
   int site = std::floor( S_data_r.val() / interval );
   for ( int i = 0; i < site; i++ ) {
     if ( r_loc-0.5*dr <= (i+1)*interval && r_loc+0.5*dr > (i+1)*interval ) {
-      inject = 1.0/theta/dr;
+      inject = 1.0/(theta*tm)/dr;
       break;
     }
   }
@@ -3834,10 +3835,11 @@ DType TDSolveSacado::calc_m2_exter_oncolytic( const DType r_loc, const DType dr,
   DType interval = 5.0;
   DType inject = 0.0;
   DType theta  = tdCoef->theta;
+  DType tm = tdCoef->probVarParVals[prob_name]["M2"]["popup"];
   int site = std::floor( S_data_r.val() / interval );
   for ( int i = 0; i < site; i++ ) {
     if ( r_loc-0.5*dr <= (i+1)*interval && r_loc+0.5*dr > (i+1)*interval ) {
-      inject = 1.0/theta/dr;
+      inject = 1.0/(theta*tm)/dr;
       break;
     }
   }
@@ -3848,10 +3850,11 @@ DType TDSolveSacado::calc_m3_exter_oncolytic( const DType r_loc, const DType dr,
   DType interval = 5.0;
   DType inject = 0.0;
   DType theta  = tdCoef->theta;
+  DType tm = tdCoef->probVarParVals[prob_name]["M3"]["popup"];
   int site = std::floor( S_data_r.val() / interval );
   for ( int i = 0; i < site; i++ ) {
     if ( r_loc-0.5*dr <= (i+1)*interval && r_loc+0.5*dr > (i+1)*interval ) {
-      inject = 1.0/theta/dr;
+      inject = 1.0/(theta*tm)/dr;
       break;
     }
   }

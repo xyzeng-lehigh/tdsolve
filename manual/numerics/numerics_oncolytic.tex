@@ -141,9 +141,9 @@ Meanwhile we do not specify the function $g(Q)$ as it will hold that $Q\equiv0$ 
 {\color{red}
 The three functions $h_1(r,t)$, $h_2(r,t)$, and $h_3(r,t)$ represent the supply of immune cells from blood veins; for now, they are set to be:
 \begin{equation}\label{eq:eqn_pde_supply}
-  h_1(r,t) = h_2(r,t) = h_3(r,t) = \sum_{l=1}^L\frac{1}{\theta}\delta_{r_l}(r)\;,
+  h_1(r,t) = h_2(r,t) = h_3(r,t) = \sum_{l=1}^L\frac{1}{t_M\theta}\delta_{r_l}(r)\;,
 \end{equation}
-where $r_l=5l\textrm{mm}$, $l=1,2,\cdots$ are prescribed locations inside the tumor.
+where $r_l=5l\textrm{mm}$, $l=1,2,\cdots$ are prescribed locations inside the tumor and $t_M$ is the time for one immune cell to pop out of the vein.
 (Note that due to radial symmetry, this function indicates the entire surface with radius $r_l$ secretes immune cells uniformly.)
 }
 Lastly, all equations are defined on the domain $r\in[0,\;R(t)]$, where $R(t)$ is the radius of the tumor that is determined by:
@@ -187,6 +187,7 @@ In the list below, we list all parameters in the model as well as their correspo
   \item {\color{cyan}$c_3^0=0.0075\;\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M3E"]["grow\_neg"]}}.
   \item {\color{red} $S_0=0.15$}; accessed by {\color{green}\texttt{["S"]["equilibrium"]}}.
   \item {\color{red} $\kappa=10^2\;\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["S"]["elasticity"]}}.
+  \item {\color{red} $t_M=10^{-5}\;\textrm{h}$}; accessed by {\color{green}\texttt{["M1"]["popup"]}}, {\color{green}\texttt{["M2"]["popup"]}}, and {\color{green}\texttt{["M3"]["popup"]}}.
   \item {\color{cyan}$D_1=0.01\;\textrm{mm}^2\cdot\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["Vi"]["diffusion"]}}.
   \item {\color{cyan}$\gamma=0.013\;\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["Vi"]["grow\_neg"]}}.
   \item {\color{cyan}$b=300\;\textrm{virus}\cdot\textrm{cell}^{-1}$}; accessed by {\color{green}\texttt{["Vi"]["burst\_h"]}}.
@@ -663,7 +664,7 @@ A_i^{k+1} &+ \frac{1}{\eta_i^2(R^{k+1})^2}\frac{\Delta\tau^k}{\Delta\eta}\times 
 
 \subsection{Step 4: Updating the Osteopontin Concentrations}
 The osteopontin concentrations $P_1$ and $P_2$ are updated the same way as the chemotaxis attractant concentration $A$, i.e., by (1) the implicit first-order upwind/central-difference method or (2) the IMEX second-order MUSCL/central-difference method.
-The only difference is that the two equations are defined on $1\le i\le N$, and we imforce the homogeneous Neumann boundary condition at the right boundary -- hence the finite differencing stencil needs to be biased for both $i=1$ and $i=N$.
+The only difference is that the two equations are defined on $1\le i\le N$, and we enforce the homogeneous Neumann boundary condition at the right boundary -- hence the finite difference stencil needs to be biased for both $i=1$ and $i=N$.
 
 \subsection{Time Step Calculation}
 Finally, the time-step size $\Delta\tau^k$ is computed according to the Courant condition.
