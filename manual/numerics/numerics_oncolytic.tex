@@ -141,9 +141,12 @@ Meanwhile we do not specify the function $g(Q)$ as it will hold that $Q\equiv0$ 
 {\color{red}
 The three functions $h_1(r,t)$, $h_2(r,t)$, and $h_3(r,t)$ represent the supply of immune cells from blood veins; for now, they are set to be:
 \begin{equation}\label{eq:eqn_pde_supply}
-  h_1(r,t) = h_2(r,t) = h_3(r,t) = \sum_{l=1}^L\frac{1}{t_M\theta}\delta_{r_l}(r)\;,
+  %h_1(r,t) = h_2(r,t) = h_3(r,t) = \delta_0(t-T_M)\sum_{l=1}^L\frac{n_M}{t_M\theta}\delta_0(r-r_l)\;,
+  h_1(r,t) = h_2(r,t) = h_3(r,t) = \delta_0(t-T_M)\sum_{l=1}^L\frac{n_M}{\theta}\delta_0(r-r_l)\;,
 \end{equation}
-where $r_l=5l\textrm{mm}$, $l=1,2,\cdots$ are prescribed locations inside the tumor and $t_M$ is the time for one immune cell to pop out of the vein.
+where $r_l=5l\textrm{mm}$, $l=1,2,\cdots$ are prescribed locations inside the tumor, $n_M$ is the number of vein spots per $\textrm{mm}^2$ on a spherical surface (one immune cell pops out from one such spot at one time, we assume), 
+%$t_M$ is the time for one immune cell to pop out of the vein, 
+and $T_M$ is the time at which the immune cells are injected into the vein.
 (Note that due to radial symmetry, this function indicates the entire surface with radius $r_l$ secretes immune cells uniformly.)
 }
 Lastly, all equations are defined on the domain $r\in[0,\;R(t)]$, where $R(t)$ is the radius of the tumor that is determined by:
@@ -187,7 +190,9 @@ In the list below, we list all parameters in the model as well as their correspo
   \item {\color{cyan}$c_3^0=0.0075\;\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["M3E"]["grow\_neg"]}}.
   \item {\color{red} $S_0=0.15$}; accessed by {\color{green}\texttt{["S"]["equilibrium"]}}.
   \item {\color{red} $\kappa=10^2\;\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["S"]["elasticity"]}}.
-  \item {\color{red} $t_M=10^{-5}\;\textrm{h}$}; accessed by {\color{green}\texttt{["M1"]["popup"]}}, {\color{green}\texttt{["M2"]["popup"]}}, and {\color{green}\texttt{["M3"]["popup"]}}.
+  \item {\color{red} $n_M=1\;\textrm{cell}\cdot\textrm{mm}^{-2}$}; accessed by {\color{green}\texttt{["M1"]["popup\_num"]}}, {\color{green}\texttt{["M2"]["popup\_num"]}}, and {\color{green}\texttt{["M3"]["popup\_num"]}}.
+  %\item {\color{red} $t_M=10^{-3}\;\textrm{h}$}; accessed by {\color{green}\texttt{["M1"]["popup\_time"]}}, {\color{green}\texttt{["M2"]["popup\_time"]}}, and {\color{green}\texttt{["M3"]["popup\_time"]}}.
+  \item {\color{red} $T_M=36\;\textrm{h}$}; accessed by {\color{green}\texttt{["M1"]["inject\_time"]}}, {\color{green}\texttt{["M2"]["inject\_time"]}}, and {\color{green}\texttt{["M3"]["inject\_time"]}}.
   \item {\color{cyan}$D_1=0.01\;\textrm{mm}^2\cdot\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["Vi"]["diffusion"]}}.
   \item {\color{cyan}$\gamma=0.013\;\textrm{h}^{-1}$}; accessed by {\color{green}\texttt{["Vi"]["grow\_neg"]}}.
   \item {\color{cyan}$b=300\;\textrm{virus}\cdot\textrm{cell}^{-1}$}; accessed by {\color{green}\texttt{["Vi"]["burst\_h"]}}.
@@ -244,437 +249,29 @@ The virus is injected at the tumor center at $t=0$, which gives rise to the init
 for the virus concentration.
 Here {\color{cyan}$V_0 = 10^4\textrm{virus}$} is the total amount of injected viruses.
 
-\begin{comment}
-Furthermore, we have the boundary conditions:
-\begin{align}
-\label{eq:eqn_pde_rad_vbc}
-&V(0,t) = 0\;
-\end{align}
-as well as the no-flux conditions at $r=0$:
-\begin{align}
-\label{eq:eqn_pde_rad_nfcell_o}
-&\left.\pp{G}{r}\right|_{r=0} = \left.\pp{H}{r}\right|_{r=0} = \left.\pp{M}{r}\right|_{r=0} = 0\;,\\
-\label{eq:eqn_pde_rad_nfchem}
-&\left.\pp{A}{r}\right|_{r=0} = 0\;.
-\end{align}
-All variables except for $A$ are defined on the finite domain $r\in[0,\ R(t)]$; the chemotaxis attractant concentration $A$, however, is defined on the entire half real line with the far-field condition:
-\begin{equation}\label{eq:eqn_pde_rad_ffchem}
-\lim_{r\to\infty}A(r,t) = 0\;.
-\end{equation}
-The concentrations $P_1$ and $P_2$ are defined on $r\in[0,\ R(t)]$ with the Neumann boundary conditon:
-\begin{equation}\label{eq:eqn_pde_rad_bc_p}
-  \left.\pp{P_1}{r}\right|_{r=R(t)} = \left.\pp{P_2}{r}\right|_{r=R(t)} = 0\;.
-\end{equation}
-Finally, the cell number $M$ assumes some constant value $M_{\textrm{bc}}$ outside the tumor; hence we have the following condition:
-\begin{equation}\label{eq:eqn_pde_rad_inc_n}
-M(r\ge R,\tau) = M_{\textrm{bc}}\;,
-\end{equation}
-which is valid as long as the cell is coming into the domain $0\le r\le R(t)$, or equivalently when $\pph{A}{r}\le0$ at $r=R(t)$.
-The latter condition seems to always hold for all the problems we have encountered.
-
-\vglue .1 truein
-
-To transform the equations to the conservation form, we multiply the equations by $r^2$ to obtain:
-\begin{subequations}\label{eq:eqn_pde_csrv}
-\begin{align}
-\label{eq:eqn_pde_csrv_g}
-&\pp{(r^2G)}{t} + \po{r}\left[r^2GV\right] = \lambda'\left(1+\frac{b'P_2}{b+P_2}\right)r^2G(1-l'G) \\
-\notag
-& \hspace*{1.25in} - \mu\left(1+\frac{a'P_1}{a+P_1}\right) r^2G - \omega r^2GM\;, \\
-\label{eq:eqn_pde_csrv_h}
-&\pp{(r^2H)}{t} + \po{r}\left[r^2HV\right] = \mu \left(1+\frac{a'P_1}{a+P_1}\right)r^2G - \delta_1 r^2H\;, \\
-\label{eq:eqn_pde_csrv_m}
-&
-\pp{(r^2M)}{t} + \po{r}\left[r^2M\left(V+\rho\pp{A}{r}\right)\right] = - \delta_2r^2M\;,\\
-\label{eq:eqn_pde_csrv_a}
-&\pp{(r^2A)}{t} = D_3\po{r}\left(r^2\pp{A}{r}\right) + \frac{\chi_{0\le r\le R}\alpha_3r^2G}{\beta_3/\theta+G} - \gamma_3 r^2A\;,\\
-\label{eq:eqn_pde_csrv_p1}
-&\pp{(r^2P_1)}{t} = D_1\po{r}\left(r^2\pp{P_1}{r}\right) + \frac{\alpha_1r^2M}{\beta_1/\theta+M} - \gamma_1 r^2P_1\;,\\
-\label{eq:eqn_pde_csrv_p2}
-&\pp{(r^2P_2)}{t} = D_2\po{r}\left(r^2\pp{P_2}{r}\right) + \frac{\alpha_2r^2M}{\beta_2/\theta+M} - \gamma_2 r^2P_2\;,\\
-\label{eq:eqn_pde_csrv_v}
-&
-\frac{1}{r^2}\po{r}\left[r^2\left(V+\rho M\pp{A}{r}\right)\right] = \lambda'\left(1+\frac{b'P_2}{b+P_2}\right) G(1-l'G) - \delta_1 H - \delta_2M - \omega GM\;.
-\end{align}
+\section{A model problem testing point source}
+\label{sec:model}
+{\bf The governing equations}.
+It is possibly a simplest model that involves a moving domain, a point source, and an elastic interstitial space. 
+\begin{subequations}\label{eq:model_pde}
+  \begin{align}
+    \label{eq:model_pde_m}
+    &\pp{M}{t} + \frac{1}{r^2}\po{r}\left[r^2MV\right] = \lambda M + h(r,t)\;,\\
+    \label{eq:model_pde_s}
+    &\pp{S}{t} + \frac{1}{r^2}\po{r}\left[r^2SV\right] = -\kappa(S-S_0)-h(r,t)\;,\\
+    \label{eq:model_pde_v}
+    &\frac{1}{r^2}\po{r}\left[r^2 V\right] = \lambda M-\kappa(S-S_0)\;.
+  \end{align}
 \end{subequations}
+For simplicty, we assume the initial condition is given by $M\equiv1-S_0$ and $S\equiv S_0$ on the domain $r\in[0,\;R_0]$, $R_0=10$.
+No-flux condition is enforced for both $M$ and $S$ at $r=0$, and no boundary condition is needed at $r=R(t)$.
+Note that if $h(r,t)\equiv0$, we have $R(t) = R_0\exp(\lambda(1-S_0)t/3)$.
 
-\vglue .1 truein
-
-To transform the equations to a fixed domain, we consider the coordinate transformation:
-\begin{equation}\label{eq:eqn_transf}
-(r,t)\quad\mapsto\quad(\eta,\tau) = \left(\frac{r}{R(t)},t\right)\;,
+To test the source term and the elastic term, we shall consider:
+\begin{equation}\label{eq:model_source}
+  h(r,t) = n_M\delta(r-r_0)\delta(t-t_0)\;,
 \end{equation}
-then:
-\begin{equation}\label{eq:eqn_transf_rule}
-\po{t} = \po{\tau} - \frac{\eta R'}{R}\po{\eta}\;,\quad
-\po{r} = \frac{1}{R}\po{\eta}\;.
-\end{equation}
-The equations~(\ref{eq:eqn_pde_csrv}) now become:
-\begin{subequations}\label{eq:eqn_pde}
-\begin{align}
-\label{eq:eqn_pde_g}
-&\pp{(\eta^2R^2G)}{\tau} + \po{\eta}\left[\left(\frac{V}{R}-\frac{\eta R'}{R}\right)\eta^2R^2G\right] = \lambda'\left(1+\frac{b'P_2}{b+P_2}\right) \eta^2R^2G(1-l'G) \\
-\notag
-&\hspace*{1.25in} - \mu\left(1+\frac{a'P_1}{a+P_1}\right) \eta^2R^2G - \omega \eta^2R^2GM - \eta^2R'RG\;, \\
-\label{eq:eqn_pde_h}
-&\pp{(\eta^2R^2H)}{\tau} + \po{\eta}\left[\left(\frac{V}{R}-\frac{\eta R'}{R}\right)\eta^2R^2H\right] = \mu\left(1+\frac{a'P_1}{a+P_1}\right) \eta^2R^2G \\
-\notag
-&\hspace*{1.25in} - \delta_1 \eta^2R^2H - \eta^2R'RH\;, \\
-\label{eq:eqn_pde_m}
-&\pp{(\eta^2R^2M)}{\tau} + \po{\eta}\left[\left(\frac{V}{R}-\frac{\eta R'}{R}+\frac{\rho}{R^2}\pp{A}{\eta}\right)\eta^2R^2M\right] = - \delta_2 \eta^2R^2M - \eta^2R'RM\;, \\
-\label{eq:eqn_pde_a}
-&\pp{(\eta^2R^2A)}{\tau} + \po{\eta}\left[\left(-\frac{\eta R'}{R}\right)\eta^2R^2A\right] = D_3\po{\eta}\left(\eta^2\pp{A}{\eta}\right) + \frac{\chi_{0\le \eta\le 1}\alpha_3\eta^2R^2G}{\beta_3/\theta+G} \\
-\notag
-&\hspace*{1.25in} - \gamma_3\eta^2R^2A - \eta^2R'RA\;, \\
-\label{eq:eqn_pde_p1}
-&\pp{(\eta^2R^2P_1)}{\tau} + \po{\eta}\left[\left(-\frac{\eta R'}{R}\right)\eta^2R^2P_1\right] = D_1\po{\eta}\left(\eta^2\pp{P_1}{\eta}\right) + \frac{\alpha_1\eta^2R^2M}{\beta_1/\theta+M} \\
-\notag
-&\hspace*{1.25in} - \gamma_1\eta^2R^2P_1 - \eta^2R'RP_1\;, \\
-\label{eq:eqn_pde_p2}
-&\pp{(\eta^2R^2P_2)}{\tau} + \po{\eta}\left[\left(-\frac{\eta R'}{R}\right)\eta^2R^2P_2\right] = D_2\po{\eta}\left(\eta^2\pp{P_2}{\eta}\right) + \frac{\alpha_2\eta^2R^2M}{\beta_2/\theta+M} \\
-\notag
-&\hspace*{1.25in} - \gamma_2\eta^2R^2P_2 - \eta^2R'RP_2\;, \\
-\label{eq:eqn_pde_v}
-&\frac{1}{\eta^2 R}\po{\eta}\left[\eta^2\left(V+\frac{\rho}{R}M\pp{A}{\eta}\right)\right] = \lambda'\left(1+\frac{b'P_2}{b+P_2}\right) G(1-l'G) - \delta_1 H - \delta_2 M - \omega GM\;
-\end{align}
-on the fixed domain $\eta\in[0,\ 1]$ but the radius $R$ satisfies the ODE:
-\begin{equation}\label{eq:eqn_pde_r}
-R'(\tau) = V(1,\tau)\;,
-\end{equation}
-and the coefficient $\lambda'$ is now given by:
-\begin{equation}\label{eq:eqn_pde_coef}
-  \lambda' = \lambda \eta^q\;.
-\end{equation}
-The boundary conditions now read:
-\begin{align}
-\label{eq:eqn_pde_vbc}
-&V(0,\tau) = 0\; 
-\end{align}
-as well as the no-flux conditions at $r=0$:
-\begin{align}
-\label{eq:eqn_pde_nfcell_o}
-&\left.\pp{G}{\eta}\right|_{\eta=0} = \left.\pp{H}{\eta}\right|_{\eta=0} = \left.\pp{M}{\eta}\right|_{\eta=0} = 0\;,\\
-\label{eq:eqn_pde_nfchem}
-&\left.\pp{A}{\eta}\right|_{\eta=0} = 0\;,
-\end{align}
-and the Neumann condition at $r=R(t)$:
-\begin{equation}\label{eq:eqn_pde_bc_p}
-  \left.\pp{P_1}{\eta}\right|_{\eta=1} = \left.\pp{P_2}{\eta}\right|_{\eta=1} = 0\;.
-\end{equation}
-Finally, the far-field condition for $A$ remain the same for $\eta$:
-\begin{equation}\label{eq:eqn_pde_ffcell}
-\lim_{\eta\to0}A(\eta,\tau) = 0\;.
-\end{equation}
-\end{subequations}
-The equations~(\ref{eq:eqn_pde}) can be somehow simplified for easier computation.
-First, we note that (\ref{eq:eqn_pde_v}) is an ODE for $V+\rho M\pph{A}{\eta}/R$, which has the zero boundary value at $\eta=0$; hence the velocity is given by:
-\begin{equation}\label{eq:eqn_pde_v_sol}
-  V = \frac{R}{\eta^2}\int_0^\eta\xi^2\left[\lambda'\left(1+\frac{b'P_2}{b+P_2}\right) G(1-l'G)-\delta_1 H - \delta_2 M - \omega GM\right]d\xi - \frac{\rho}{R}M\pp{A}{\eta}\;.
-\end{equation}
-
-{\color{blue}
-\vglue .1 truein
-\noindent
-{\bf Some conservation analysis.}
-Summing up the equations~(\ref{eq:eqn_pde_rad_g}--\ref{eq:eqn_pde_rad_m}) for the cell numbers and denoting $\Theta=G+H+M$, we obtain:
-\begin{displaymath}
-  \pp{(r^2\Theta)}{t} + \po{r}\left(r^2V\Theta\right) + \po{r}\left(\rho r^2M\pp{A}{r}\right) = \lambda'\left(1+\frac{b'P_2}{b+P_2}\right) r^2G(1-l'G)-\delta_1r^2H - \delta_2r^2M - \omega GM\;.
-\end{displaymath}
-The right hand side can be replaced using the equation for the velocity~(\ref{eq:eqn_pde_rad_v}):
-\begin{displaymath}
-\pp{(r^2\Theta)}{t} + \po{r}\left(r^2V\Theta\right) + \po{r}\left(\rho r^2M\pp{A}{r}\right) = \po{r}\left[r^2\left(V+\rho M\pp{A}{r}\right)\right]\;,
-\end{displaymath}
-which can be further simplifies to:
-\begin{displaymath}
-\pp{(r^2\Theta)}{t} + \po{r}\left(r^2V\Theta\right) = \po{r}\left(r^2V\right)\;.
-\end{displaymath}
-Integrating it from on $r\in[0,\ R(t)]$, we have:
-\begin{displaymath}
-\int_0^{R(t)}\frac{d}{dt}\left[r^2\Theta(r,t)\right]dr + R(t)^2V(R(t),t)\Theta(R(t),t) = R(t)^2V(R(t),t)\;,
-\end{displaymath}
-or equivalently
-\begin{displaymath}
-\frac{d}{dt}\int_0^{R(t)}r^2\Theta(r,t)dr = R(t)^2V(R(t),t)\;.
-\end{displaymath}
-}
-
-
-\section{The Finite Volume Method}
-\label{sec:fvm}
-We use a finite volume method to discretize the cell numbers and the chemotaxis attractant concentration in space.
-For simple notations, we define:
-\begin{equation}
-\tilde{G} = \eta^2R^2G\;,\quad
-\tilde{H} = \eta^2R^2H\;,\quad
-\tilde{M} = \eta^2R^2M\;.
-\end{equation}
-The computational domain $\Omega=[0,\ 1]$ is divided uniformly into $M$ cells $\mathcal{C}_i=[(i-1)\Delta\eta,\ i\Delta\eta]$, $i=1,\cdots,N$; here $\Delta\eta=1/N$ is the cell size.
-The numerical solutions to the cell-averages of $\tilde{G}$, $\tilde{H}$, and $\tilde{M}$ are denoted by $\tilde{G}_i$, $\tilde{H}_i$, and $\tilde{M}_i$ for the cell $\mathcal{C}_i$, respectively:
-\begin{displaymath}
-\tilde{G}_i \approx \frac{1}{\Delta\eta}\int_{\mathcal{C}_i}\eta^2R^2Gd\eta\;,\quad
-\tilde{H}_i \approx \frac{1}{\Delta\eta}\int_{\mathcal{C}_i}\eta^2R^2Hd\eta\;,\quad
-\tilde{M}_i \approx \frac{1}{\Delta\eta}\int_{\mathcal{C}_i}\eta^2R^2Md\eta\;;
-\end{displaymath}
-they can also be treated as second-order approximations to $\tilde{G}$, $\tilde{H}$, and $\tilde{M}$ at the cell centers $\eta_{i-1/2}\eqdef(i-1/2)h$.
-Similarly, we define $A_i$, $P_{1i}$, and $P_{2i}$ as:
-\begin{align*}
-  &A_i = \frac{1}{\eta_{i-1/2}^2R^2}\cdot\frac{1}{\Delta\eta}\int_{\mathcal{C}_i}\eta^2R^2Ad\eta\;,\\
-  &P_{1i} = \frac{1}{\eta_{i-1/2}^2R^2}\cdot\frac{1}{\Delta\eta}\int_{\mathcal{C}_i}\eta^2R^2P_1d\eta\;,\quad
-  P_{2i} = \frac{1}{\eta_{i-1/2}^2R^2}\cdot\frac{1}{\Delta\eta}\int_{\mathcal{C}_i}\eta^2R^2P_2d\eta\;,
-\end{align*}
-which can be treated as second-order approximations to $A, P_1, P_2$ at the cell center $\eta_{i-1/2}$.
-
-For the velocity variable, however, we adopt a nodal approximation:
-\begin{displaymath}
-V_i \approx V(\eta_i)\;,
-\end{displaymath}
-where $\eta_i=ih$, $i=0,\cdots,N$.
-
-We denote the solutions by $\mathcal{S}$, it contains the following information at a given time $\tau$:
-\begin{itemize}
-\item The radius $R$.
-\item The cell numbers $\tilde{G}_i$, $\tilde{H}_i$, and $\tilde{M}_i$ for $1\le i\le N$.
-\item The velocity $V_i$, where $0\le i\le N$.
-\item The chemotaxis attractant concentration $A_i$ for $1\le i\le mN$.
-\item The osteopontin concentrations $P_1$ and $P_2$ for $1\le i \le N$.
-\end{itemize}
-Here $m>1$ is a positive number that denotes the truncated domain for computing $A$.
-Particularly, because $A$ is defined on $\eta\in\overline{\mathbb{R}^+}$ it is not easy to solve for $A$ on the entire half line.
-Nevertheless, because the source term involving $G$ vanishes for $\eta\ge1$, we expect $A$ to decay exponentially as $\eta\to\infty$.
-Hence we approximate this unbounded differential equation by setting the boundary condition $A(\eta=m,\tau)=0$ and solve for $A$ on the truncated interval $[0,\ m]$, which is discretized using $mN$ intervals of the same size $\Delta\eta$.
-
-\subsection{The Method of Lines}
-We consider discretizations in space and in time separately.
-Particular, suppose a first-order-in-time method to update the solutions from $\tau^k$ (denoted by $\mathcal{S}^k$) to $\tau^{k+1}=\tau^k+\Delta\tau^k)$ (denoted by $\mathcal{S}^{k+1}$) is given by: 
-\begin{displaymath}
-\mathcal{S}^{k+1} = \mathcal{M}(\mathcal{S}^k,\Delta\tau^k)\;,
-\end{displaymath}
-then a second-order Runge-Kutta extension (RK2) reads:
-\begin{align}
-\notag
-\mathcal{S}^{(1)} &= \mathcal{M}(\tau^k, \Delta \tau^k,\mathcal{S}^k)\;, \\ 
-\label{eq:num_rk2}
-\mathcal{S}^{(2)} &= \mathcal{M}(\tau^{k+1}, \Delta \tau^k,\mathcal{S}^{(1)})\;, \\
-\notag
-\mathcal{S}^{k+1} &= \frac{1}{2}\left(\mathcal{S}^k + \mathcal{S}^{(2)}\right)\;.
-\end{align}
-Here we incorporate the $\tau$-dependency to allow including a time-dependent source term in the governing equations.
-
-\subsection{The General Workflow of the Operator \texorpdfstring{$\mathcal{M}$}{M}}
-Supposing $\Delta\tau^k$ is already computed, a segregated procedure is used in constructing the operator $\mathcal{S}^{k+1} = \mathcal{M}(\tau^k, \Delta\tau^k, \mathcal{S}^k)$.
-It involves several steps in the following order:
-\begin{enumerate}
-\item Update $R^{k+1}$.
-\item Update the cell numbers $\tilde{G}_i^{k+1},\ \tilde{H}_i^{k+1}$, and $\tilde{M}_i^{k+1}$, $1\le i\le N$.
-\item Update the chemotaxis attractant concentration $A_i^{k+1}$, $1\le i\le mN$.
-\item Update the osteopontin concentrations $P_{1i}^{k+1}$ and $P_{2i}^{k+1}$ for $1\le i \le N$.
-\item Update the velocity $V_i^{k+1}$, $0\le i\le N$.
-\end{enumerate}
-For all the different methods described below, the first and the last steps will remain the same.
-
-\vglue .1 truein
-
-\noindent
-{\bf Step 1.} Forward Euler method is used to update the radius of the tumor:
-\begin{equation}\label{eq:num_gen_r}
-R^{k+1} = R^k + \Delta\tau^kV_N^k\;.
-\end{equation}
-
-\vglue .1 truein
-
-\noindent
-{\bf Step 5.} Computing the velocity $V_i^{k+1}$ makes use of the integral equation~(\ref{eq:eqn_pde_v_sol}) with the boundary condition $V_0^{k+1} = V(\eta=0,\tau^{k+1}) = 0$.
-The integral of (\ref{eq:eqn_pde_v_sol}) for $\eta=\eta_i=ih$ is clearly approximated by:
-\begin{align*}
-&\int_0^{ih}\xi^2\left[\lambda'\left(1+\frac{b'P_2(\xi,\tau^{k+1})}{b+P_2(\xi,\tau^{k+1})}\right)G(\xi,\tau^{k+1})(1-l'G(\xi,\tau^{k+1}))-\delta_1 H(\xi,\tau^{k+1})-\delta_2M(\xi,\tau^{k+1})\right. \\
-&\hspace*{.24in}\left.\vphantom{\left(1+\frac{b'P_2(\xi,\tau^{k+1})}{b+P_2(\xi,\tau^{k+1})}\right)}-\omega G(\xi,\tau^{k+1})M(\xi,\tau^{k+1})\right]d\xi
-\approx \\
-&\frac{\Delta\eta}{(R^{k+1})^2}\sum_{j=1}^i\left[\lambda'\left(1+\frac{b'P_{2j}}{b+P_{2j}}\right)\tilde{G}_j^{k+1}\left(1-l'G_j^{k+1}\right)-\delta_1\tilde{H}_j^{k+1}-\delta_2\tilde{M}_j^{k+1}-\omega \tilde{G}_j^{k+1}M_j^{k+1}\right]\;,
-\end{align*}
-thus the following formula is used to compute the velocity at each grid point:
-\begin{align}
-\label{eq:num_gen_v_0}
-V_0^{k+1} =& 0\;; \\
-\label{eq:num_gen_v_i}
-V_i^{k+1} =& \frac{\Delta\eta}{(\eta_i^{k+1})^2R^{k+1}}\sum_{j=1}^i\left[\lambda'\left(1+\frac{b'P_{2j}}{b+P_{2j}}\right)\tilde{G}_j^{k+1}\left(1-l'G_j^{k+1}\right)-\delta_1\tilde{H}_j^{k+1}\right. \\
-\notag
-& \left.-\delta_2\tilde{M}_j^{k+1}-\omega \tilde{G}_j^{k+1}M_j^{k+1}\right] - \frac{\rho}{R^{k+1}}\overline{M_{i+1/2}}^{k+1}\frac{A_{i+1}^{k+1}-A_i^{k+1}}{\Delta\eta}\;,\ \ 1\le i\le N\;.
-\end{align}
-Here $\overline{M_{i+1/2}}^{k+1} = (M_i^{k+1}+M_{i+1}^{k+1})/2$.
-Note that for $i=N$, this formula requires both $M_{N+1}^{k+1}$ and $A_{N+1}^{k+1}$, the former is set to $M_{\textrm{bc}}$ and the latter is always available if the domain for $A$ is larger than $[0,\ 1]$.
-
-\subsection{Step 2: Updating the Cell Numbers}
-To derive a finite-volume formulation for $G$, for example, we integrate (\ref{eq:eqn_pde_g}) over each cell $\mathcal{C}_i$ to obtain:
-\begin{align*}
-\frac{d\tilde{G}_i}{d\tau} + \frac{1}{\Delta\eta}\left[F^G_{i}-F^G_{i-1}\right] =& 
-     \lambda'\left(1+\frac{b'P_{2i}}{b+P_{2i}}\right)\tilde{G}_i\left(1-l'G_i\right)\\
-    &-\mu\left(1+\frac{a'P_{1i}}{a+P_{1i}}\right)\tilde{G}_i-\omega\tilde{G}_iM_i-\frac{R'}{R}\tilde{G}_i\;,
-\end{align*}
-Here $F_j^G$ is a numerical flux approximating $(V/R-\eta R'/R)\tilde{G}$ at $\eta_j$.
-Similar formulations can be described for $H$ and $M$:
-\begin{align*}
-&\frac{d\tilde{H}_i}{d\tau} + \frac{1}{\Delta\eta}\left[F^H_{i}-F^H_{i-1}\right] = \mu\left(1+\frac{a'P_{1i}}{a+P_{1i}}\right)\tilde{G}_i-\delta_1\tilde{H}_i-\frac{R'}{R}\tilde{H}_i\;,\\
-&\frac{d\tilde{M}_i}{d\tau} + \frac{1}{\Delta\eta}\left[F^M_{i}-F^M_{i-1}\right] = -\delta_2\tilde{M}_i-\frac{R'}{R}\tilde{M}_i\;.
-\end{align*}
-In general, a $p$-th order flux function leads to a $p$-th order spatial discretization.
-
-\vglue .1 truein
-
-\noindent
-{\bf Method 1 -- explicit first-order upwind method.}
-A classical nonlinearly stable method is given by the upwind flux.
-For example, $F_j^G$ is computed using the local advection velocity:
-\begin{equation}\label{eq:num_adv_u_gh}
-U_j \eqdef \frac{V_j}{R}-\frac{\eta_jV_N}{R}
-\end{equation}
-and the information of $\tilde{G}$ from the direction where information is coming in:
-\begin{equation}\label{eq:num_flux_upw_g}
-F_j^G = \left\{\begin{array}{lcl}
-U_j\tilde{G}_j & & U_j\ge0\;,\\
-U_j\tilde{G}_{j+1} & & U_j<0\;.
-\end{array}\right.
-\end{equation}
-We can actually write the right hand side first-order upwind numerical flux in the general form:
-\begin{equation}\label{eq:num_flux_upw}
-\mathcal{F}_j(U_j,\tilde{G}_j,\tilde{G}_{j+1})\;,
-\end{equation}
-so that the numerical fluxes for the three cell numbers are:
-\begin{displaymath}
-F_j^G = \mathcal{F}_j(U_j,\tilde{G}_j,\tilde{G}_{j+1})\;,\quad
-F_j^H = \mathcal{F}_j(U_j,\tilde{H}_j,\tilde{H}_{j+1})\;,\quad
-F_j^N = \mathcal{F}_j(\check{U}_j,\tilde{M}_j,\tilde{M}_{j+1})\;,
-\end{displaymath}
-where
-\begin{equation}\label{eq:num_adv_u_n}
-\check{U}_j = U_j + \frac{\rho}{R^2}\frac{A_{j+1}-A_j}{\Delta\eta}
-\end{equation}
-is a second-order approximation to the advection of $N$.
-Note that at the left boundary $j=0$, the values $\tilde{G}_0$, $\tilde{H}_0$, and $\tilde{M}_0$ are not available but nor they are needed, because $U_0=\check{U}_0=0$ so the flux is always set to zero.
-At the right boundary $j=N$, however, the fluxes for $\tilde{G}$ and $\tilde{H}$ are zero because $U_N=0$; but in the case $\check{U}_N<0$, we set $\tilde{M}_{N+1}$ to $M_{\textrm{bc}}$.
-
-To this end, an explicit first-order upwind method $\mathcal{M}$ can be devised to update the cell numbers from $t^k$ to $t^{k+1}$ as follows:
-\begin{subequations}\label{eq:num_ex_upw_cell}
-\begin{align}
-\label{eq:num_ex_upw_cell_g}
-&\tilde{G}_i^{k+1} = \tilde{G}_i^k - \frac{\Delta\tau^k}{\Delta\eta}\left[\mathcal{F}_i(U_i^k,\tilde{G}_i^k,\tilde{G}_{i+1}^k)-\mathcal{F}_{i-1}(U_{i-1}^k,\tilde{G}_{i-1}^k,\tilde{G}_i^k)\right] + \Delta\tau^k\times \\
-\notag
-    & \left[\lambda'\left(1+\frac{b'P_{2i}^k}{b+P_{2i}^k}\right)\tilde{G}_i^k\left(1-l'G_i^k\right)-\mu\left(1+\frac{a'P_{1i}^k}{a+P_{1i}^k}\right)\tilde{G}_i^k-\omega\tilde{G}_i^kM_i^k-\frac{V_N^k}{R^k}\tilde{G}_i^k\right]\;, \\
-\label{eq:num_ex_upw_cell_h}
-&\tilde{H}_i^{k+1} = \tilde{H}_i^k - \frac{\Delta\tau^k}{\Delta\eta}\left[\mathcal{F}_i(U_i^k,\tilde{H}_i^k,\tilde{H}_{i+1}^k)-\mathcal{F}_{i-1}(U_{i-1}^k,\tilde{H}_{i-1}^k,\tilde{H}_i^k)\right] \\
-\notag
-& \hspace*{.4in} + \Delta\tau^k\left[\mu\left(1+\frac{a'P_{1i}^k}{a+P_{1i}^k}\right)\tilde{G}_i^k-\delta_1\tilde{H}_i^k-\frac{V_N^k}{R^k}\tilde{H}_i^k\right]\;, \\
-\label{eq:num_ex_upw_cell_n}
-&\tilde{M}_i^{k+1} = \tilde{M}_i^k - \frac{\Delta\tau^k}{\Delta\eta}\left[\mathcal{F}_i(\check{U}_i^k,\tilde{M}_i^k,\tilde{M}_{i+1}^k)-\mathcal{F}_{i-1}(\check{U}_{i-1}^k,\tilde{M}_{i-1}^k,\tilde{M}_i^k)\right] \\
-\notag
-& \hspace*{.4in} + \Delta\tau^k\left[-\delta_2\tilde{M}_i^k-\frac{V_N^k}{R^k}\tilde{M}_i^k\right]\;.
-\end{align}
-\end{subequations}
-The explicit method is generally stable if the time-step size is computed by using a Courant number no more than $1$, see the section later.
-
-\vglue .1 truein
-
-\noindent
-{\bf Method 2 -- explicit second-order MUSCL method.}
-A second-order extension of the first-order upwind method is achieved by the MUSCL technique; particularly, we consider linear reconstruction and the minmod slope limiter.
-The MUSCL scheme differs from the explicit first-order upwind method in two aspects.
-Firstly, a limited slope is construct for each variable on each cell:
-\begin{align*}
-&\tilde{G}^k(\eta) \approx \tilde{G}^k_i + \widetilde{DG}^k_i(\eta-\eta_i) \\
-&\tilde{H}^k(\eta) \approx \tilde{H}^k_i + \widetilde{DH}^k_i(\eta-\eta_i) \\
-&\tilde{M}^k(\eta) \approx \tilde{M}^k_i + \widetilde{DM}^k_i(\eta-\eta_i)
-\end{align*}
-for all $\eta\in\mathcal{C}_i$.
-Here $\widetilde{DG}^k_i$ is a numerical approximation to $\partial_{\eta}\tilde{G}$ at $(\eta_i,t^k)$; and similarly for $\widetilde{DH}^k_i$ and $\widetilde{DM}^k_i$.
-The slopes are in particular constructed to ensure total variational diminishing (TVD) property with the linearly reconstructed data.
-In this work we employ the minmod limiter and compute the slopes by:
-\begin{align*}
-\widetilde{DG}^k_i = \left\{\begin{array}{lcl}
-\max\left(0\;,\ \min\left(\frac{\tilde{G}^k_{i+1}-\tilde{G}^k_i}{\Delta\eta} , \frac{\tilde{G}^k_i-\tilde{G}^k_{i-1}}{\Delta\eta}\right)\right) & & \tilde{G}^k_{i+1}\ge\tilde{G}^k_i\;, \\
-\min\left(0\;,\ \max\left(\frac{\tilde{G}^k_{i+1}-\tilde{G}^k_i}{\Delta\eta} , \frac{\tilde{G}^k_i-\tilde{G}^k_{i-1}}{\Delta\eta}\right)\right) & & \tilde{G}^k_{i+1}<\tilde{G}^k_i\;.
-\end{array}\right.
-\end{align*}
-The other two quantities $\widetilde{DH}^k_i$ and $\widetilde{DM}^k_i$ are defined similarly.
-At the boundaries, the slopes are simply turned off, which makes the method locally first-order at the two boundaries; nevertheless, it is well known that one-order lower accuracy at the boundaries won't affect the global order of accuracy of the method for hyperbolic problems.
-
-Once the limited slopes are constructed, the numerical fluxes are computed using the linearly extrapolated data at both sides of the cell face.
-For example, the numerical flux for $\tilde{G}$ at the right boundary of $\mathcal{C}_i$ is computed as:
-\begin{displaymath}
-\mathcal{F}_i\left(U_i^k,\tilde{G}_i^k+\frac{1}{2}\Delta\eta\widetilde{DG}^k_i,\tilde{G}_{i+1}^k-\frac{1}{2}\Delta\eta\widetilde{DG}^k_{i+1}\right)
-\end{displaymath}
-Similar formula is used to compute the numerical flux at the left end of $\mathcal{C}_i$, which leads to the following formula to update $\tilde{G}$ from $t^k$ to $t^{k+1}$:
-\begin{align*}
-\tilde{G}_i^{k+1} =& \tilde{G}_i^k - \frac{\Delta\tau^k}{\Delta\eta}\left[\mathcal{F}_i\left(U_i^k,\tilde{G}_i^k+\frac{1}{2}\Delta\eta\widetilde{DG}^k_i,\tilde{G}_{i+1}^k-\frac{1}{2}\Delta\eta\widetilde{DG}^k_{i+1}\right)-\right. \\
-    &\qquad\qquad\left.\mathcal{F}_{i-1}\left(U_{i-1}^k,\tilde{G}_{i-1}^k+\frac{1}{2}\Delta\eta\widetilde{DG}^k_{i-1},\tilde{G}_i^k-\frac{1}{2}\Delta\eta\widetilde{DG}^k_i\right)\right] + \Delta\tau^k\times \\
-\notag
-    &\left[\lambda'\left(1+\frac{b'P_{2i}^k}{b+P_{2i}^k}\right)\tilde{G}_i^k\left(1-l'G_i^k\right)-\mu\left(1+\frac{a'P_{1i}^k}{a+P_{1i}^k}\right)\tilde{G}_i^k-\omega\tilde{G}_i^kM_i^k-\frac{V_N^k}{R^k}\tilde{G}_i^k\right]\;.
-\end{align*}
-The equations to update $\tilde{H}$ and $\tilde{M}$ are modified from (\ref{eq:num_ex_upw_cell_h}) and (\ref{eq:num_ex_upw_cell_h}) accordingly.
-
-\subsection{Step 3: Updating the Chemotaxis Attractant Concentration}
-The equation for chemotaxis attractant concentration $A$ involves both advection and diffusions.
-In order to avoid a tiny time step size in explicit time-integration, we adopt a fully implicit method for both advection and diffusion here.
-Particularly, a first-order method can be constructed by using the first-order upwind flux for advection and central difference for diffusion.
-Integrating (\ref{eq:eqn_pde_a}) over a cell $\mathcal{C}_i$ where $1\le i\le mN$ leads to the following semi-discrete formula for $A$:
-\begin{align*}
-\frac{d(\eta_i^2R^2A_i)}{d\tau} + \frac{1}{\Delta\eta}\left[F_i^A-F_{i-1}^A\right] =& \frac{D_3}{\Delta\eta}\left[\eta_i^2\frac{A_{i+1}-A_i}{\Delta\eta}-\eta_{i-1}^2\frac{A_i-A_{i-1}}{\Delta\eta}\right] \\
-&+ \chi_{i\le N}\frac{\alpha_3\tilde{G}_i}{\beta_3/\theta+G_i}-\left(\gamma+\frac{V_N}{R}\right)\eta_i^2R^2A_i\;,
-\end{align*}
-Here $\chi_{i\le N}$ is an indicator function showing that the source term containing $G$ should only be included for $1\le i\le N$, i.e., when the cell is in the tumor.
-
-\vglue .1 truein
-
-\noindent
-{\bf Method 1 -- implicit first-order upwind/central-difference method.}
-Similar as the cell number case, a first-order upwind flux $F_j^A$ can be computed as:
-\begin{displaymath}
-F_j^A = \mathcal{F}_j(\hat{U}_j,\eta_j^2R^2A_j,\eta_{j+1}^2R^2A_{j+1})\;,
-\end{displaymath}
-where $\hat{U}_j=-\eta_jV_N/R$ is the advection speed for $A$.
-At the two boundaries, $F_0^A$ is set to zero because $\hat{U}_0=0$, and $F_{mN+1}^A$ is also set to zero because we assume that $A$ vanishes at this boundary.
-In the end, the update formula for $A^{k+1}$ is summarized below:
-\begin{align}
-\label{eq:num_im_upw_chem}
-A_i^{k+1} &+ \frac{1}{\eta_i^2(R^{k+1})^2}\frac{\Delta\tau^k}{\Delta\eta}\times \\ 
-\notag
-&\left[\mathcal{F}_i(\hat{U}_i^k,\eta_i^2(R^{k+1})^2A_i^{k+1},\eta_{i+1}^2(R^{k+1})^2A_{i+1}^{k+1})-\mathcal{F}_{i-1}(\hat{U}_{i-1}^k,\eta_i^2(R^{k+1})^2A_{i-1}^{k+1},\eta_i^2(R^{k+1})^2A_i^{k+1})\right] \\
-\notag
-&-\frac{1}{\eta_i^2(R^{k+1})^2}\frac{D_3\Delta\tau^k}{\Delta\eta}\left[\eta_i^2\frac{A_{i+1}^{k+1}-A_i^{k+1}}{\Delta\eta}-\eta_{i-1}^2\frac{A_i^{k+1}-A_{i-1}^{k+1}}{\Delta\eta}\right] + \Delta\tau^k\left(\gamma+\frac{V_N^k}{R^k}\right)A_i^{k+1} \\
-\notag
-= & \frac{(R^k)^2}{(R^{k+1})^2}A_i^k + \chi_{i\le m}\frac{\Delta\tau^k \alpha_3\tilde{G}_i^{k+1}}{\beta_3/\theta+G_i^{k+1}}\;.
-\end{align}
-Again, we froze the advection velocity so that only a linear system needs to be solved.
-
-\noindent
-{\bf Method 2 -- IMEX second-order MUSCL/central-difference method.}
-The major difficulty of using MUSCL to extend the advection discretization from first-order to second-order is that the limited slope is a nonlinear and non-differentiable function of the solution, which makes a fully implicit solver difficult to converge.
-To this end, we only treat the diffusion and reaction terms implicitly, and use the so-called IMplicit/EXplicit method for integration in time from $t^k$ to $t^{k+1}$.
-Construct the limited slopes $\widetilde{DA}^k_i$ for $\tilde{A}=\eta^2R^2A$ similarly as the cell numbers using the minmod limiter, the IMEX method reads:
-\begin{align}
-\label{eq:num_imex_muscl_chem}
-A_i^{k+1} &+ \frac{1}{\eta_i^2(R^{k+1})^2}\frac{\Delta\tau^k}{\Delta\eta}\times \\ 
-\notag
-&\left[\mathcal{F}_i\left(\hat{U}_i^k,\eta_i^2(R^k)^2A_i^k+\frac{1}{2}\Delta\eta\widetilde{DA}_i^k,\eta_{i+1}^2(R^k)^2A_{i+1}^k-\frac{1}{2}\Delta\eta\widetilde{DA}_{i+1}^k\right)-\right.\\
-\notag
-&\ \left.\mathcal{F}_{i-1}\left(\hat{U}_{i-1}^k,\eta_i^2(R^k)^2A_{i-1}^k+\frac{1}{2}\Delta\eta\widetilde{DA}^k_{i-1},\eta_i^2(R^k)^2A_i^k-\frac{1}{2}\Delta\eta\widetilde{DA}^k_i\right)\right] \\
-\notag
-&-\frac{1}{\eta_i^2(R^{k+1})^2}\frac{D_3\Delta\tau^k}{\Delta\eta}\left[\eta_i^2\frac{A_{i+1}^{k+1}-A_i^{k+1}}{\Delta\eta}-\eta_{i-1}^2\frac{A_i^{k+1}-A_{i-1}^{k+1}}{\Delta\eta}\right] + \Delta\tau^k\left(\gamma+\frac{V_N^k}{R^k}\right)A_i^{k+1} \\
-\notag
-= & \frac{(R^k)^2}{(R^{k+1})^2}A_i^k + \chi_{i\le m}\frac{\Delta\tau^k \alpha_3\tilde{G}_i^{k+1}}{\beta_3/\theta+G_i^{k+1}}\;.
-\end{align}
-
-\subsection{Step 4: Updating the Osteopontin Concentrations}
-The osteopontin concentrations $P_1$ and $P_2$ are updated the same way as the chemotaxis attractant concentration $A$, i.e., by (1) the implicit first-order upwind/central-difference method or (2) the IMEX second-order MUSCL/central-difference method.
-The only difference is that the two equations are defined on $1\le i\le N$, and we enforce the homogeneous Neumann boundary condition at the right boundary -- hence the finite difference stencil needs to be biased for both $i=1$ and $i=N$.
-
-\subsection{Time Step Calculation}
-Finally, the time-step size $\Delta\tau^k$ is computed according to the Courant condition.
-Especially, because all the diffusion terms are treated implicitly, we set the Courant number according to the advection velocity:
-\begin{equation}\label{eq:num_dtau}
-\Delta\tau^k = \alpha_{\textrm{cfl}}\min_{1\le i\le N}\frac{h}{\max(\abs{\frac{V_i^k-\eta_iV_N^k}{R^k}},\abs{\frac{V_i^k-\eta_iV_N^k}{R^k}+\frac{\rho}{(R^k)^2}\frac{A_{i+1}^k-A_i^k}{\Delta\eta}})}\;,
-\end{equation}
-where $\alpha_{\textrm{cfl}}$ is the Courant number specified by the user, which typically takes a value smaller than $1$ for partially explicit computations and can take any value when everything is implicit.
-Note that if we drop the advection velocity for $A$ because this term is always treated implicitly.
-\end{comment}
+where $r_0=6$ and $t_0=10$.
 
 \end{document}
 

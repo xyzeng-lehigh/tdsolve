@@ -74,6 +74,7 @@ class TDSolveSacado : public TDSolve {
     bool setup_var_oncolyticOld(void);
     bool setup_var_potassium(void);
     bool setup_var_oncolytic(void);
+    bool setup_var_onc_model(void);
 
     bool setup_ic_model(void);
     bool setup_ic_pdgf(void);
@@ -81,6 +82,7 @@ class TDSolveSacado : public TDSolve {
     bool setup_ic_oncolyticOld(void);
     bool setup_ic_potassium(void);
     bool setup_ic_oncolytic(void);
+    bool setup_ic_onc_model(void);
 
     bool setup_srce_model(void);
     bool setup_srce_pdgf(void);
@@ -88,6 +90,7 @@ class TDSolveSacado : public TDSolve {
     bool setup_srce_oncolyticOld(void);
     bool setup_srce_potassium(void);
     bool setup_srce_oncolytic(void);
+    bool setup_srce_onc_model(void);
 
     bool alloc_uvel_map_all(void);
     bool alloc_uvel_map_oncolytic(void);
@@ -361,6 +364,9 @@ class TDSolveSacado : public TDSolve {
     void calc_srce_m3e_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
     void calc_srce_s_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
 
+    void calc_srce_m_onc_model(SacadoDepVarArray& s_srce, const DType tsol_loc);
+    void calc_srce_s_onc_model(SacadoDepVarArray& s_srce, const DType tsol_loc);
+
     void compute_source_chem_prob(const int nt, const DType tsol_loc);
     void calc_srce_chem_var(std::string chemname, const int nt, const DType tsol_loc);
 
@@ -385,6 +391,7 @@ class TDSolveSacado : public TDSolve {
     DType calc_m1_exter_oncolytic( const DType r_loc, const DType dr, const DType tsol_loc );
     DType calc_m2_exter_oncolytic( const DType r_loc, const DType dr, const DType tsol_loc );
     DType calc_m3_exter_oncolytic( const DType r_loc, const DType dr, const DType tsol_loc );
+    DType calc_m_exter_onc_model( const DType r_loc, const DType dr, const DType tsol_loc );
 
     HVEC** srce_max; // Incompressibility violation
     void reset_srce_max(void);

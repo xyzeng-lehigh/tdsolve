@@ -41,6 +41,7 @@ TDSolveSacado::TDSolveSacado(TDInput* tdInput_ptr) :
   setupVarMap.insert( std::pair<int, fSetupFun>( 2, &TDSolveSacado::setup_var_oncolyticOld) );
   setupVarMap.insert( std::pair<int, fSetupFun>( 3, &TDSolveSacado::setup_var_potassium) );
   setupVarMap.insert( std::pair<int, fSetupFun>( 4, &TDSolveSacado::setup_var_oncolytic) );
+  setupVarMap.insert( std::pair<int, fSetupFun>( 5, &TDSolveSacado::setup_var_onc_model) );
 
   // Setup variables
   (this->*setupVarMap[tdSetup->prob_id])();
@@ -51,6 +52,7 @@ TDSolveSacado::TDSolveSacado(TDInput* tdInput_ptr) :
   setupICMap.insert( std::pair<int, fSetupFun>( 2, &TDSolveSacado::setup_ic_oncolyticOld) );
   setupICMap.insert( std::pair<int, fSetupFun>( 3, &TDSolveSacado::setup_ic_potassium) );
   setupICMap.insert( std::pair<int, fSetupFun>( 4, &TDSolveSacado::setup_ic_oncolytic) );
+  setupICMap.insert( std::pair<int, fSetupFun>( 5, &TDSolveSacado::setup_ic_onc_model) );
 
   setupSrceMap.insert( std::pair<int, fSetupFun>(-1, &TDSolveSacado::setup_srce_model) );
   setupSrceMap.insert( std::pair<int, fSetupFun>( 0, &TDSolveSacado::setup_srce_pdgf) );
@@ -58,6 +60,7 @@ TDSolveSacado::TDSolveSacado(TDInput* tdInput_ptr) :
   setupSrceMap.insert( std::pair<int, fSetupFun>( 2, &TDSolveSacado::setup_srce_oncolyticOld) );
   setupSrceMap.insert( std::pair<int, fSetupFun>( 3, &TDSolveSacado::setup_srce_potassium) );
   setupSrceMap.insert( std::pair<int, fSetupFun>( 4, &TDSolveSacado::setup_srce_oncolytic) );
+  setupSrceMap.insert( std::pair<int, fSetupFun>( 5, &TDSolveSacado::setup_srce_onc_model) );
 
   allocVelUVarMap.insert( std::pair<int, fSetupFun>(-1, &TDSolveSacado::alloc_uvel_map_all) );
   allocVelUVarMap.insert( std::pair<int, fSetupFun>( 0, &TDSolveSacado::alloc_uvel_map_all) );
@@ -917,6 +920,16 @@ bool TDSolveSacado::setup_var_oncolytic(void) {
   return true;
 }
 
+bool TDSolveSacado::setup_var_onc_model(void) {
+  prob_name = "onc_model";
+  // Cells that contribute in incompressibility assumption
+  add_cellular_var( cellnames, "M", Nx, x_c, x_f ); // Cells
+  add_cellular_var( cellnames, "S", Nx, x_c, x_f ); // Interstitial space
+  add_nodal_var(    velnames,  "V", Nx+1, x_f );    // Mean cell motion velocity
+
+  return true;
+}
+
 bool TDSolveSacado::setup_ic_model(void) {
   bool invalid_ic = false;
   switch ( tdSetup->ic ) {
@@ -1074,6 +1087,22 @@ bool TDSolveSacado::setup_ic_oncolytic(void) {
   return invalid_ic;
 }
 
+bool TDSolveSacado::setup_ic_onc_model(void) {
+  bool invalid_ic = false;
+
+  // Initialize cell numbers and viruses to some constant values
+  for ( std::map<std::string,HVEC**>::iterator it = H_data_var.begin();
+        it != H_data_var.end(); it++ ) {
+    DType init_val = 0.0;
+    if ( tdCoef->probVarParVals[prob_name][it->first].find( "init" ) != 
+         tdCoef->probVarParVals[prob_name][it->first].end() )
+      init_val = tdCoef->probVarParVals[prob_name][it->first]["init"];
+    *(it->second)[0] = init_val;
+  }
+
+  return invalid_ic;
+}
+
 bool TDSolveSacado::setup_srce_model(void) {
   F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("G", &TDSolveSacado::calc_srce_g_model) );
   F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("N", &TDSolveSacado::calc_srce_n_model) );
@@ -1123,6 +1152,12 @@ bool TDSolveSacado::setup_srce_oncolytic(void) {
   F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("M3",  &TDSolveSacado::calc_srce_m3_oncolytic) );
   F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("M3E", &TDSolveSacado::calc_srce_m3e_oncolytic) );
   F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("S",   &TDSolveSacado::calc_srce_s_oncolytic) );
+  return true;
+}
+
+bool TDSolveSacado::setup_srce_onc_model(void) {
+  F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("M", &TDSolveSacado::calc_srce_m_onc_model) );
+  F_calcSrceMap.insert( std::pair<std::string, fCalcSrce>("S", &TDSolveSacado::calc_srce_s_onc_model) );
   return true;
 }
 
@@ -3377,9 +3412,9 @@ void TDSolveSacado::calc_srce_m1_oncolytic(SacadoDepVarArray& s_srce, const DTyp
   DType  dr = S_data_r.val()/num;
 
   for ( int i = 0; i < num; i++ ) {
-    s_srce[i] += std::pow( l_x_c[i] * S_data_r, tdSetup->dim-1 ) * s_m1[i] * 
-      ( growth_h * theta * s_h[i] - decay - icalc_mm( eXdecay, mm_half/theta, mm_slope*s_h[i] ) + 
-        calc_m1_exter_oncolytic( l_x_c[i], dr, tsol_loc ) );
+    s_srce[i] += std::pow( l_x_c[i] * S_data_r, tdSetup->dim-1 ) * 
+      ( s_m1[i] * ( growth_h * theta * s_h[i] - decay - icalc_mm( eXdecay, mm_half/theta, mm_slope*s_h[i] ) ) 
+        + calc_m1_exter_oncolytic( l_x_c[i]*S_data_r.val(), dr, tsol_loc ) );
   }
 
   return;
@@ -3429,10 +3464,9 @@ void TDSolveSacado::calc_srce_m2_oncolytic(SacadoDepVarArray& s_srce, const DTyp
   DType  dr = S_data_r.val()/num;
 
   for ( int i = 0; i < num; i++ ) {
-    s_srce[i] += std::pow( l_x_c[i] * S_data_r, tdSetup->dim-1 ) * s_m2[i] * 
-      ( growth_bh * theta * ( s_b[i] + s_h[i] ) - decay - 
-        icalc_mm( eXdecay, mm_half/theta, mm_slope_b*s_b[i]+mm_slope_h*s_h[i] ) + 
-        calc_m2_exter_oncolytic( l_x_c[i], dr, tsol_loc ) );
+    s_srce[i] += std::pow( l_x_c[i] * S_data_r, tdSetup->dim-1 ) * 
+      ( s_m2[i] * ( growth_bh * theta * ( s_b[i] + s_h[i] ) - decay - icalc_mm( eXdecay, mm_half/theta, mm_slope_b*s_b[i]+mm_slope_h*s_h[i] ) )
+        + calc_m2_exter_oncolytic( l_x_c[i]*S_data_r.val(), dr, tsol_loc ) );
   }
 
   return;
@@ -3482,9 +3516,9 @@ void TDSolveSacado::calc_srce_m3_oncolytic(SacadoDepVarArray& s_srce, const DTyp
   DType  dr = S_data_r.val()/num;
 
   for ( int i = 0; i < num; i++ ) {
-    s_srce[i] += std::pow( l_x_c[i] * S_data_r, tdSetup->dim-1 ) * s_m3[i] * 
-      ( growth_q * theta * s_q[i] - decay - icalc_mm( eXdecay, mm_half/theta, mm_slope*s_q[i] ) + 
-        calc_m3_exter_oncolytic( l_x_c[i], dr, tsol_loc ) );
+    s_srce[i] += std::pow( l_x_c[i] * S_data_r, tdSetup->dim-1 ) * 
+      ( s_m3[i] * ( growth_q * theta * s_q[i] - decay - icalc_mm( eXdecay, mm_half/theta, mm_slope*s_q[i] ) ) 
+        + calc_m3_exter_oncolytic( l_x_c[i]*S_data_r.val(), dr, tsol_loc ) );
   }
 
   return;
@@ -3529,9 +3563,49 @@ void TDSolveSacado::calc_srce_s_oncolytic(SacadoDepVarArray& s_srce, const DType
 
   for ( int i = 0; i < num; i++ ) {
     s_srce[i] += std::pow( l_x_c[i] * S_data_r, tdSetup->dim-1 ) * (
-        - kappa * (s_s[i] - S0) - calc_m1_exter_oncolytic( l_x_c[i], dr, tsol_loc ) 
-                                - calc_m2_exter_oncolytic( l_x_c[i], dr, tsol_loc )
-                                - calc_m3_exter_oncolytic( l_x_c[i], dr, tsol_loc ) );
+        - kappa * (s_s[i] - S0) - calc_m1_exter_oncolytic( l_x_c[i]*S_data_r.val(), dr, tsol_loc ) 
+                                - calc_m2_exter_oncolytic( l_x_c[i]*S_data_r.val(), dr, tsol_loc )
+                                - calc_m3_exter_oncolytic( l_x_c[i]*S_data_r.val(), dr, tsol_loc ) );
+  }
+
+  return;
+}
+
+void TDSolveSacado::calc_srce_m_onc_model(SacadoDepVarArray& s_srce, const DType tsol_loc) {
+  reset_sacado_dep_array(s_srce);
+
+  DType theta    = tdCoef->theta;
+  DType growth_m = tdCoef->probVarParVals[prob_name]["M"]["grow_pos"];
+
+  SacadoIndVarArray& s_m = S_data_var["M"];
+
+  int    num   = varsizes["M"];
+  DType* l_x_c = varcoord["M"];
+  DType  dr    = S_data_r.val()/num;
+
+  for ( int i = 0; i < num; i++ ) {
+    s_srce[i] += std::pow( l_x_c[i] * S_data_r, tdSetup->dim-1 ) * ( growth_m * s_m[i] + calc_m_exter_onc_model( l_x_c[i]*S_data_r.val(), dr, tsol_loc ) );
+  }
+
+  return;
+}
+
+void TDSolveSacado::calc_srce_s_onc_model(SacadoDepVarArray& s_srce, const DType tsol_loc) {
+  reset_sacado_dep_array(s_srce);
+
+  DType theta    = tdCoef->theta;
+  DType S0       = tdCoef->probVarParVals[prob_name]["S"]["equilibrium"];
+  DType kappa    = tdCoef->probVarParVals[prob_name]["S"]["elasticity"];
+
+  SacadoIndVarArray& s_s = S_data_var["S"];
+ 
+  int    num   = varsizes["S"];
+  DType* l_x_c = varcoord["S"];
+  DType  dr    = S_data_r.val()/num;
+
+  for ( int i = 0; i < num; i++ ) {
+    s_srce[i] += std::pow( l_x_c[i] * S_data_r, tdSetup->dim-1 ) * (
+        - kappa * (s_s[i] - S0) - calc_m_exter_onc_model( l_x_c[i]*S_data_r.val(), dr, tsol_loc ) );
   }
 
   return;
@@ -3820,12 +3894,15 @@ DType TDSolveSacado::calc_m1_exter_oncolytic( const DType r_loc, const DType dr,
   DType interval = 5.0;
   DType inject = 0.0;
   DType theta  = tdCoef->theta;
-  DType tm = tdCoef->probVarParVals[prob_name]["M1"]["popup"];
+  DType pn = tdCoef->probVarParVals[prob_name]["M1"]["popup_num"];
+  DType tm = tdCoef->probVarParVals[prob_name]["M1"]["inject_time"];
   int site = std::floor( S_data_r.val() / interval );
-  for ( int i = 0; i < site; i++ ) {
-    if ( r_loc-0.5*dr <= (i+1)*interval && r_loc+0.5*dr > (i+1)*interval ) {
-      inject = 1.0/(theta*tm)/dr;
-      break;
+  if ( tsol_loc-dtn <= tm && tsol_loc > tm ) {
+    for ( int i = 0; i < site; i++ ) {
+      if ( r_loc-0.5*dr <= (i+1)*interval && r_loc+0.5*dr > (i+1)*interval ) {
+        inject = pn/theta/dr/dtn;
+        break;
+      }
     }
   }
   return inject;
@@ -3835,12 +3912,15 @@ DType TDSolveSacado::calc_m2_exter_oncolytic( const DType r_loc, const DType dr,
   DType interval = 5.0;
   DType inject = 0.0;
   DType theta  = tdCoef->theta;
-  DType tm = tdCoef->probVarParVals[prob_name]["M2"]["popup"];
+  DType pn = tdCoef->probVarParVals[prob_name]["M2"]["popup_num"];
+  DType tm = tdCoef->probVarParVals[prob_name]["M2"]["inject_time"];
   int site = std::floor( S_data_r.val() / interval );
-  for ( int i = 0; i < site; i++ ) {
-    if ( r_loc-0.5*dr <= (i+1)*interval && r_loc+0.5*dr > (i+1)*interval ) {
-      inject = 1.0/(theta*tm)/dr;
-      break;
+  if ( tsol_loc-dtn <= tm && tsol_loc > tm ) {
+    for ( int i = 0; i < site; i++ ) {
+      if ( r_loc-0.5*dr <= (i+1)*interval && r_loc+0.5*dr > (i+1)*interval ) {
+        inject = pn/theta/dr/dtn;
+        break;
+      }
     }
   }
   return inject;
@@ -3850,12 +3930,29 @@ DType TDSolveSacado::calc_m3_exter_oncolytic( const DType r_loc, const DType dr,
   DType interval = 5.0;
   DType inject = 0.0;
   DType theta  = tdCoef->theta;
-  DType tm = tdCoef->probVarParVals[prob_name]["M3"]["popup"];
+  DType pn = tdCoef->probVarParVals[prob_name]["M3"]["popup_num"];
+  DType tm = tdCoef->probVarParVals[prob_name]["M3"]["inject_time"];
   int site = std::floor( S_data_r.val() / interval );
-  for ( int i = 0; i < site; i++ ) {
-    if ( r_loc-0.5*dr <= (i+1)*interval && r_loc+0.5*dr > (i+1)*interval ) {
-      inject = 1.0/(theta*tm)/dr;
-      break;
+  if ( tsol_loc-dtn <= tm && tsol_loc > tm ) {
+    for ( int i = 0; i < site; i++ ) {
+      if ( r_loc-0.5*dr <= (i+1)*interval && r_loc+0.5*dr > (i+1)*interval ) {
+        inject = pn/theta/dr/dtn;
+        break;
+      }
+    }
+  }
+  return inject;
+}
+
+DType TDSolveSacado::calc_m_exter_onc_model( const DType r_loc, const DType dr, const DType tsol_loc ) {
+  DType inject = 0.0;
+  DType theta  = tdCoef->theta;
+  DType pn = tdCoef->probVarParVals[prob_name]["M"]["popup_num"];
+  DType tm = tdCoef->probVarParVals[prob_name]["M"]["inject_time"];
+  DType iv = tdCoef->probVarParVals[prob_name]["M"]["inject_loc"];
+  if ( tsol_loc-dtn <= tm && tsol_loc > tm ) {
+    if ( r_loc-0.5*dr <= iv && r_loc+0.5*dr > iv ) {
+      inject = pn/theta/dr/dtn;
     }
   }
   return inject;

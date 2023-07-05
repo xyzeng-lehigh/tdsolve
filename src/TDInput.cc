@@ -149,8 +149,10 @@ TDInput::TDInput(void) {
   probNames.push_back( "model" );
   probNames.push_back( "pdgf" );
   probNames.push_back( "opn" );
-  probNames.push_back( "oncolytic" );
+  probNames.push_back( "oncolyticOld" );
   probNames.push_back( "potassium" );
+  probNames.push_back( "oncolytic" );
+  probNames.push_back( "onc_model" );
 
   setup_parameters();
   setup_options();
