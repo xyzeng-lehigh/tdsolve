@@ -13,6 +13,7 @@
 \usepackage{hyperref}
 \usepackage{array}
 \usepackage{caption}
+\usepackage{float}
 \usepackage{subcaption}
 \usepackage{txfonts}
 \usepackage[shortlabels]{enumitem}
@@ -271,9 +272,23 @@ Note that if $h(r,t)\equiv0$, the system allows the spatially homogeneous soluti
     M(r,t) \equiv M(t) = \frac{(\lambda+\kappa M_0)M_0\exp((\lambda+\kappa M_0)t)}{(\lambda+\kappa)M_0\exp((\lambda+\kappa M_0)t)+\lambda(1-M_0)}\;,\\ \vspace*{-.1in} \\
     S(r,t) = 1-M(t)\;,\\ \vspace*{-.1in} \\
     V(r,t) = \frac{1}{3}r\left[(\lambda+\kappa)M(t)-\kappa M_0\right]\;, \\ \vspace*{-.1in} \\
-    R(t) = R_0\exp\left(\int_0^t[(\lambda+\kappa)M(s)-\kappa M_0]ds\right)\;.
+    R(t) = R_0\exp\left(\frac{1}{3}\int_0^t[(\lambda+\kappa)M(s)-\kappa M_0]ds\right)
+         = R_0\left[\frac{(\lambda+\kappa)M_0e^{\lambda t}+\lambda(1-M_0)e^{-\kappa M_ot}}{\lambda + \kappa M_0}\right]^{\frac{1}{3}}\;.
   \end{array}\right.
 \end{equation}
+For example, in~\cref{fg:model_hom_rad} we plot the radii at $T=120.0$ computed using uniform grids using $20$, $40$, and $80$ cells, and uniform time step size $\Delta t=0.25,\;0.5,\;1.0,\;2.0$ with $\kappa=0.0$ and $\kappa=100.0$ in the left panel and right panel, respectively. 
+\begin{figure}[H]\centering
+  \begin{subfigure}[b]{.48\textwidth}\centering
+    \caption{$\kappa=0.0$.}
+    \label{fg:model_hom_rad_nok}
+  \end{subfigure}
+  \begin{subfigure}[b]{.48\textwidth}\centering
+    \caption{$\kappa=100.0$.}
+    \label{fg:model_hom_rad_k}
+  \end{subfigure}
+  \caption{Radii at $T=120.0$ computed by discretizing the domain with $20$, $40$, $80$ uniform cells, and using the uniform time step size $\Delta t=0.25,\;0.5,\;1.0,\;2.0$.}
+  \label{fg:model_hom_rad}
+\end{figure}
 
 To test the source term and the elastic term, we shall consider:
 \begin{equation}\label{eq:model_source}
