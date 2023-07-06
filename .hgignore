@@ -11,6 +11,7 @@ ParAnalRun
 *.log
 *.aux
 .DS_Store
+manual/numerics/*.pdf
 build/**
 debug/**
 tests/Sacado/TestSacado

@@ -265,7 +265,15 @@ It is possibly a simplest model that involves a moving domain, a point source, a
 \end{subequations}
 For simplicty, we assume the initial condition is given by $M\equiv1-S_0$ and $S\equiv S_0=0.55$ on the domain $r\in[0,\;R_0]$, $R_0=10$.
 No-flux condition is enforced for both $M$ and $S$ at $r=0$, and no boundary condition is needed at $r=R(t)$.
-Note that if $h(r,t)\equiv0$, we have $R(t) = R_0\exp(\lambda(1-S_0)t/3)$.
+Note that if $h(r,t)\equiv0$, the system allows the spatially homogeneous solution:
+\begin{equation}\label{eq:model_hom_sol}
+  \left\{\begin{array}{l}
+    M(r,t) \equiv M(t) = \frac{(\lambda+\kappa M_0)M_0\exp((\lambda+\kappa M_0)t)}{(\lambda+\kappa)M_0\exp((\lambda+\kappa M_0)t)+\lambda(1-M_0)}\;,\\ \vspace*{-.1in} \\
+    S(r,t) = 1-M(t)\;,\\ \vspace*{-.1in} \\
+    V(r,t) = \frac{1}{3}r\left[(\lambda+\kappa)M(t)-\kappa M_0\right]\;, \\ \vspace*{-.1in} \\
+    R(t) = R_0\exp\left(\int_0^t[(\lambda+\kappa)M(s)-\kappa M_0]ds\right)\;.
+  \end{array}\right.
+\end{equation}
 
 To test the source term and the elastic term, we shall consider:
 \begin{equation}\label{eq:model_source}
