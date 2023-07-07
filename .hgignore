@@ -12,6 +12,7 @@ ParAnalRun
 *.aux
 .DS_Store
 manual/numerics/*.pdf
+manual/numerics/figs_oncolytic/etc_h/**
 manual/*.pdf
 build/**
 debug/**

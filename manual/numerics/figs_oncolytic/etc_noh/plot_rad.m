@@ -11,15 +11,15 @@ r0 = 10; lambda = 0.01; m0 = 0.45; t = 120;
 knames = {'rad_k.txt', 'rad_nok.txt'};
 kvals  = {'100.0','0.0'};
 
-nxs = {'05', '10', '20', '40', '80'};
-spc = {'r*-', 'y*-', 'm*-', 'c*-', 'b*-'};
+nxs = {'02', '03', '05', '10', '20', '40'};
+spc = {'r*-', 'y*-', 'm*-', 'g*-', 'c*-', 'b*-'};
 dts = {'0.0375', '0.075', '0.15', '0.3', '0.6', '1.2'};
 
 for nt = 1 : length(dts)
   dt(nt) = str2double(dts{nt});
 end
 
-for nk = 2 : 2 %1 : length(knames)
+for nk = 1 : length(knames)
   kname = knames{nk};
   kval  = kvals{nk};
   k     = str2double(kval);

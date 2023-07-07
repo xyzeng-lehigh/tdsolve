@@ -3952,7 +3952,7 @@ DType TDSolveSacado::calc_m_exter_onc_model( const DType r_loc, const DType dr, 
   DType iv = tdCoef->probVarParVals[prob_name]["M"]["inject_loc"];
   if ( tsol_loc-dtn <= tm && tsol_loc > tm ) {
     if ( r_loc-0.5*dr <= iv && r_loc+0.5*dr > iv ) {
-      inject = pn/theta/dr/dtn;
+      inject = pn/tdSetup->vweight/std::pow(r_loc,tdSetup->dim-1)/theta/dr/dtn;
     }
   }
   return inject;
