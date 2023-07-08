@@ -3900,7 +3900,7 @@ DType TDSolveSacado::calc_m1_exter_oncolytic( const DType r_loc, const DType dr,
   if ( tsol_loc-dtn <= tm && tsol_loc > tm ) {
     for ( int i = 0; i < site; i++ ) {
       if ( r_loc-0.5*dr <= (i+1)*interval && r_loc+0.5*dr > (i+1)*interval ) {
-        inject = pn/theta/dr/dtn;
+        inject = pn/tdSetup->vweight/std::pow(r_loc,tdSetup->dim-1)/theta/dr/dtn;
         break;
       }
     }
@@ -3918,7 +3918,7 @@ DType TDSolveSacado::calc_m2_exter_oncolytic( const DType r_loc, const DType dr,
   if ( tsol_loc-dtn <= tm && tsol_loc > tm ) {
     for ( int i = 0; i < site; i++ ) {
       if ( r_loc-0.5*dr <= (i+1)*interval && r_loc+0.5*dr > (i+1)*interval ) {
-        inject = pn/theta/dr/dtn;
+        inject = pn/tdSetup->vweight/std::pow(r_loc,tdSetup->dim-1)/theta/dr/dtn;
         break;
       }
     }
@@ -3936,7 +3936,7 @@ DType TDSolveSacado::calc_m3_exter_oncolytic( const DType r_loc, const DType dr,
   if ( tsol_loc-dtn <= tm && tsol_loc > tm ) {
     for ( int i = 0; i < site; i++ ) {
       if ( r_loc-0.5*dr <= (i+1)*interval && r_loc+0.5*dr > (i+1)*interval ) {
-        inject = pn/theta/dr/dtn;
+        inject = pn/tdSetup->vweight/std::pow(r_loc,tdSetup->dim-1)/theta/dr/dtn;
         break;
       }
     }
