@@ -3891,7 +3891,7 @@ DType TDSolveSacado::calc_m3_bc_oncolytic( const DType tsol_loc ) {
 }
 
 DType TDSolveSacado::calc_m1_exter_oncolytic( const DType r_loc, const DType dr, const DType tsol_loc ) {
-  DType interval = 5.0;
+  DType interval = 2.0;
   DType inject = 0.0;
   DType theta  = tdCoef->theta;
   DType pn = tdCoef->probVarParVals[prob_name]["M1"]["popup_num"];
@@ -3909,7 +3909,7 @@ DType TDSolveSacado::calc_m1_exter_oncolytic( const DType r_loc, const DType dr,
 }
 
 DType TDSolveSacado::calc_m2_exter_oncolytic( const DType r_loc, const DType dr, const DType tsol_loc ) {
-  DType interval = 5.0;
+  DType interval = 2.0;
   DType inject = 0.0;
   DType theta  = tdCoef->theta;
   DType pn = tdCoef->probVarParVals[prob_name]["M2"]["popup_num"];
@@ -3927,7 +3927,7 @@ DType TDSolveSacado::calc_m2_exter_oncolytic( const DType r_loc, const DType dr,
 }
 
 DType TDSolveSacado::calc_m3_exter_oncolytic( const DType r_loc, const DType dr, const DType tsol_loc ) {
-  DType interval = 5.0;
+  DType interval = 2.0;
   DType inject = 0.0;
   DType theta  = tdCoef->theta;
   DType pn = tdCoef->probVarParVals[prob_name]["M3"]["popup_num"];

@@ -7,7 +7,7 @@ then
 fi
 
 cd ${BDIR}
-NP=4
+NP=8
 case ${OSTYPE//[0-9.]/} in
   darwin)
     export 
@@ -24,6 +24,7 @@ case ${OSTYPE//[0-9.]/} in
       -DCMAKE_C_COMPILER=$CSUPPROOT/gcc-9.3.0/gcc/bin/gcc \
       -DCMAKE_CXX_COMPILER=$CSUPPROOT/gcc-9.3.0/gcc/bin/g++ \
       -DTrilinos_DIR:PATH=$CSUPPROOT/gcc-9.3.0/trilinos-12.7 \
+      -DCMAKE_PREFIX_PATH=$CSUPPROOT/gcc-$HCLGCCVER/openblas \
       ../
     NP=8
     ;;
