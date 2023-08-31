@@ -103,6 +103,7 @@ class TDSolveSacado : public TDSolve {
     bool compute_extra_vflx_oncolytic(const DType);
 
     bool setup_aux_oncolyticOld(const DType);
+    bool setup_aux_oncolytic(const DType);
 
   protected:
     // Dependent variables
@@ -351,6 +352,7 @@ class TDSolveSacado : public TDSolve {
       return result;
     }
 
+    int idx_bdry_oncolytic;
     void calc_srce_b_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
     void calc_srce_h_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
     void calc_srce_q_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
@@ -388,9 +390,9 @@ class TDSolveSacado : public TDSolve {
     DType calc_m1_bc_oncolytic( const DType tsol_loc ); 
     DType calc_m2_bc_oncolytic( const DType tsol_loc ); 
     DType calc_m3_bc_oncolytic( const DType tsol_loc ); 
-    DType calc_m1_exter_oncolytic( const DType r_loc, const DType dr, const DType tsol_loc );
-    DType calc_m2_exter_oncolytic( const DType r_loc, const DType dr, const DType tsol_loc );
-    DType calc_m3_exter_oncolytic( const DType r_loc, const DType dr, const DType tsol_loc );
+    DType calc_m1_exter_oncolytic( const int icell, const DType r_loc, const DType dr, const DType tsol_loc );
+    DType calc_m2_exter_oncolytic( const int icell, const DType r_loc, const DType dr, const DType tsol_loc );
+    DType calc_m3_exter_oncolytic( const int icell, const DType r_loc, const DType dr, const DType tsol_loc );
     DType calc_m_exter_onc_model( const DType r_loc, const DType dr, const DType tsol_loc );
 
     HVEC** srce_max; // Incompressibility violation

@@ -84,6 +84,7 @@ TDSolveSacado::TDSolveSacado(TDInput* tdInput_ptr) :
   setupExtraVFlxMap.insert( std::pair<int, fSetupTFun>( 4, &TDSolveSacado::compute_extra_vflx_oncolytic) );
 
   setupAuxMap.insert( std::pair<int, fSetupTFun>(2, &TDSolveSacado::setup_aux_oncolyticOld) );
+  setupAuxMap.insert( std::pair<int, fSetupTFun>(4, &TDSolveSacado::setup_aux_oncolytic) );
 
   if ( !(tdSetup->silence_output) ) {
     FILE* ot_file = fopen( tdInput->outputFile, "w" );
@@ -1264,6 +1265,20 @@ bool TDSolveSacado::compute_extra_vflx_oncolytic(const DType tsol_loc) {
 }
 
 bool TDSolveSacado::setup_aux_oncolyticOld(const DType tsol_loc) {
+  return true;
+}
+
+bool TDSolveSacado::setup_aux_oncolytic(const DType tsol_loc) {
+  SacadoIndVarArray& s_b = S_data_var["B"];
+  SacadoIndVarArray& s_h = S_data_var["H"];
+  int num = varsizes["B"];
+  idx_bdry_oncolytic = -1;
+  for ( int i = num-1; i>=0; i-- ) {
+    if ( std::fabs(s_b[i].val()) + std::fabs(s_h[i].val()) >= 1e-3 ) {
+      idx_bdry_oncolytic = i;
+      break;
+    }
+  }
   return true;
 }
 
@@ -3414,7 +3429,7 @@ void TDSolveSacado::calc_srce_m1_oncolytic(SacadoDepVarArray& s_srce, const DTyp
   for ( int i = 0; i < num; i++ ) {
     s_srce[i] += std::pow( l_x_c[i] * S_data_r, tdSetup->dim-1 ) * 
       ( s_m1[i] * ( growth_h * theta * s_h[i] - decay - icalc_mm( eXdecay, mm_half/theta, mm_slope*s_h[i] ) ) 
-        + calc_m1_exter_oncolytic( l_x_c[i]*S_data_r.val(), dr, tsol_loc ) );
+        + calc_m1_exter_oncolytic( i, l_x_c[i]*S_data_r.val(), dr, tsol_loc ) );
   }
 
   return;
@@ -3466,7 +3481,7 @@ void TDSolveSacado::calc_srce_m2_oncolytic(SacadoDepVarArray& s_srce, const DTyp
   for ( int i = 0; i < num; i++ ) {
     s_srce[i] += std::pow( l_x_c[i] * S_data_r, tdSetup->dim-1 ) * 
       ( s_m2[i] * ( growth_bh * theta * ( s_b[i] + s_h[i] ) - decay - icalc_mm( eXdecay, mm_half/theta, mm_slope_b*s_b[i]+mm_slope_h*s_h[i] ) )
-        + calc_m2_exter_oncolytic( l_x_c[i]*S_data_r.val(), dr, tsol_loc ) );
+        + calc_m2_exter_oncolytic( i, l_x_c[i]*S_data_r.val(), dr, tsol_loc ) );
   }
 
   return;
@@ -3518,7 +3533,7 @@ void TDSolveSacado::calc_srce_m3_oncolytic(SacadoDepVarArray& s_srce, const DTyp
   for ( int i = 0; i < num; i++ ) {
     s_srce[i] += std::pow( l_x_c[i] * S_data_r, tdSetup->dim-1 ) * 
       ( s_m3[i] * ( growth_q * theta * s_q[i] - decay - icalc_mm( eXdecay, mm_half/theta, mm_slope*s_q[i] ) ) 
-        + calc_m3_exter_oncolytic( l_x_c[i]*S_data_r.val(), dr, tsol_loc ) );
+        + calc_m3_exter_oncolytic( i, l_x_c[i]*S_data_r.val(), dr, tsol_loc ) );
   }
 
   return;
@@ -3563,9 +3578,9 @@ void TDSolveSacado::calc_srce_s_oncolytic(SacadoDepVarArray& s_srce, const DType
 
   for ( int i = 0; i < num; i++ ) {
     s_srce[i] += std::pow( l_x_c[i] * S_data_r, tdSetup->dim-1 ) * (
-        - kappa * (s_s[i] - S0) - calc_m1_exter_oncolytic( l_x_c[i]*S_data_r.val(), dr, tsol_loc ) 
-                                - calc_m2_exter_oncolytic( l_x_c[i]*S_data_r.val(), dr, tsol_loc )
-                                - calc_m3_exter_oncolytic( l_x_c[i]*S_data_r.val(), dr, tsol_loc ) );
+        - kappa * (s_s[i] - S0) - calc_m1_exter_oncolytic( i, l_x_c[i]*S_data_r.val(), dr, tsol_loc ) 
+                                - calc_m2_exter_oncolytic( i, l_x_c[i]*S_data_r.val(), dr, tsol_loc )
+                                - calc_m3_exter_oncolytic( i, l_x_c[i]*S_data_r.val(), dr, tsol_loc ) );
   }
 
   return;
@@ -3890,7 +3905,7 @@ DType TDSolveSacado::calc_m3_bc_oncolytic( const DType tsol_loc ) {
   return 0.0;
 }
 
-DType TDSolveSacado::calc_m1_exter_oncolytic( const DType r_loc, const DType dr, const DType tsol_loc ) {
+DType TDSolveSacado::calc_m1_exter_oncolytic( const int icell, const DType r_loc, const DType dr, const DType tsol_loc ) {
   DType interval = 2.0;
   DType inject = 0.0;
   DType theta  = tdCoef->theta;
@@ -3904,11 +3919,15 @@ DType TDSolveSacado::calc_m1_exter_oncolytic( const DType r_loc, const DType dr,
         break;
       }
     }
+    if ( icell == idx_bdry_oncolytic ) {
+      DType pbn = tdCoef->probVarParVals[prob_name]["M1"]["popup_num_bdry"];
+      inject = pbn/tdSetup->vweight/std::pow(r_loc,tdSetup->dim-1)/theta/dr/dtn;
+    }
   }
   return inject;
 }
 
-DType TDSolveSacado::calc_m2_exter_oncolytic( const DType r_loc, const DType dr, const DType tsol_loc ) {
+DType TDSolveSacado::calc_m2_exter_oncolytic( const int icell, const DType r_loc, const DType dr, const DType tsol_loc ) {
   DType interval = 2.0;
   DType inject = 0.0;
   DType theta  = tdCoef->theta;
@@ -3922,11 +3941,15 @@ DType TDSolveSacado::calc_m2_exter_oncolytic( const DType r_loc, const DType dr,
         break;
       }
     }
+    if ( icell == idx_bdry_oncolytic ) {
+      DType pbn = tdCoef->probVarParVals[prob_name]["M2"]["popup_num_bdry"];
+      inject = pbn/tdSetup->vweight/std::pow(r_loc,tdSetup->dim-1)/theta/dr/dtn;
+    }
   }
   return inject;
 }
 
-DType TDSolveSacado::calc_m3_exter_oncolytic( const DType r_loc, const DType dr, const DType tsol_loc ) {
+DType TDSolveSacado::calc_m3_exter_oncolytic( const int icell, const DType r_loc, const DType dr, const DType tsol_loc ) {
   DType interval = 2.0;
   DType inject = 0.0;
   DType theta  = tdCoef->theta;
@@ -3939,6 +3962,10 @@ DType TDSolveSacado::calc_m3_exter_oncolytic( const DType r_loc, const DType dr,
         inject = pn/tdSetup->vweight/std::pow(r_loc,tdSetup->dim-1)/theta/dr/dtn;
         break;
       }
+    }
+    if ( icell == idx_bdry_oncolytic ) {
+      DType pbn = tdCoef->probVarParVals[prob_name]["M3"]["popup_num_bdry"];
+      inject = pbn/tdSetup->vweight/std::pow(r_loc,tdSetup->dim-1)/theta/dr/dtn;
     }
   }
   return inject;
