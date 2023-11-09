@@ -345,7 +345,7 @@ class TDSolveSacado : public TDSolve {
     inline SacadoDepVar icalc_scal_logist_mm(DType,Sacado::Fad::DFad<DType>,DType,DType,DType,Sacado::Fad::DFad<DType>);
     inline SacadoDepVar icalc_mm(DType mm_ceil, DType mm_half, Sacado::Fad::DFad<DType> s_var) {
       SacadoDepVar result = 0.0;
-      if ( std::fabs( s_var ) > 1e-10 )
+      if ( std::fabs( s_var ) > 1.0 )
         result = mm_ceil * ( 1.0 / ( (mm_half/s_var) + 1.0 ) );
       else if ( s_var != 0.0 )
         result = mm_ceil * ( s_var / (mm_half + s_var) );
