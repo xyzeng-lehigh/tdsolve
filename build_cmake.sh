@@ -20,12 +20,14 @@ case ${OSTYPE//[0-9.]/} in
     NP=4
     ;;
   linux-gnu)
-    cmake3 \
-      -DCMAKE_C_COMPILER=$CSUPPROOT/gcc-9.3.0/gcc/bin/gcc \
-      -DCMAKE_CXX_COMPILER=$CSUPPROOT/gcc-9.3.0/gcc/bin/g++ \
-      -DTrilinos_DIR:PATH=$CSUPPROOT/gcc-9.3.0/trilinos-12.7 \
-      -DCMAKE_PREFIX_PATH=$CSUPPROOT/gcc-$HCLGCCVER/openblas \
+    cmake -DTrilinos_DIR:PATH=$CSUPPROOT/$TDSUPPNAME/trilinos \
       ../
+    #cmake3 \
+    #  -DCMAKE_C_COMPILER=$CSUPPROOT/gcc-9.3.0/gcc/bin/gcc \
+    #  -DCMAKE_CXX_COMPILER=$CSUPPROOT/gcc-9.3.0/gcc/bin/g++ \
+    #  -DTrilinos_DIR:PATH=$CSUPPROOT/gcc-9.3.0/trilinos-12.7 \
+    #  -DCMAKE_PREFIX_PATH=$CSUPPROOT/gcc-$HCLGCCVER/openblas \
+    #  ../
     NP=8
     ;;
 esac
