@@ -66,13 +66,14 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -lgfortran")
 #  message("ERROR: OpenMP could not be found.")
 #endif(OPENMP_FOUND)
 
-## OpenMP support (avaiable after CMake 3.9)
-#find_package(OpenMP)
-#if(OpenMP_CXX_FOUND)
-#  target_link_libraries(ParAnalRun OpenMP::OpenMP_CXX)
-#  #target_link_libraries(ParAnalRun PUBLIC OpenMP::OpenMP_CXX)
-#endif()
-#
+# OpenMP support (avaiable after CMake 3.9)
+find_package(OpenMP)
+if(OpenMP_CXX_FOUND)
+  target_link_libraries(TumorDynRun OpenMP::OpenMP_CXX)
+  #target_link_libraries(ParAnalRun OpenMP::OpenMP_CXX)
+  #target_link_libraries(ParAnalRun PUBLIC OpenMP::OpenMP_CXX)
+endif()
+
 #target_link_libraries(ParAnalRun ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
 #target_link_libraries(ParAnalRun ${Trilinos_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
 
