@@ -20,11 +20,11 @@ include_directories(include)
 
 # Add source files
 file(GLOB SOURCES "main/TumorDyn.cc" "src/*.cc")
-#file(GLOB PARSOURCES "main/ParAnal.cc" "src/*.cc")
+file(GLOB PARSOURCES "main/ParAnal.cc" "src/*.cc")
 
 # Executable
 add_executable(TumorDynRun ${SOURCES})
-#add_executable(ParAnalRun ${PARSOURCES})
+add_executable(ParAnalRun ${PARSOURCES})
 
 # LAPACK and BLAS
 find_package(BLAS REQUIRED)
@@ -54,26 +54,14 @@ target_link_libraries(TumorDynRun ${Trilinos_LIBRARIES} ${Trilinos_TPL_LIBRARIES
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -lgfortran")
 
-# Configure file that pass CMake settings to the source
-#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fopenmp")
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
-#include(FindOpenMP)
-#if(OPENMP_FOUND)
-#  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-#  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-#  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
-#else(OPENMP_FOUND)
-#  message("ERROR: OpenMP could not be found.")
-#endif(OPENMP_FOUND)
-
 # OpenMP support (avaiable after CMake 3.9)
 find_package(OpenMP)
 if(OpenMP_CXX_FOUND)
   target_link_libraries(TumorDynRun OpenMP::OpenMP_CXX)
-  #target_link_libraries(ParAnalRun OpenMP::OpenMP_CXX)
+  target_link_libraries(ParAnalRun OpenMP::OpenMP_CXX)
   #target_link_libraries(ParAnalRun PUBLIC OpenMP::OpenMP_CXX)
 endif()
 
-#target_link_libraries(ParAnalRun ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
-#target_link_libraries(ParAnalRun ${Trilinos_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
+target_link_libraries(ParAnalRun ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
+target_link_libraries(ParAnalRun ${Trilinos_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
 
