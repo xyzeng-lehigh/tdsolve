@@ -104,7 +104,20 @@ bool TDFactory::run_pdgf(DType& Tterm, DType& Gperc, DType& Nperc) {
     while ( tdSolve->nextIter() ) {
       switch ( tdInput->tdSetup.tmeth ) {
         case 0:
-          tdSolve->update_sol(0,1);
+        case 1:
+          {
+            bool newton_converge;
+            while (1) {
+              newton_converge = tdSolve->update_sol(0,1);
+              if ( !newton_converge && tdInput->tdSetup.auto_red_dt ) {
+                tdSolve->reduce_dtn( 0.5 );
+                //tdSolve->diagnostic( 0 );
+                continue;
+              }
+              else
+                break;
+            }
+          }
           break;
         default:
           tdSolve->update_sol(0,1);

@@ -109,6 +109,7 @@ struct TDSetup {
   // Newton iterations
   DType ntTol;
   int   ntIter;
+  bool  ntDisplay;
 
   DType Tinit, Tterm, Tfreq;
   DType Rterm, Rdead;

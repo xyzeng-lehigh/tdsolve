@@ -434,7 +434,7 @@ bool TDSolveSacado::update_sol(const int fr, const int to, const DType shift_dt_
       numIter = tdSetup->ntIter;
       assembleJacobian = true;
       ntTol = tdSetup->ntTol;
-      displayNewton = true;
+      displayNewton = tdSetup->ntDisplay;
       break;
     case 2: // PMC - just add for fun, not really using
       numIter = tdSetup->ntIter;

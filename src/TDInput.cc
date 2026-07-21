@@ -87,6 +87,7 @@ TDInput::TDInput(void) {
 
   tdSetup.ntTol  = 1e-6; // Newton tolerance
   tdSetup.ntIter = 50;    // Maximum iteration number for Newton
+  tdSetup.ntDisplay = true;
 
   tdSetup.Tinit  = 0.0;
   tdSetup.Tterm  = 1.0;
@@ -327,6 +328,7 @@ void TDInput::setup_toggles(void) {
   tdToggles["use_P1_dbc"]         = &tdCoef.use_dbc_P1;
   tdToggles["vel_couple"]         = &tdSetup.vCoup;
   tdToggles["v_conv_only"]        = &tdSetup.vOnly;
+  tdToggles["newton_display"]     = &tdSetup.ntDisplay;
   tdToggles["Jacobian_limiter"]   = &tdSetup.jac_lim;
   tdToggles["Jacobian_velocity"]  = &tdSetup.jac_vel;
   tdToggles["lim_sync_tot"]       = &tdSetup.slim_tot;
