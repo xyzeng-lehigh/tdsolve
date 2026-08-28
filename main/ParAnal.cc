@@ -22,6 +22,7 @@ char  inputFileBase[40];
 char  inputFilePar[40];
 char  inputFileData[40];
 char  inputFileRefs[40];
+bool  use_list_input_pars;
 bool  perform_fitting;
 bool  use_output_ref;
 bool  use_input_ref;
@@ -40,15 +41,20 @@ void usage(void);
 
 char delims[40];
 char delims_var[40];
+char delims_list[40];
 char delims_nospace[40];
 void parse_pars(void);
+void parse_list_pars(void);
 void parse_orefs(void);
 void create_factories(std::vector<TDFactory*>&, const TDInput&);
+void create_list_factories(std::vector<TDFactory*>&, const TDInput&);
 bool increment_var_array(int*&,const int*,const int);
 void add_output( TDFactory& );
 void add_error( TDFactory& );
 std::map< std::string, std::set<DType> > pars;
 std::set< std::string >                  keys;
+std::map<std::string,std::vector<DType>> lpars;
+std::vector<std::string>                 lkeys;
 std::set< std::string >                  okeys;
 std::map< std::string, DType >           o_refs;
 std::map< std::string, std::string >     o_funs;
@@ -74,13 +80,24 @@ int main(int argc, char** argv) {
 
   // Create an array of input decks
   std::strcpy(delims_var,    " ,=\t");
+  std::strcpy(delims_list,   " ,\t");
   std::strcpy(delims,        (const char*)tdInputBase.delims);
   std::strcpy(delims_nospace,(const char*)tdInputBase.delims_nospace);
-  parse_pars();
+  if ( use_list_input_pars ) {
+    parse_list_pars();
+  }
+  else {
+    parse_pars();
+  }
   parse_orefs();
   std::vector<TDFactory*> factories;
   factories.clear();
-  create_factories(factories, tdInputBase);
+  if ( use_list_input_pars ) {
+    create_list_factories(factories, tdInputBase);
+  }
+  else {
+    create_factories(factories, tdInputBase);
+  }
 
   // Step 2: Run the computations in parallel and append the new results
   //         to the end of the provided data file
@@ -131,6 +148,7 @@ void printlogo(void) {
 
 void parse(int* argc, char** argv) {
   program_name = argv[0];
+  use_list_input_pars = false;
   perform_fitting = false;
   use_output_ref = false;
   use_input_ref  = true;
@@ -148,6 +166,10 @@ void parse(int* argc, char** argv) {
         break;
       case 'i':
         strcpy(inputFileBase,argv[2]);
+        break;
+      case 'l':
+        strcpy(inputFilePar,argv[2]);
+        use_list_input_pars = true;
         break;
       case 'm':
         strcpy(fitMethod,argv[2]);
@@ -214,6 +236,7 @@ void usage(void) {
   printf("Options\n");
   printf("  -d    Specify the data set file name\n");
   printf("  -i    Specify the baseline input file name\n");
+  printf("  -l    Specify the list-type parametric input file name\n");
   printf("  -m    Fitting method (LS0D,LS1D,LS2D,LS3D,LS4D,LS5D) - degree of poly\n");
   printf("                       (LS0T,LS1T,LS2T,LS3T,LS4T,LS5T) - degree in each var\n");
   printf("  -n    Problem name -- decide which solver to use and the outputs\n");
@@ -260,6 +283,50 @@ void parse_pars(void) {
     std::set<DType>& cur_var = it->second;
     while ( (value = strtok(NULL,delims_var)) )
       cur_var.insert( atof(value) );
+  }
+
+  fin.close();
+
+  return;
+}
+
+void parse_list_pars(void) {
+  std::ifstream fin;
+  std::string file_line_s;
+  fin.open(inputFilePar);
+  char* task;
+  char* name;
+  char* value;
+
+  bool name_set = false;
+
+  while (getline(fin,file_line_s)) {
+    // This ignore a short line
+    if (file_line_s.length()<2)
+      continue;
+    // This indicates the comment lines
+    if ((file_line_s[0]=='/')&&(file_line_s[1]=='/'))
+      continue;
+    task = strtok((char*)file_line_s.c_str(),delims_list);
+    if ( !name_set ) {
+      if ( strcmp(task,"KEYS")==0 ) {
+        while (name = strtok(NULL,delims_list) ) {
+            lkeys.push_back(name);
+            std::vector<DType> empty_var;
+            lpars[name] = empty_var;
+        }
+        name_set = true;
+      }
+    }
+    else {
+      if ( strcmp(task,"VALS")==0 ) {
+        int item = 0;
+        while (value = strtok(NULL,delims_list) ) {
+          lpars[lkeys[item]].push_back( atof(value) );
+          item++;
+        }
+      }
+    }
   }
 
   fin.close();
@@ -323,7 +390,7 @@ void create_factories(std::vector<TDFactory*>& factories, const TDInput& input_b
     TDInput* tdInput = new TDInput(input_base);
     TDFactory tdFactory(tdInput,probName);
     okeys = tdFactory.okeys;
-    delete tdInput;
+    //delete tdInput;
     delete[] cur_idx;
     delete[] max_idx;
     return;
@@ -388,6 +455,72 @@ void create_factories(std::vector<TDFactory*>& factories, const TDInput& input_b
 
   delete[] cur_idx;
   delete[] max_idx;
+  return;
+}
+
+void create_list_factories(std::vector<TDFactory*>& factories, const TDInput& input_base) {
+  int tot_count = lpars[lkeys[0]].size();
+
+  if ( tot_count == 0 ) {
+    TDInput* tdInput = new TDInput(input_base);
+    TDFactory tdFactory(tdInput,probName);
+    okeys = tdFactory.okeys;
+    //delete tdInput;
+    return;
+  }
+
+  cout << "Start creating factories ..." << std::endl;
+
+  int f_count = 0;
+  for ( int f_count = 0; f_count < tot_count; f_count++ ) {
+    TDInput* tdInput = new TDInput(input_base);
+    string subfolder = string(simulDataDrct) + "/" + simulDataBase;
+    std::map< std::string, DType > fac_pars;
+    fac_pars.clear();
+    for ( std::vector<std::string>::iterator it = lkeys.begin(); it != lkeys.end(); it++ ) {
+      std::map<std::string, std::vector<DType>>::iterator it_par = lpars.find(*it);
+      if ( it_par == lpars.end() ) {
+        fprintf(stderr, "Error: There is a key %s that is not mapped in pars.\n", (*it).c_str() );
+        exit(1);
+      }
+      std::vector<DType>& loc_pars = it_par->second;
+      tdInput->set_parameter(*it, loc_pars[f_count]);
+      fac_pars[*it] = loc_pars[f_count];
+
+      if ( std::strcmp( probName, "PDGF" ) == 0 )
+        tdInput->set_option("prob_id",0);
+      if ( std::strcmp( probName, "OPN" ) == 0 )
+        tdInput->set_option("prob_id",1);
+
+      std::stringstream stream;
+      if ( loc_pars[f_count]> 1000 )
+        stream << std::scientific << std::setprecision(2) << loc_pars[f_count];
+      else
+        stream << std::fixed << std::setprecision(2) << loc_pars[f_count];
+      subfolder += "_" + *it + stream.str();
+    }
+
+    if (simulDataKeep) {
+      std::filesystem::create_directory(subfolder);
+      string simul_sol_file = subfolder+"/sol.dat";
+      string simul_rad_file = subfolder+"/rad.dat";
+      std::strcpy(tdInput->outputFile,simul_sol_file.c_str());
+      std::strcpy(tdInput->radiusFile,simul_rad_file.c_str());
+    }
+    
+    TDFactory* tdFactory = new TDFactory(tdInput,probName);
+    tdFactory->pars = fac_pars;
+    //tdFactory->getTDInput()->display_parameter();
+    //tdFactory->getTDInput()->display_option();
+    //tdFactory->getTDInput()->display_toggle();
+    if ( okeys.size() == 0 )
+      okeys = tdFactory->okeys;
+    factories.push_back(tdFactory);
+    cout << " - Complete factory creation " << f_count << " out of " << tot_count << std::endl;
+  }
+
+  cout << "Complete creating factories, start simulations ..." << std::endl;
+
   return;
 }
 

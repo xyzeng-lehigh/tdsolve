@@ -575,7 +575,9 @@ bool TDSolveSacado::update_sol(const int fr, const int to, const DType shift_dt_
   if ( !tdSetup->auto_red_dt || force_nextIter ) // Ignore convergence of Newton solve
     return true;
   else if ( iter == numIter && cur_res > ntTol ) { // Non-convergent Newton solve
-    fprintf( stdout, "    --- Newton method not converging, reduce dt by half.\n" );
+    if ( displayNewton ) {
+      fprintf( stdout, "    --- Newton method not converging, reduce dt by half.\n" );
+    }
     return false;
   }
   else // Successful Newton solve
