@@ -356,6 +356,11 @@ Only one option 0 is available right now -- a second-order integral form is used
 \item \texttt{lsysType}: The linear solver option.
 Many methods are supported, including direct solver (LU factorization) and Krylov sub-space methods.
 For this problem, set it to \texttt{DIR} is good enough.
+\item \texttt{lsysDirect}: The direct solver used when \texttt{lsysType} is \texttt{DIR} (only for \texttt{framework} 3).
+  \begin{itemize}
+    \item \texttt{LU} (default): The unknowns are renumbered such that the matrix becomes banded, followed by an LU factorization of the band with row pivoting. The cost is proportional to the number of intervals \texttt{Nx} if the unknowns are only coupled to those in the neighbouring intervals.
+    \item \texttt{INV}: The inverse of the full matrix is computed with largest-entry pivoting. This was the only direct solver in earlier versions; its cost grows like the third power of \texttt{Nx}. The two options give the same solutions up to round-off errors.
+  \end{itemize}
 \item \texttt{lsysPrint}: The option 0 turn off the diagnostic information of linear solve; the option 1 turn it on.
 \end{itemize}
 

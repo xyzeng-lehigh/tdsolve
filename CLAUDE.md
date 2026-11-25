@@ -43,6 +43,7 @@ There is no unit-test framework. Regression checking is by comparison against st
 
 - `benchmark/Sacado/{model,pdgf}/<case>/` each hold `input.hcl`, `run.sh`, and a `benchmark/` directory with reference `sol.dat`, `rad.dat`, `report`. `run.sh` needs `$TDS` set to the repo root; it runs the case into `data_r<hg revision>/`, which you then diff against `benchmark/`. Run one case with `cd benchmark/Sacado/pdgf/pdgf_case_be && sh run.sh`.
 - `tests/AutoDiff/` verifies the built-in automatic differentiation (every operator and function against finite differences and exact derivatives, self-referencing assignments, second derivatives, error handling): `cd tests/AutoDiff && sh build_cmake.sh && sh run_gnu.sh` (add `-v` to list every check; exit status 0 means all passed). Run it after any change to `include/AutoDiff*.h`.
+- `tests/BandSolve/` verifies the sparse direct solver `LinBandSys` (solutions against the inverse of the full matrix, bandwidths found by the renumbering, row exchanges, singular matrices, exchange with `LinSolve`): `cd tests/BandSolve && sh build_cmake.sh && sh run_gnu.sh`. Run it after any change to `Alg_BandSolve`.
 - `tests/Sacado*` are standalone Sacado/Trilinos smoke programs with their own CMake + `build_cmake.sh` (paths there still point at an old gcc-9.3.0/Trilinos-12.7 toolchain); they are the only part of the repository that still needs Trilinos. `tests/potassium_ode/` is a MATLAB reference implementation for the potassium ODE model.
 
 ## Architecture
@@ -66,6 +67,15 @@ A line consisting of a problem name (`model`, `pdgf`, `opn`, `oncolyticOld`, `po
 
 Frameworks 0–2 hard-code the PDGF/OPN variables (`data_g`, `data_h`, `data_n`, `data_a`, `data_p1`, …) and are legacy. **`TDSolveSacado`** is generic: variables are stored in name-keyed maps, Jacobians come from `AutoDiff::Fad::DFad` (the class and file names keep "Sacado" for historical reasons), and each model is plugged in through member-function-pointer maps keyed by `prob_id` (−1 model, 0 pdgf, 1 opn, 2 oncolyticOld, 3 potassium, 4 oncolytic, 5 onc_model). Adding a model means writing `setup_var_*`, `setup_ic_*`, `setup_srce_*` (plus optional velocity/aux/extra-flux hooks), registering them in the maps in the `TDSolveSacado` constructor/`setup`, and adding the name to `probNames` in `TDInput`.
 
+### Linear systems and Jacobians of the Sacado framework
+
+`manual/dev/linsolve.txt` has the details and the measurements; in short:
+
+- Every Newton iteration solves one system for all cell species together and one per chemical. They are assembled in a `LinBandSys` (`include/Alg_BandSolve.h`, scalar entries stored row by row) through `sys.add(i,j,val)` / `sys.rhs(i)`, **not** in the `LinMat`/`Entry` classes, whose `get`/`set` allocate memory for every scalar.
+- `TDSolveSacado::solve_linsys` then either solves in place — `lsysType = DIR` with `lsysDirect = LU` (default) and no preconditioner: reverse Cuthill-McKee renumbering + banded Gaussian elimination with row pivoting, cost proportional to `Nx`; LAPACK `dgesv` if the matrix is essentially full (`Jacobian_velocity = 1`) — or copies the system to `LinMat`/`LinVec` and calls `LinSolve` (iterative/Krylov solvers, preconditioners, and `lsysDirect = INV`, the former direct solver by `HMAT::inv` with cost `Nx^3`). `INV` reproduces the results of revisions <= 201 to the last bit (with `-ffp-contract=off`); `LU` agrees with it to round-off.
+- Derivative components (`S_seed_wid` in `TDSolveSacado.h`): normally each unknown is one independent AD variable, so every AD operation costs (number of variables) x `Nx`. A model whose source terms only depend on the unknowns of the same interval and whose fluxes only depend on the neighbouring intervals may set `S_seed_wid` in its `setup_var_*` (only `setup_var_potassium` does); unknowns `i`, `i+S_seed_wid`, ... then share a derivative component and the AD cost no longer depends on `Nx`. **Jacobian entries must be read with `.dx( seed_idx(S_data_offset[name], j) )`, never `.dx( S_data_offset[name]+j )`.** If a non-local term is added to such a model (an integral over the domain, a velocity, a wider stencil), remove or widen `S_seed_wid`; the input toggle `Jacobian_compress = 0` switches the compression off and must give identical results.
+- Parameters of the potassium model are read from `tdCoef->probVarParVals` once (`setup_par_potassium`, struct `potPar`), not in every source-term call; a new potassium parameter needs a field there.
+
 ### Time-stepping lives in the drivers, not the solver
 
 The time-integration loop is written out in `main/TumorDyn.cc` in terms of `TDSolve` primitives (`update_sol(fr,to,…)`, `copy_data`, `average_sol`, `update_rad_radau`, `compute_rhs`, `check_conv_*`, `reduce_dtn`). There are two branches: a short "classical" loop for the Sacado framework (`time_method` 0/1 = explicit/implicit Euler with Newton and automatic dt halving) and a longer legacy branch for frameworks 0–2 (TVD RK2, DIRK2, 2-stage Radau with direct or predictor/multi-corrector solves, selected by `time_method`, `vel_couple`, `use_pmc`). Convention: the accepted solution at t_{n+1} must end up in `data_*[1]` and is then copied to `[0]`. `manual/dev/radau.txt` documents which arrays each step of the Radau PMC loop reads and writes — consult it before touching that path.
@@ -84,10 +94,11 @@ The time-integration loop is written out in `main/TumorDyn.cc` in terms of `TDSo
 ### Supporting numerics (own implementations, no external linear algebra beyond BLAS/LAPACK)
 
 - `HighDim_Alg` — `HVEC`, `HMAT`, tridiagonal/triangular matrices, tensors; `LowDim_Alg` — fixed-size `VEC3/4`, `MAT3/4`.
-- `Alg_Solve` — `LinVec` / `LinMat` (full, tridiagonal, sparse) and `LinSolve` (direct, stationary iterative, Krylov, ILU preconditioning), configured by the `lsys*` input keys and the enums in `Comput_Choices.h`.
+- `Alg_Solve` — `LinVec` / `LinMat` (full, tridiagonal, sparse) and `LinSolve` (direct, stationary iterative, Krylov, ILU preconditioning), configured by the `lsys*` input keys and the enums in `Comput_Choices.h`. General (block entries) but slow; frameworks 0–2 use it directly.
+- `Alg_BandSolve` — `LinBandSys`, a sparse system with scalar entries and a banded direct solver, used by the Sacado framework (see above).
 - `Alg_Limiters` — slope limiters; `Quad_Coef`, `RK_Coef` — quadrature rules and Butcher tables.
 - `Fun_Estimator` + `LeastSquares_Solve` — polynomial least-squares fitting used by `ParAnalRun -o` (`-m LSnD` total degree, `LSnT` per-variable degree).
 
 ## Documentation
 
-`manual/doc/manual.tex` is the user manual; `manual/numerics/*.tex` (and the PDFs in `manual/`) derive the numerical methods for the PDGF and oncolytic models; `manual/demo/input_sample.hcl` is an annotated-by-example input deck.
+`manual/doc/manual.tex` is the user manual (frameworks 0-2, PDGF/OPN models); `manual/doc/potassium.tex` documents the potassium model (equations as implemented, parameter names, numerical method, installation, input file, output, `ParAnalRun`) and lists `manual/demo/input_potassium.hcl`, a commented example deck, verbatim - keep the two in sync and update the document when `setup_*_potassium` or the `calc_*_potassium` source terms change. `sh convert.sh [name]` in `manual/doc/` builds either document into `manual/<name>.pdf`. `manual/numerics/*.tex` (and the PDFs in `manual/`) derive the numerical methods for the PDGF and oncolytic models; `manual/demo/input_sample.hcl` is an annotated-by-example input deck.

@@ -1,0 +1,185 @@
+Linear systems and Jacobians of the Sacado framework (performance of the Newton iteration)
+**************************************************************************************************************************
+
+Files
+-----
+  include/Alg_BandSolve.h    LinBandSys: a square system with scalar entries, stored row by row, with a direct solver
+  src/Alg_BandSolve.cc       (renumbering + banded Gaussian elimination, LAPACK xGESV for full matrices).
+  src/TDSolveSacado.cc       solve_linsys(), update_cell_linsys_by_res_var(), update_chem_by_res_var_imp(), ...
+  include/TDSolveSacado.h    S_seed_wid, seed_idx() (derivative components), potPar (parameters of the potassium model).
+  tests/BandSolve/           Verification program of LinBandSys (see "Verification").
+
+What was slow, and what is done now
+-----------------------------------
+  One Newton iteration of TDSolveSacado::update_sol solves one linear system for all cell species together
+  (size = number of cell species x Nx) and one for each chemical (size Nx or Na). Measured on the potassium
+  benchmark, nearly all the time used to be spent in three places:
+
+  1. Assembling the matrix. LinSparseMat (Alg_Solve.h) keeps every scalar in an Entry, i.e. a block matrix HMAT of
+     size 1 with four memory allocations, inside a std::map. Each "elem = mat->get(i,j); elem += ...;
+     mat->set(i,j,elem);" copied such entries several times, and the conversion to a full matrix for the direct
+     solver asked for all size^2 entries one by one.
+     -> The systems are assembled in a LinBandSys: sys.add(i,j,val) adds to a number in a sorted row; nothing is
+        allocated once all entries have been visited. The order of the additions is the same as before, hence
+        the matrix is the same to the last bit.
+
+  2. The direct solver. LinSolve::solve_dir computed the inverse of the full matrix (HMAT::inv, largest-entry
+     pivoting) and multiplied it with the right hand side: a few size^3 operations, whatever the sparsity.
+     -> LinBandSys::solve renumbers the unknowns by the reverse Cuthill-McKee algorithm and eliminates within
+        the resulting band, with row pivoting (cost: size x bandwidth^2). The numbering only depends on the
+        sparsity pattern and is computed once. Examples (after renumbering, sub-/super-diagonals):
+           one chemical (tridiagonal)                                        1 / 1
+           3 cell species coupled in each interval, any Nx (potassium)       3 / 3
+           10 species, stencil of 3 intervals, any Nx                       10 / 10
+        If the band is too wide to pay off (4*(kl+ku) >= size, e.g. the Jacobian of the velocity with
+        Jacobian_velocity = 1, which couples all intervals), the full matrix is factorized by LAPACK (xGESV);
+        whole runs of such cases are still more than 10 times faster than with the inverse.
+
+  3. Automatic differentiation. Every unknown was one independent variable, so every sum or product of two AD
+     variables looped over (number of variables x Nx) derivative components, almost all of them zero.
+     -> For the potassium model the unknowns i, i+3, i+6, ... of a variable share a derivative component
+        (S_seed_wid = 3; 7 if chem_rflux = 3). There are 5 x 3 = 15 components for any Nx. See the next section.
+
+  Smaller items, all in the potassium part or in what it calls:
+   - AD variables were passed by value (icalc_* functions, assemble_inertia_var took a whole array by value);
+     they are passed by reference now.
+   - The independent variables are set in place (val() and diff()) instead of assigning a newly allocated
+     variable; the reset before each set was redundant and is gone.
+   - The parameters of the model were looked up by three nested string keys in every source term call; they are
+     read once (setup_par_potassium, potPar). The blocking function is evaluated into a variable that is reused
+     for all intervals (iset_scal_block_potassium), and without derivatives where only its value is used.
+   - Time delay: the stored solutions are kept per variable (prev_cell[name][n]); the two stored times next to
+     a past time are found by bisection (get_prev_interp) and only the variables that are needed are
+     interpolated (calc_prev_data). Before, a std::map of all variables was built for every interval, and
+     dropping the oldest stored solution copied all maps.
+   - std::pow( x, dim-1 ) in loops over the intervals is replaced by geom_fac(x,dim), which returns x for dim = 2
+     and 1 for dim = 1 (exactly what pow returns) and calls pow only for dim = 3.
+   - Without cell motion the source terms were evaluated a second time at the end of each Newton iteration only
+     to update a velocity that does not exist; this call of update_vel is skipped. On a fixed domain the flux
+     associated with R' of the chemicals is zero and is not computed any more (as it was already for cells).
+
+Derivative components (S_seed_wid)
+----------------------------------
+  Normal numbering:      unknown i of a variable <-> independent variable S_data_offset[name] + i
+  Compressed numbering:  unknown i of a variable <-> component S_data_offset[name] + i % S_seed_wid
+  (seed_idx(S_data_offset[name], i) returns the right one in both cases; S_data_num is the number of components.)
+
+  With the compressed numbering f.dx( seed_idx(offset,j) ) is the sum of the derivatives of f with respect to
+  the unknowns j, j +- S_seed_wid, j +- 2*S_seed_wid, ... of that variable. It is the derivative with respect to
+  unknown j alone if f does not depend on the others, which is the case for every derivative that enters the
+  Jacobians provided that
+    1. the source term in an interval only depends on the unknowns in the same interval, and
+    2. the fluxes that enter the equation of the interval i only depend on the unknowns in the intervals
+       i-sten ... i+sten, where sten is the stencil assumed when the Jacobian is assembled (1, or 3 for PPM),
+       and S_seed_wid >= 2*sten+1.
+  The entries are then the same numbers as with the normal numbering, to the last bit.
+
+  The potassium model meets the conditions (fixed domain, no cell motion, source terms without neighbours,
+  diffusion between adjacent intervals, time delay terms that only use stored - i.e. constant - data), and
+  setup_var_potassium sets S_seed_wid. All other models keep S_seed_wid = 0: their velocity is an integral of the
+  source terms over all intervals.
+
+  Rules:
+   - Always read Jacobian entries through seed_idx(), never as .dx( S_data_offset[name]+j ).
+   - If a term is added to the potassium model that couples an interval to others (an integral, a velocity, a
+     wider stencil), set S_seed_wid accordingly or leave it zero. A wrong S_seed_wid does not change converged
+     solutions (residuals do not use derivatives) but spoils the convergence of the Newton iteration.
+   - The input toggle Jacobian_compress = 0 keeps S_seed_wid = 0. Results must not change at all when it is
+     switched; this is the test to run after touching the model.
+
+Input keys
+----------
+  lsysDirect = LU     (default) banded elimination in LinBandSys; used when lsysType = DIR and lsysPrec = OFF.
+  lsysDirect = INV    the former direct solver: the system is copied to LinMat/LinVec and LinSolve computes the
+                      inverse of the full matrix. Slow; kept for cross-checking.
+  Jacobian_compress = 1 (default) / 0   see above.
+  With lsysType = ITER or KRYLOV, or with a preconditioner, the system is also copied to LinMat/LinVec and
+  solved by LinSolve as before; only the assembly is faster.
+
+  As in LinSolve, a system whose right hand side has a 2-norm below TOL_ZERO is not solved (zero update), and
+  lsysPrint = 1 prints the residual before and after the solve in the same format.
+
+Notes on LinBandSys
+-------------------
+   - reset() sets all values to zero but keeps the entries registered: the sparsity pattern is the union of
+     everything that has ever been added, and the numbering is redone only when a new entry appears. An entry
+     that is added with value zero belongs to the pattern (the Jacobians rely on this to keep one pattern).
+   - Each use (the cell species; each chemical) has its own LinBandSys (LSPack::sys), while the LinMat/LinSolve
+     objects are shared by all variables of the same size as before.
+   - A singular matrix gives a zero solution and, the first time, a warning (HMAT::inv also returned zero, silently).
+   - Partial pivoting (largest entry of the column within the band) replaces the largest-entry pivoting of
+     HMAT::inv. This is the standard choice for LU factorizations; solutions agree to round-off (see below).
+
+Verification (to be repeated after changes)
+-------------------------------------------
+  tests/BandSolve:  sh build_cmake.sh; sh run_gnu.sh [-v]
+    212 checks: storage; solutions of tridiagonal, coupled-species, full, randomly numbered banded and random
+    sparse matrices against HMAT::inv; matrices that need row exchanges; bandwidths found; reuse with the same
+    and with new sparsity; singular matrices; exchange with LinMat/LinVec/LinSolve.
+
+  Whole solver, when these changes were made (gcc 14.4; 13 cases of benchmark/Sacado plus 16 variants of the
+  potassium case: Nx = 10/20/40, no time delay, dimension 1/3, explicit cells, lsysType = ITER/KRYLOV with and
+  without ILU, lsysPrint = 1, larger time steps, sharp blocking function, chem_rflux = 3, Jacobian_velocity = 1):
+    - lsysDirect = INV, compiled with -ffp-contract=off, against the revision before the changes compiled in
+      the same way: sol.dat, rad.dat and the screen output of all 29 cases are identical byte for byte, with
+      Jacobian_compress = 1 and with 0, with the built-in AutoDiff and with Sacado of Trilinos. (One more case
+      with chemo_option = 1 was checked in the same way.)
+    - lsysDirect = LU against INV: the same time steps and Newton iteration counts in all 29 cases; largest
+      difference relative to the size of the variable 2e-15 for the potassium cases, 4e-13 for the pdgf cases
+      and 1e-11 for onc_test_fe (which reacts in the same way to any change of round-off, see autodiff.txt).
+    - lsysDirect = LU, Jacobian_compress = 1 against 0: identical byte for byte.
+    - ParAnalRun -n Potassium on six parameter sets: regression.dat (6 decimals) identical.
+  With default compiler flags (fused multiply-add, see "Round-off" in autodiff.txt) INV still reproduces the
+  former results of the model, pdgf and oncolytic cases byte for byte; the potassium cases differ in the last
+  digits (relative 2e-15) since their source terms were rearranged.
+
+  The stored references in benchmark/ were generated with Trilinos and the inverse; a default build now differs
+  from them in the trailing digits in 10 of the 13 cases (relative: < 5e-16 model, < 5e-13 pdgf, 5e-15
+  onc_test_be, 3e-12 onc_test_fe, 2e-15 potassium), with the same iteration counts.
+
+Measurements
+------------
+  User time in seconds of TumorDynRun, RHEL 10, gcc 14.4, reference BLAS/LAPACK, one thread. The machine was
+  shared with other jobs: two digits at most are meaningful, and the times of the long runs of the second
+  table varied by up to 30% between repetitions. "before" is revision 201.
+
+  benchmark/Sacado/potassium/pot_test_be with different Nx (500 time steps, 2 to 3 Newton iterations each):
+       Nx      before     now     ratio
+       10        1.00    0.033      30
+       20        3.17    0.059      54
+       40       13.5     0.12      113
+       80       81.5     0.29      280
+      160                0.70
+      320                1.45
+      640                2.64
+  The cost was growing like Nx^3 and is proportional to Nx now. With Nx = 10 about 15% of the remaining time is
+  spent writing rad.dat, sol.dat and the screen output.
+
+  The other cases of benchmark/Sacado (they use Jacobian_velocity = 1 when implicit, i.e. full matrices for
+  the cell species; "fe" cases solve the chemicals implicitly):
+       case              before     now
+       sm_const_be          1.8    0.05
+       sm_mono_be           1.6    0.04
+       sm_var_be            1.6    0.03
+       pdgf_case_be         3.2    0.15
+       pdgf_case_fe         1.0    0.16
+       pdgf_mulDH1_be        29    1.3
+       pdgf_mulDH1_fe       5.4    0.96
+       onc_test_be           47    1.4
+       onc_test_fe          0.43   0.10
+  (sm_*_fe: 0.03 before and now.)
+
+A defect found on the way
+-------------------------
+  In update_sol the tolerance ntTol of the loop "while ( iter < numIter && cur_res > ntTol )" was not set for the
+  explicit scheme (assemble = 0). Depending on what the compiler left in that variable, the loop could be
+  skipped, i.e. the solution was never updated: this happened for the potassium model with assemble = 0 when
+  built with Trilinos, while the same case ran normally with the built-in AutoDiff. ntTol is now initialized
+  to -1 (the loop is executed numIter = 1 time).
+
+What is left
+------------
+  The remaining time of a potassium run is spread over the AD evaluation of the source terms, the assembly, the
+  banded solves and the bookkeeping by variable names (std::map look-ups); none of them dominates. The number
+  of Newton iterations (cells and chemicals are solved one after the other, so the iteration converges
+  linearly) and the output every time step are the next things to look at if more speed is needed.

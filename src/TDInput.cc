@@ -107,6 +107,7 @@ TDInput::TDInput(void) {
                       // 1, consistent, R_{n+1}^2 = R_n^2 + 2*dt*R_n*dR
   tdSetup.jac_lim  = false;
   tdSetup.jac_vel  = false;
+  tdSetup.jac_comp = true;
   tdSetup.slim_tot = false;
   tdSetup.logistic = 0;
   tdSetup.prob_id  = 0;  // -1, model problem
@@ -132,6 +133,7 @@ TDInput::TDInput(void) {
   tdSetup.cellmotion  = true;
 
   tdLin.Type      = LSYS_TYPE_DIR;
+  tdLin.Direct    = LSYS_DIRECT_LU;
   tdLin.Print     = true;
   tdLin.Iter      = LSYS_ITER_JAC;
   tdLin.Krylov    = LSYS_KRYLOV_GMRES;
@@ -331,6 +333,7 @@ void TDInput::setup_toggles(void) {
   tdToggles["newton_display"]     = &tdSetup.ntDisplay;
   tdToggles["Jacobian_limiter"]   = &tdSetup.jac_lim;
   tdToggles["Jacobian_velocity"]  = &tdSetup.jac_vel;
+  tdToggles["Jacobian_compress"]  = &tdSetup.jac_comp;
   tdToggles["lim_sync_tot"]       = &tdSetup.slim_tot;
   tdToggles["diagnostic_vcoup"]   = &tdSetup.diagn_vcoup;
   tdToggles["silence_screen"]     = &tdSetup.silence_screen;
@@ -407,6 +410,13 @@ void TDInput::parse(void) {
         tdLin.Type = LSYS_TYPE_KRYLOV;
       else
         tdLin.Type = LSYS_TYPE_DIR;
+    else if (strcmp(name,"lsysDirect")==0)
+      if (strcmp(value,"LU")==0)
+        tdLin.Direct = LSYS_DIRECT_LU;
+      else if (strcmp(value,"INV")==0)
+        tdLin.Direct = LSYS_DIRECT_INV;
+      else
+        tdLin.Direct = LSYS_DIRECT_LU;
     else if (strcmp(name,"lsysIter")==0)
       if (strcmp(value,"Jacobi")==0)
         tdLin.Iter = LSYS_ITER_JAC;

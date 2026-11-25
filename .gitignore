@@ -8,6 +8,7 @@ debug/
 /tests/SacadoDup/TestSacadoDup
 /tests/SacadoHess/TestSacadoHess
 /tests/AutoDiff/TestAutoDiff
+/tests/BandSolve/TestBandSolve
 
 # Editor and system files
 *.swp

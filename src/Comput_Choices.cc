@@ -112,6 +112,22 @@ string ChoiceLSysType2Str(ChoiceLSysType lsysType) {
     return lsysType_str;
 }
 
+string ChoiceLSysDirect2Str(ChoiceLSysDirect lsysDirect) {
+    char lsysDirect_str[MAX_OPTION_STR_LENGTH];
+    switch (lsysDirect) {
+        case LSYS_DIRECT_LU:
+            strcpy(lsysDirect_str,"BandedLU");
+            break;
+        case LSYS_DIRECT_INV:
+            strcpy(lsysDirect_str,"FullInverse");
+            break;
+        default:
+            strcpy(lsysDirect_str,"");
+            break;
+    }
+    return lsysDirect_str;
+}
+
 string ChoiceLSysIter2Str(ChoiceLSysIter lsysIter) {
     char lsysIter_str[MAX_OPTION_STR_LENGTH];
     switch (lsysIter) {

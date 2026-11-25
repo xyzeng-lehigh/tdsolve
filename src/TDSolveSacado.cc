@@ -5,12 +5,27 @@
 #include "Alloc_Utils.h"
 #include "TDInput.h"
 #include "Alg_Solve.h"
+#include "Alg_BandSolve.h"
 #include "Alg_Limiters.h"
+
+// x^(dim-1), the weight of the radial geometry (x: distance to the origin).
+// The result is the one of std::pow( x, dim-1 ) to the last bit, since
+// pow(x,0) is 1 and pow(x,1) is x; the call (which is not cheap in a loop
+// over all intervals) is only needed for the spherical symmetry.
+static inline DType geom_fac(const DType x, const int dim) {
+  if ( dim == 2 )
+    return x;
+  else if ( dim == 1 )
+    return 1.0;
+  else
+    return std::pow( x, dim-1 );
+}
 
 TDSolveSacado::TDSolveSacado(TDInput* tdInput_ptr) : 
   TDSolve(tdInput_ptr) {
   data_inc   = NULL;
   S_data_num = 0;
+  S_seed_wid = 0;
   prob_name = "";
   force_nextIter = false;
   cellnames.clear();
@@ -35,6 +50,7 @@ TDSolveSacado::TDSolveSacado(TDInput* tdInput_ptr) :
   setupExtraVFlxMap.clear();
   setupAuxMap.clear();
   enable_time_delay = false;
+  cell_lspack.sys = NULL;
 
   setupVarMap.insert( std::pair<int, fSetupFun>(-1, &TDSolveSacado::setup_var_model) );
   setupVarMap.insert( std::pair<int, fSetupFun>( 0, &TDSolveSacado::setup_var_pdgf) );
@@ -131,6 +147,11 @@ TDSolveSacado::~TDSolveSacado(void) {
     delete it->second.sol;
     delete it->second.linSolve;
   }
+  delete cell_lspack.sys;
+  for ( std::map<std::string,LSPack>::iterator it = varlspacks.begin();
+        it != varlspacks.end(); it++ ) {
+    delete it->second.sys;
+  }
   erase_array( srce_max, 1 );
   if ( tdSetup->chemo_opt == 1 ) {
     for ( int i = 0; i < 2; i++ ) {
@@ -139,8 +160,8 @@ TDSolveSacado::~TDSolveSacado(void) {
       delete[] dx_ale[i];
     }
   }
-  for ( int i = 0; i < prev_cell.size(); i++ )
-    clear_prev_cell( i );
+  while ( prev_time.size() > 0 )
+    clear_prev_cell( prev_time.size()-1 );
 }
 
 void TDSolveSacado::setup(void) {
@@ -156,13 +177,16 @@ void TDSolveSacado::setup(void) {
     setup_new_lin_solve( size );
     std::map<int,LSPack>::iterator it_ls = dimlspacks.find( size );
     cell_lspack = it_ls->second;
+    cell_lspack.sys = new LinBandSys( size );
   }
   
   // Setup linear solver for chemicals
   for ( it = chemnames.begin(); it != chemnames.end(); it++ ) {
     setup_new_lin_solve( varsizes[*it] );
     std::map<int,LSPack>::iterator it_ls = dimlspacks.find( varsizes[*it] );
-    varlspacks.insert( std::pair<std::string,LSPack>( *it, it_ls->second ) );
+    LSPack lsPack = it_ls->second;
+    lsPack.sys = new LinBandSys( varsizes[*it] );
+    varlspacks.insert( std::pair<std::string,LSPack>( *it, lsPack ) );
   }
 
   return;
@@ -174,7 +198,40 @@ void TDSolveSacado::setup_new_lin_solve(const int num) {
     return;
   LSPack lsPack;
   setupLinSolve( lsPack.mat, lsPack.prc, lsPack.sol, lsPack.rhs, lsPack.res, lsPack.linSolve, num );
+  lsPack.sys = NULL; // Allocated for each use of this pack, see setup()
   dimlspacks.insert( std::pair<int,LSPack>(num,lsPack) );
+  return;
+}
+
+// Solve the linear system that has been assembled in lsPack.sys
+void TDSolveSacado::solve_linsys(LSPack& lsPack) {
+  LinBandSys& sys = *lsPack.sys;
+
+  if ( tdLin->Type == LSYS_TYPE_DIR && tdLin->Direct == LSYS_DIRECT_LU &&
+       tdLin->Prec == LSYS_PREC_OFF ) {
+    // Banded LU factorization. As in LinSolve::solve, the solution stays
+    // zero if the right hand side is already below the tolerance, and the
+    // residuals before and after the solve are printed on request.
+    DType cur_res = sys.getRhsNorm();
+    if ( tdLin->Print )
+      fprintf( stdout, "Iter 0: Current Residual %10.20f\n", cur_res );
+    if ( cur_res >= TOL_ZERO ) {
+      sys.solve();
+      if ( tdLin->Print )
+        fprintf( stdout, "Iter 1: Current Residual %10.20f\n", sys.getResNorm() );
+    }
+  }
+  else {
+    // Iterative and Krylov space solvers, preconditioners, and the direct
+    // solver by the inverse of the full matrix: hand over to LinSolve
+    lsPack.mat->reset( 0.0 );
+    lsPack.rhs->reset( 0.0 );
+    lsPack.sol->reset( 0.0 );
+    sys.copyTo( *lsPack.mat, *lsPack.rhs );
+    lsPack.linSolve->solve();
+    sys.copySolFrom( *lsPack.sol );
+  }
+
   return;
 }
 
@@ -363,7 +420,7 @@ void TDSolveSacado::alloc(void) {
     HVEC** data = NULL;
     alloc_array_full( data, varsizes[*it], Ndata );
     H_data_var.insert(std::pair<std::string,HVEC**>(*it,data));
-    S_data_num += varsizes[*it];
+    S_data_num += num_seed( varsizes[*it] );
   }
 
   for ( std::vector<std::string>::iterator it = chemnames.begin();
@@ -371,7 +428,7 @@ void TDSolveSacado::alloc(void) {
     HVEC** data = NULL;
     alloc_array_full( data, varsizes[*it], Ndata );
     H_data_var.insert(std::pair<std::string,HVEC**>(*it,data));
-    S_data_num += varsizes[*it];
+    S_data_num += num_seed( varsizes[*it] );
   }
 
   for ( std::vector<std::string>::iterator it = velnames.begin();
@@ -421,7 +478,10 @@ bool TDSolveSacado::update_sol(const int fr, const int to, const DType shift_dt_
   // Setup updates schemes
   int  numIter  = 1;
   bool assembleJacobian = false;
-  DType ntTol, cur_res=DTYPE_MAX;
+  // ntTol < 0: the loop below is not stopped by the residual. It has to be
+  // set for all schemes (it was left undefined for the explicit one, where
+  // the update could then be skipped altogether).
+  DType ntTol=-1.0, cur_res=DTYPE_MAX;
   bool displayNewton = false;
   // Time argument for prescribed functions
   DType shift_dt_space = shift_dt_to;
@@ -453,9 +513,9 @@ bool TDSolveSacado::update_sol(const int fr, const int to, const DType shift_dt_
   while ( iter < numIter && cur_res > ntTol ) {
     // Step 0. Setup the Sacado variables and initialize local inf-res
     DType loc_res = 0.0;
-    reset_sacado_ind_array();
     reset_sacado_dep_array();
     // Set the independent variables iterates to [to] 
+    // (values and derivatives of all of them, no reset is needed before)
     set_sacado_ind( to );
 
     // Step 1. Compute S_data_r and S_data_rp.
@@ -552,11 +612,13 @@ bool TDSolveSacado::update_sol(const int fr, const int to, const DType shift_dt_
     // X-1. Implicit updates of chemicals
     update_chems_by_res_imp( to, loc_res );
     // X-2. Make consistent the velocity for dtn
-    reset_sacado_ind_array();
     reset_sacado_dep_array();
     set_sacado_ind( to );
     set_sacado_r( to );
-    update_vel( to, to, shift_dt_to );
+    // Without cell motion there is no velocity to update, and the source
+    // terms that update_vel computes on the way are not used
+    if ( tdSetup->cellmotion )
+      update_vel( to, to, shift_dt_to );
     set_from_sacado_vel(to);
     compute_rad( to, to );
     
@@ -660,14 +722,16 @@ DType TDSolveSacado::get_total(const std::string name, const int nt) {
   return tot_var;
 }
 
+// Remove the i-th stored solution
 void TDSolveSacado::clear_prev_cell(int i) {
-  if ( i<0 || i>=prev_cell.size() )
+  if ( i<0 || i>=prev_time.size() )
     return;
-  std::map<std::string,HVEC*>& tmp = prev_cell[i];
-  for ( std::map<std::string,HVEC*>::iterator it = tmp.begin();
-        it != tmp.end(); it++ ) {
-    delete it->second;
+  for ( std::map<std::string,std::vector<HVEC*>>::iterator it = prev_cell.begin();
+        it != prev_cell.end(); it++ ) {
+    delete it->second[i];
+    it->second.erase( it->second.begin()+i );
   }
+  prev_time.erase( prev_time.begin()+i );
   return;
 }
 
@@ -680,29 +744,22 @@ void TDSolveSacado::push_to_prev_cells(DType cur_time, int nt) {
   // First, remove all old times except one that are smaller than cur_time-time_delay_max
   while ( prev_time.size() > 1 && prev_time[1] < cur_time-time_delay_max ) {
     clear_prev_cell( 0 );
-    for ( int i = 0; i < prev_time.size()-1; i++ ) {
-      prev_time[i] = prev_time[i+1];
-      prev_cell[i] = prev_cell[i+1];
-    }
-    prev_time.pop_back();
-    prev_cell.pop_back();
   }
-  // Next, add cur_time and H_data_var[][nt] to prev_time and prev_cell
+  // Next, add cur_time and a copy of H_data_var[][nt] to prev_time and prev_cell
   prev_time.push_back( cur_time );
-  std::map<std::string,HVEC*> tmp_data_var; // A copy of H_data_var[][nt]
   for ( std::map<std::string,HVEC**>::iterator it = H_data_var.begin();
         it != H_data_var.end(); it++ ) {
-    std::string name = it->first;
-    HVEC* data = new HVEC(varsizes[name],0.0);
-    *data = *H_data_var[name][nt];
-    tmp_data_var.insert(std::pair<std::string,HVEC*>(name,data));
+    prev_cell[it->first].push_back( new HVEC( *(it->second[nt]) ) );
   }
-  prev_cell.push_back( tmp_data_var );
   return;
 }
 
-bool TDSolveSacado::get_prev_cell(DType pst_time, std::map<std::string,HVEC*>& pst_cell) {
-  if ( !enable_time_delay || time_delay_max <= 0.0 || prev_time.size() == 0 || prev_cell.size() == 0 )
+// Find the two stored solutions next to pst_time,
+//   prev_time[i_left] <= pst_time < prev_time[i_rght],
+// and the coefficients to interpolate between them linearly in time.
+// Returns false if there is no data for pst_time (before the initial time).
+bool TDSolveSacado::get_prev_interp(DType pst_time, PrevInterp& interp) {
+  if ( !enable_time_delay || time_delay_max <= 0.0 || prev_time.size() == 0 )
     return false;
   int num_prev = prev_time.size();
   if ( pst_time < tdSetup->Tinit )
@@ -711,52 +768,48 @@ bool TDSolveSacado::get_prev_cell(DType pst_time, std::map<std::string,HVEC*>& p
     throw std::runtime_error( "Error: TDSolveSacado::get_prev_cell pst_time not in the range of prev_time. Check if time step size is too large.\n" );
     return false;
   }
-  int i_rght = 0;
-  while ( pst_time >= prev_time[i_rght] )
-    i_rght++;
+  // The first stored time that is larger than pst_time
+  int i_rght = std::upper_bound( prev_time.begin(), prev_time.end(), pst_time ) - prev_time.begin();
+  if ( i_rght == num_prev ) // pst_time is the last stored time
+    i_rght = num_prev - 1;
+  if ( i_rght == 0 ) { // Only one stored time, which is pst_time
+    interp.i_left = 0;
+    interp.i_rght = 0;
+    interp.coef_left = 1.0;
+    interp.coef_rght = 0.0;
+    return true;
+  }
   int i_left = i_rght - 1;
-  pst_cell.clear();
-  std::map<std::string,HVEC*>& data_left = prev_cell[i_left];
-  std::map<std::string,HVEC*>& data_rght = prev_cell[i_rght];
-  DType coef_left = (prev_time[i_rght]-pst_time)/(prev_time[i_rght]-prev_time[i_left]);
-  DType coef_rght = (pst_time-prev_time[i_left])/(prev_time[i_rght]-prev_time[i_left]);
+  interp.i_left = i_left;
+  interp.i_rght = i_rght;
+  interp.coef_left = (prev_time[i_rght]-pst_time)/(prev_time[i_rght]-prev_time[i_left]);
+  interp.coef_rght = (pst_time-prev_time[i_left])/(prev_time[i_rght]-prev_time[i_left]);
+  return true;
+}
 
-  for ( std::map<std::string,HVEC*>::iterator it = data_left.begin();
-        it != data_left.end(); it++ ) {
+bool TDSolveSacado::get_prev_cell(DType pst_time, std::map<std::string,HVEC*>& pst_cell) {
+  PrevInterp interp;
+  if ( !get_prev_interp( pst_time, interp ) )
+    return false;
+  pst_cell.clear();
+  for ( std::map<std::string,std::vector<HVEC*>>::iterator it = prev_cell.begin();
+        it != prev_cell.end(); it++ ) {
     std::string name = it->first;
     HVEC* data = new HVEC(varsizes[name],0.0);
-    *data = coef_left * (*data_left[name]) + coef_rght * (*data_rght[name]);
+    *data = interp.coef_left * (*it->second[interp.i_left]) + interp.coef_rght * (*it->second[interp.i_rght]);
     pst_cell.insert(std::pair<std::string,HVEC*>(name,data));
   }
   return true;
 }
 
 bool TDSolveSacado::get_prev_cell(DType pst_time, int i, std::map<std::string,DType>& pst_data) {
-  if ( !enable_time_delay || time_delay_max <= 0.0 || prev_time.size() == 0 || prev_cell.size() == 0 )
+  PrevInterp interp;
+  if ( !get_prev_interp( pst_time, interp ) )
     return false;
-  int num_prev = prev_time.size();
-  if ( pst_time < tdSetup->Tinit )
-    return false;
-  // - For now, this is incorrect if there is only one piece of data!
-  if ( pst_time < prev_time[0] || pst_time > prev_time[num_prev-1] ) {
-    throw std::runtime_error( "Error: TDSolveSacado::get_prev_cell pst_time not in the range of prev_time. Check if time step size is too large.\n" );
-    return false;
-  }
-  int i_rght = 0;
-  while ( pst_time >= prev_time[i_rght] )
-    i_rght++;
-  int i_left = i_rght - 1;
   pst_data.clear();
-  std::map<std::string,HVEC*>& data_left = prev_cell[i_left];
-  std::map<std::string,HVEC*>& data_rght = prev_cell[i_rght];
-  DType coef_left = (prev_time[i_rght]-pst_time)/(prev_time[i_rght]-prev_time[i_left]);
-  DType coef_rght = (pst_time-prev_time[i_left])/(prev_time[i_rght]-prev_time[i_left]);
-
-  for ( std::map<std::string,HVEC*>::iterator it = data_left.begin();
-        it != data_left.end(); it++ ) {
-    std::string name = it->first;
-    DType data = coef_left * (*data_left[name])[i] + coef_rght * (*data_rght[name])[i];
-    pst_data.insert(std::pair<std::string,DType>(name,data));
+  for ( std::map<std::string,std::vector<HVEC*>>::iterator it = prev_cell.begin();
+        it != prev_cell.end(); it++ ) {
+    pst_data.insert(std::pair<std::string,DType>(it->first,calc_prev_data(it->second,i,interp)));
   }
   return true;
 }
@@ -892,7 +945,44 @@ bool TDSolveSacado::setup_var_potassium(void) {
       time_delay_max = 1.1/decay_b2/(1.0-b2_block); 
     }
   }
+
+  // The domain is fixed and the cells do not move: source terms only depend
+  // on the unknowns in the same interval and the fluxes of the chemicals on
+  // those within the stencil that is assumed for the Jacobian, hence a few
+  // derivative components are enough (see S_seed_wid in TDSolveSacado.h).
+  if ( tdSetup->jac_comp ) {
+    int sten = ( tdSetup->chem_rflux == 3 ) ? 3 : 1;
+    S_seed_wid = 2*sten + 1;
+  }
+
+  setup_par_potassium();
+
   return true;
+}
+
+// Collect the parameters of the potassium model
+void TDSolveSacado::setup_par_potassium(void) {
+  VarPars& varPars = tdCoef->probVarParVals[prob_name];
+
+  potPar.has_rho = ( varPars.find("global") != varPars.end() && 
+                     varPars["global"].find("ie_ratio") != varPars["global"].end() );
+  potPar.rho      = potPar.has_rho ? varPars["global"]["ie_ratio"] : 1.0;
+
+  potPar.b1_decay = varPars["B1"]["grow_neg_virus"];
+  potPar.b1_block = ( varPars["B1"].find( "grow_block" ) == varPars["B1"].end() ) ? 1.0 :
+                      varPars["B1"]["grow_block"];
+  potPar.b2_decay = varPars["B2"]["grow_neg"];
+  potPar.b2_block = ( varPars["B2"].find( "grow_block" ) == varPars["B2"].end() ) ? 0.0 :
+                      varPars["B2"]["grow_block"];
+  potPar.p_slope  = varPars["P"]["slope"];
+  potPar.p_thres  = varPars["P"]["threshold"];
+  potPar.b2_thres = ( varPars["B2"].find( "threshold" ) == varPars["B2"].end() ) ? potPar.p_thres :
+                      varPars["B2"]["threshold"];
+  potPar.p_burst  = varPars["P"]["burst"];
+  potPar.v_burst  = varPars["V"]["burst"];
+  potPar.v_block  = ( varPars["V"].find( "burst_block" ) == varPars["V"].end() ) ? 0.0 :
+                      varPars["V"]["burst_block"];
+  return;
 }
 
 bool TDSolveSacado::setup_var_oncolytic(void) {
@@ -1439,14 +1529,14 @@ void TDSolveSacado::alloc_sacado_ind_array(std::string name, const int num) {
   // Get the number of existing independent variables
   int cur_num = 0;
   for ( it = S_data_var.begin(); it != S_data_var.end(); it++ ) 
-    cur_num += it->second.size();
-  if ( cur_num + num > S_data_num ) {
+    cur_num += num_seed( it->second.size() );
+  if ( cur_num + num_seed( num ) > S_data_num ) {
     std::string error_message = "TDSolveSacado::alloc_sacado_ind_array - requesting " + std::to_string(num) + " Sacado independent variables but there are only " + std::to_string(S_data_num-cur_num) + " opening left (" + std::to_string(cur_num) + "/" + std::to_string(S_data_num) + ").\n";
     throw std::runtime_error( error_message );
   }
   SacadoIndVarArray S_array;
   for ( int n = 0; n < num; n++ ) {
-    AutoDiff::Fad::DFad<DType> value(S_data_num,cur_num+n,0.0);
+    AutoDiff::Fad::DFad<DType> value(S_data_num,seed_idx(cur_num,n),0.0);
     S_array.push_back(value);
   }
   S_data_var.insert( std::pair<std::string, SacadoIndVarArray>(name, S_array) );
@@ -1593,7 +1683,10 @@ void TDSolveSacado::set_sacado_ind_array(std::string name, const int nt) {
   HVEC& data = *H_data_var[it->first][nt];
   int num = s_var.size();
   for ( int i = 0; i < num; i++ ) {
-    s_var[i] = AutoDiff::Fad::DFad<DType>(S_data_num,s_offset+i,data[i]);
+    // Same as s_var[i] = DFad(S_data_num,seed_idx(s_offset,i),data[i]),
+    // without allocating a new array of derivatives
+    s_var[i].val() = data[i];
+    s_var[i].diff( seed_idx(s_offset,i), S_data_num );
   }
   return;
 }
@@ -1668,7 +1761,8 @@ void TDSolveSacado::reset_sacado_ind_array(void) {
 
 void TDSolveSacado::reset_sacado_ind_array(SacadoIndVarArray& s_var, const int s_offset, DType val) {
   for ( int i = 0; i < s_var.size(); i++ ) {
-    s_var[i] = AutoDiff::Fad::DFad<DType>(S_data_num, s_offset+i, val);
+    s_var[i].val() = val;
+    s_var[i].diff( seed_idx(s_offset,i), S_data_num );
   }
   return;
 }
@@ -2333,7 +2427,7 @@ void TDSolveSacado::calc_dflux_chem_var(std::string chemname, const int nt, cons
   }
   // - interior points
   for ( int i = 1; i < num; i++ ) {
-    s_flx[i] = - dcoef * std::pow( l_x_f[i] * data_r[nt], tdSetup->dim-1 ) / data_r[nt] / data_r[nt] * (s_var[i] - s_var[i-1]) / dx;
+    s_flx[i] = - dcoef * geom_fac( l_x_f[i] * data_r[nt], tdSetup->dim ) / data_r[nt] / data_r[nt] * (s_var[i] - s_var[i-1]) / dx;
     //s_flx[i] = - dcoef * l_x_f[i] * l_x_f[i] * (s_var[i] - s_var[i-1]) / dx;
   }
   // - right boundary
@@ -2342,11 +2436,11 @@ void TDSolveSacado::calc_dflux_chem_var(std::string chemname, const int nt, cons
     if ( chempars[chemname].F_chemBC != NULL )
       chem_bc = (this->*(chempars[chemname].F_chemBC))(tsol_loc);
     if ( dbc ) { // Dirichlet b.c. 
-      s_flx[num] = - dcoef * std::pow( l_x_f[num] * data_r[nt], tdSetup->dim-1 ) / data_r[nt] / data_r[nt] * (chem_bc - s_var[num-1]) / dx;
+      s_flx[num] = - dcoef * geom_fac( l_x_f[num] * data_r[nt], tdSetup->dim ) / data_r[nt] / data_r[nt] * (chem_bc - s_var[num-1]) / dx;
       //s_flx[num] = - dcoef * l_x_f[num] * l_x_f[num] * (chem_bc - s_var[num-1]) / dx;
     }
     else { // Neumann b.c.
-      s_flx[num] = - dcoef * std::pow( l_x_f[num] * data_r[nt], tdSetup->dim-1 ) / data_r[nt] * chem_bc;
+      s_flx[num] = - dcoef * geom_fac( l_x_f[num] * data_r[nt], tdSetup->dim ) / data_r[nt] * chem_bc;
       //s_flx[num] = - dcoef * l_x_f[num] * l_x_f[num] * data_r[nt] * chem_bc;
     }
   }
@@ -2356,10 +2450,12 @@ void TDSolveSacado::calc_dflux_chem_var(std::string chemname, const int nt, cons
 
 void TDSolveSacado::compute_chems_rflux(const int nt, const DType tsol_loc) {
   if ( tdSetup->fix_domain ) {
+    // No flux associated with R' on a fixed domain (as for the cells)
     for ( std::vector<std::string>::iterator it = chemnames.begin();
           it != chemnames.end(); it++ ) {
       reset_sacado_dep_array( S_flux_chem_r[*it] );
     }
+    return;
   }
 
   for ( std::vector<std::string>::iterator it = chemnames.begin();
@@ -2516,13 +2612,13 @@ void TDSolveSacado::compute_cells_residual(const int fr, const int to) {
   return;
 }
 
-void TDSolveSacado::assemble_inertia_var(HVEC& h_res, DType r_fr, HVEC& h_var, DType r_to, SacadoIndVarArray s_var, DType* l_x_c) {
+void TDSolveSacado::assemble_inertia_var(HVEC& h_res, DType r_fr, HVEC& h_var, DType r_to, SacadoIndVarArray& s_var, DType* l_x_c) {
   int num = s_var.size();
   //DType r_fr2 = r_fr * r_fr;
   //DType r_to2 = r_to * r_to;
   for ( int i = 0; i < num; i++ ) {
-    h_res[i] += std::pow( l_x_c[i] * r_to, tdSetup->dim-1 ) * s_var[i].val() -
-                std::pow( l_x_c[i] * r_fr, tdSetup->dim-1 ) * h_var[i];
+    h_res[i] += geom_fac( l_x_c[i] * r_to, tdSetup->dim ) * s_var[i].val() -
+                geom_fac( l_x_c[i] * r_fr, tdSetup->dim ) * h_var[i];
     //h_res[i] += l_x_c[i] * l_x_c[i] * ( r_to2 * s_var[i].val() - r_fr2 * h_var[i] );
   }
   return;
@@ -2575,15 +2671,13 @@ void TDSolveSacado::update_cells_by_res(const int nt) {
 
 void TDSolveSacado::update_sol_by_res_var_exp(HVEC& h_var, HVEC& h_res, DType h_r, DType* l_x_c, const int num) {
   for ( int i = 0; i < num; i++ ) {
-    h_var[i] -= h_res[i]/std::pow( l_x_c[i]*h_r, tdSetup->dim-1 );
+    h_var[i] -= h_res[i]/geom_fac( l_x_c[i]*h_r, tdSetup->dim );
   }
   return;
 }
 
 void TDSolveSacado::update_cells_by_res_imp(const int nt, DType& loc_res) {
-  cell_lspack.mat->reset( 0.0 );
-  cell_lspack.rhs->reset( 0.0 );
-  cell_lspack.sol->reset( 0.0 );
+  cell_lspack.sys->reset();
 
   std::vector<std::string>::iterator it;
 
@@ -2595,7 +2689,7 @@ void TDSolveSacado::update_cells_by_res_imp(const int nt, DType& loc_res) {
     update_cell_linsys_by_res_var( h_res, h_r, varcoord[*it], S_flux_cell[*it], S_srce_cell[*it], varsizes[*it], s_offset, l_offset, cell_lspack );
   }
 
-  cell_lspack.linSolve->solve();
+  solve_linsys( cell_lspack );
 
   for ( it = cellnames.begin(); it != cellnames.end(); it++ ) {
     HVEC& h_var = *H_data_var[*it][nt];
@@ -2608,48 +2702,51 @@ void TDSolveSacado::update_cells_by_res_imp(const int nt, DType& loc_res) {
 }
 
 void TDSolveSacado::update_cell_linsys_by_res_var(HVEC& h_res, DType h_r, DType* l_x_c, SacadoDepVarArray& s_flx, SacadoDepVarArray& s_src, const int num, const int s_offset, const int l_offset, LSPack& lsPack) {
-  VComp comp(1,0.0);
-  Entry elem(1,0.0);
+  LinBandSys& sys = *lsPack.sys;
+
+  // Offsets of all cell species in the linear system and among the
+  // independent variables
+  const int num_cell = cellnames.size();
+  std::vector<int> l_offset_cells( num_cell ), s_offset_cells( num_cell );
+  for ( int k = 0; k < num_cell; k++ ) {
+    l_offset_cells[k] = H_cell_offset[cellnames[k]];
+    s_offset_cells[k] = S_data_offset[cellnames[k]];
+  }
 
   // RHS
   //DType s_r_to2 = h_r * h_r;
   for ( int i = 0; i < num; i++ ) {
-    comp = h_res[i]/std::pow(l_x_c[i]*h_r, tdSetup->dim-1);
+    sys.rhs(l_offset+i) = h_res[i]/geom_fac(l_x_c[i]*h_r, tdSetup->dim);
     //comp = h_res[i]/l_x_c[i]/l_x_c[i]/s_r_to2;
-    lsPack.rhs->set(l_offset+i,comp);
   }
 
   // Matrix
   // - mass matrix
   for ( int i = 0; i < num; i++ ) {
-    elem = 1.0;
-    lsPack.mat->set(l_offset+i,l_offset+i,elem);
+    sys.add(l_offset+i,l_offset+i,1.0);
   }
   // - source terms - assuming no nearby data is needed!
   for ( int i = 0; i < num; i++ ) {
-    for ( std::vector<std::string>::iterator it = cellnames.begin();
-          it != cellnames.end(); it++ ) {
-      int l_offset_cell = H_cell_offset[*it];
-      int s_offset_cell = S_data_offset[*it];
-      elem = lsPack.mat->get(l_offset+i,l_offset_cell+i);
-      elem -= dtn * s_src[i].dx( s_offset_cell+i )/std::pow(l_x_c[i]*h_r, tdSetup->dim-1);
+    DType denom = geom_fac( l_x_c[i]*h_r, tdSetup->dim );
+    for ( int k = 0; k < num_cell; k++ ) {
+      int l_offset_cell = l_offset_cells[k];
+      int s_offset_cell = s_offset_cells[k];
+      sys.add(l_offset+i,l_offset_cell+i,
+          -( dtn * s_src[i].dx( seed_idx(s_offset_cell,i) )/denom ));
       //elem -= dtn * s_src[i].dx( s_offset_cell+i )/l_x_c[i]/l_x_c[i]/s_r_to2;
-      lsPack.mat->set(l_offset+i,l_offset_cell+i,elem);
     }
   }
   // - fluxes 
   if ( tdSetup->jac_vel ) { 
     for ( int i = 0; i < num; i++ ) {
-      DType denom = std::pow( l_x_c[i]*h_r, tdSetup->dim-1 ); 
+      DType denom = geom_fac( l_x_c[i]*h_r, tdSetup->dim ); 
       //DType denom = l_x_c[i]*l_x_c[i]*s_r_to2;
-      for ( std::vector<std::string>::iterator it = cellnames.begin();
-            it != cellnames.end(); it++ ) {
-        int l_offset_cell = H_cell_offset[*it];
-        int s_offset_cell = S_data_offset[*it];
+      for ( int k = 0; k < num_cell; k++ ) {
+        int l_offset_cell = l_offset_cells[k];
+        int s_offset_cell = s_offset_cells[k];
         for ( int j = 0; j < num; j++ ) {
-          elem = lsPack.mat->get(l_offset+i,l_offset_cell+j);
-          elem += (dtn/dx) * (s_flx[i+1].dx( s_offset_cell+j ) - s_flx[i].dx( s_offset_cell+j ))/denom;
-          lsPack.mat->set(l_offset+i,l_offset_cell+j,elem);
+          sys.add(l_offset+i,l_offset_cell+j,
+              (dtn/dx) * (s_flx[i+1].dx( seed_idx(s_offset_cell,j) ) - s_flx[i].dx( seed_idx(s_offset_cell,j) ))/denom);
         }
       }
     }
@@ -2662,13 +2759,12 @@ void TDSolveSacado::update_cell_linsys_by_res_var(HVEC& h_res, DType h_r, DType*
 
     for ( int i = 0; i < num; i++ ) {
       int i_min = max(0,i-sten);
-      DType denom = std::pow( l_x_c[i]*h_r, tdSetup->dim-1 ); 
+      DType denom = geom_fac( l_x_c[i]*h_r, tdSetup->dim ); 
       //DType denom = l_x_c[i]*l_x_c[i]*s_r_to2;
       int i_max = min(num-1,i+sten);
       for ( int j = i_min; j <= i_max; j++ ) {
-        elem = lsPack.mat->get(l_offset+i,l_offset+j);
-        elem += (dtn/dx) * (s_flx[i+1].dx( s_offset+j )-s_flx[i].dx( s_offset+j ))/denom;
-        lsPack.mat->set(l_offset+i,l_offset+j,elem);
+        sys.add(l_offset+i,l_offset+j,
+            (dtn/dx) * (s_flx[i+1].dx( seed_idx(s_offset,j) )-s_flx[i].dx( seed_idx(s_offset,j) ))/denom);
       }
     }
   }
@@ -2677,15 +2773,12 @@ void TDSolveSacado::update_cell_linsys_by_res_var(HVEC& h_res, DType h_r, DType*
 }
 
 void TDSolveSacado::update_hsol_by_linsol(HVEC& h_var, const int l_offset, const int num, LSPack& lsPack, DType& loc_res) {
-  VComp comp(1,0.0);
+  LinBandSys& sys = *lsPack.sys;
 
-  loc_res = std::max(loc_res, lsPack.sol->getInfNorm() / std::max( h_var.norm(-1), 1.0 ) );
+  loc_res = std::max(loc_res, sys.getSolInfNorm() / std::max( h_var.norm(-1), 1.0 ) );
 
   for ( int i = 0; i < num; i++ ) {
-    comp = lsPack.sol->get(l_offset+i);
-    HVEC vsol(1);
-    vsol = comp.getVal();
-    h_var[i] -= vsol[0];
+    h_var[i] -= sys.sol(l_offset+i);
   }
 
   return;
@@ -2706,33 +2799,25 @@ void TDSolveSacado::update_chems_by_res_imp(const int nt, DType& loc_res) {
 }
 
 void TDSolveSacado::update_chem_by_res_var_imp(HVEC& h_var, HVEC& h_res, DType h_r, DType* l_x_c, SacadoDepVarArray& s_flx, SacadoDepVarArray& s_src, const int num, const int s_offset, LSPack& lsPack, DType& loc_res) {
-  lsPack.mat->reset( 0.0 );
-  lsPack.rhs->reset( 0.0 );
-  lsPack.sol->reset( 0.0 );
-
-  VComp comp(1,0.0);
-  Entry elem(1,0.0);
+  LinBandSys& sys = *lsPack.sys;
+  sys.reset();
 
   // RHS
   //DType s_r_to2 = h_r * h_r;
   for ( int i = 0; i < num; i++ ) {
-    comp = h_res[i]/std::pow( l_x_c[i]*h_r, tdSetup->dim-1 );
+    sys.rhs(i) = h_res[i]/geom_fac( l_x_c[i]*h_r, tdSetup->dim );
     //comp = h_res[i]/l_x_c[i]/l_x_c[i]/s_r_to2;
-    lsPack.rhs->set(i,comp);
   }
 
   // Matrix
   // - mass matrix
   for ( int i = 0; i < num; i++ ) {
-    elem = 1.0;
-    lsPack.mat->set(i,i,elem);
+    sys.add(i,i,1.0);
   }
   // - source terms - assuming no nearby data is needed!
   for ( int i = 0; i < num; i++ ) {
-    elem = lsPack.mat->get(i,i);
-    elem -= dtn*s_src[i].dx( s_offset+i )/std::pow( l_x_c[i]*h_r, tdSetup->dim-1 );
+    sys.add(i,i,-( dtn*s_src[i].dx( seed_idx(s_offset,i) )/geom_fac( l_x_c[i]*h_r, tdSetup->dim ) ));
     //elem -= dtn*s_src[i].dx( s_offset+i )/l_x_c[i]/l_x_c[i]/s_r_to2;
-    lsPack.mat->set(i,i,elem);
   }
   // - fluxes - assuming the stencil within a centered stencil of:
   // - 3 intervals if upwind flux is used
@@ -2740,27 +2825,22 @@ void TDSolveSacado::update_chem_by_res_var_imp(HVEC& h_var, HVEC& h_res, DType h
   int sten = ( tdSetup->chem_rflux == 3 ) ? 3 : 1;
   for ( int i = 0; i < num; i++ ) {
     int i_min = max(0,i-sten);
-    DType denom = std::pow( l_x_c[i]*h_r, tdSetup->dim-1 );
+    DType denom = geom_fac( l_x_c[i]*h_r, tdSetup->dim );
     //DType denom = l_x_c[i]*l_x_c[i]*s_r_to2;
     int i_max = min(num-1,i+sten);
     for ( int j = i_min; j <= i_max; j++ ) {
-      elem = lsPack.mat->get(i,j);
-      elem += (dtn/dx) * (s_flx[i+1].dx( s_offset+j )-s_flx[i].dx( s_offset+j ))/denom;
-      lsPack.mat->set(i,j,elem);
+      sys.add(i,j,(dtn/dx) * (s_flx[i+1].dx( seed_idx(s_offset,j) )-s_flx[i].dx( seed_idx(s_offset,j) ))/denom);
     }
   }
 
   // Solve the linear system
-  lsPack.linSolve->solve();
+  solve_linsys( lsPack );
 
-  loc_res = std::max(loc_res, lsPack.sol->getInfNorm() / std::max( h_var.norm(-1), 1.0 ) );
+  loc_res = std::max(loc_res, sys.getSolInfNorm() / std::max( h_var.norm(-1), 1.0 ) );
 
   // Fetch and update solution
   for ( int i = 0; i < num; i++ ) {
-    comp = lsPack.sol->get(i);
-    HVEC vsol(1);
-    vsol = comp.getVal();
-    h_var[i] -= vsol[0];
+    h_var[i] -= sys.sol(i);
   }
 
   return;
@@ -3230,23 +3310,25 @@ void TDSolveSacado::calc_srce_mb_oncolyticOld(SacadoDepVarArray& s_srce, const D
 void TDSolveSacado::calc_srce_b1_potassium(SacadoDepVarArray& s_srce, const DType tsol_loc) {
   reset_sacado_dep_array(s_srce);
 
-  DType decay = tdCoef->probVarParVals[prob_name]["B1"]["grow_neg_virus"];
-  DType k     = tdCoef->probVarParVals[prob_name]["P"]["slope"];
-  DType Ps    = tdCoef->probVarParVals[prob_name]["P"]["threshold"];
+  DType decay    = potPar.b1_decay;
+  DType k        = potPar.p_slope;
+  DType Ps       = potPar.p_thres;
+  DType b1_block = potPar.b1_block;
   SacadoIndVarArray& s_b1 = S_data_var["B1"];
   SacadoIndVarArray& s_p  = S_data_var["P"];
   SacadoIndVarArray& s_v  = S_data_var["V"];
 
-  DType b1_block = ( tdCoef->probVarParVals[prob_name]["B1"].find( "grow_block" ) == 
-                     tdCoef->probVarParVals[prob_name]["B1"].end() ) ? 1.0 : 
-                     tdCoef->probVarParVals[prob_name]["B1"]["grow_block"];
-
   int    num   = varsizes["B1"];
   DType* l_x_c = varcoord["B1"];
 
+  // S_data_r is a constant, the radius of the fixed domain
+  DType r_loc = S_data_r.val();
+  SacadoDepVar s_block;
+
   for ( int i = 0; i < num; i++ ) {
-    s_srce[i] += std::pow( l_x_c[i] * S_data_r, tdSetup->dim-1 ) * 
-      ( - decay * icalc_scal_block_potassium( k, Ps, s_p[i], b1_block ) * s_b1[i] * s_v[i] );
+    iset_scal_block_potassium( s_block, k, Ps, s_p[i], b1_block );
+    s_srce[i] += geom_fac( l_x_c[i] * r_loc, tdSetup->dim ) * 
+      ( - decay * s_block * s_b1[i] * s_v[i] );
   }
 
   return;
@@ -3255,19 +3337,13 @@ void TDSolveSacado::calc_srce_b1_potassium(SacadoDepVarArray& s_srce, const DTyp
 void TDSolveSacado::calc_srce_b2_potassium(SacadoDepVarArray& s_srce, const DType tsol_loc) {
   reset_sacado_dep_array(s_srce);
 
-  DType decay_b1 = tdCoef->probVarParVals[prob_name]["B1"]["grow_neg_virus"];
-  DType k        = tdCoef->probVarParVals[prob_name]["P"]["slope"];
-  DType Ps       = tdCoef->probVarParVals[prob_name]["P"]["threshold"];
-  DType B2Ps    = ( tdCoef->probVarParVals[prob_name]["B2"].find( "threshold" ) ==
-                    tdCoef->probVarParVals[prob_name]["B2"].end() ) ?  Ps :
-                  tdCoef->probVarParVals[prob_name]["B2"]["threshold"];
-  DType decay_b2 = tdCoef->probVarParVals[prob_name]["B2"]["grow_neg"];
-  DType b1_block = ( tdCoef->probVarParVals[prob_name]["B1"].find( "grow_block" ) == 
-                     tdCoef->probVarParVals[prob_name]["B1"].end() ) ? 1.0 : 
-                     tdCoef->probVarParVals[prob_name]["B1"]["grow_block"];
-  DType b2_block = ( tdCoef->probVarParVals[prob_name]["B2"].find( "grow_block" ) == 
-                     tdCoef->probVarParVals[prob_name]["B2"].end() ) ? 0.0 : 
-                     tdCoef->probVarParVals[prob_name]["B2"]["grow_block"];
+  DType decay_b1 = potPar.b1_decay;
+  DType k        = potPar.p_slope;
+  DType Ps       = potPar.p_thres;
+  DType B2Ps     = potPar.b2_thres;
+  DType decay_b2 = potPar.b2_decay;
+  DType b1_block = potPar.b1_block;
+  DType b2_block = potPar.b2_block;
   SacadoIndVarArray& s_b1 = S_data_var["B1"];
   SacadoIndVarArray& s_b2 = S_data_var["B2"];
   SacadoIndVarArray& s_p  = S_data_var["P"];
@@ -3276,10 +3352,16 @@ void TDSolveSacado::calc_srce_b2_potassium(SacadoDepVarArray& s_srce, const DTyp
   int    num   = varsizes["B2"];
   DType* l_x_c = varcoord["B2"];
 
+  // S_data_r is a constant, the radius of the fixed domain
+  DType r_loc = S_data_r.val();
+  SacadoDepVar s_block_b1, s_block_b2;
+
   for ( int i = 0; i < num; i++ ) {
-    s_srce[i] += std::pow( l_x_c[i] * S_data_r, tdSetup->dim-1 ) * 
-      ( decay_b1 * icalc_scal_block_potassium( k, Ps, s_p[i], b1_block ) * s_b1[i] * s_v[i] - 
-        decay_b2 * icalc_scal_block_potassium( k, B2Ps, s_p[i], b2_block ) * s_b2[i] );
+    iset_scal_block_potassium( s_block_b1, k, Ps, s_p[i], b1_block );
+    iset_scal_block_potassium( s_block_b2, k, B2Ps, s_p[i], b2_block );
+    s_srce[i] += geom_fac( l_x_c[i] * r_loc, tdSetup->dim ) * 
+      ( decay_b1 * s_block_b1 * s_b1[i] * s_v[i] - 
+        decay_b2 * s_block_b2 * s_b2[i] );
   }
 
   return;
@@ -3288,25 +3370,24 @@ void TDSolveSacado::calc_srce_b2_potassium(SacadoDepVarArray& s_srce, const DTyp
 void TDSolveSacado::calc_srce_b3_potassium(SacadoDepVarArray& s_srce, const DType tsol_loc) {
   reset_sacado_dep_array(s_srce);
 
-  DType k        = tdCoef->probVarParVals[prob_name]["P"]["slope"];
-  DType Ps       = tdCoef->probVarParVals[prob_name]["P"]["threshold"];
-  DType B2Ps    = ( tdCoef->probVarParVals[prob_name]["B2"].find( "threshold" ) ==
-                    tdCoef->probVarParVals[prob_name]["B2"].end() ) ?  Ps :
-                  tdCoef->probVarParVals[prob_name]["B2"]["threshold"];
-  DType decay_b2 = tdCoef->probVarParVals[prob_name]["B2"]["grow_neg"];
-  DType b2_block = ( tdCoef->probVarParVals[prob_name]["B2"].find( "grow_block" ) == 
-                     tdCoef->probVarParVals[prob_name]["B2"].end() ) ? 0.0 : 
-                     tdCoef->probVarParVals[prob_name]["B2"]["grow_block"];
+  DType k        = potPar.p_slope;
+  DType B2Ps     = potPar.b2_thres;
+  DType decay_b2 = potPar.b2_decay;
+  DType b2_block = potPar.b2_block;
   SacadoIndVarArray& s_b2 = S_data_var["B2"];
   SacadoIndVarArray& s_p  = S_data_var["P"];
-
 
   int    num   = varsizes["B3"];
   DType* l_x_c = varcoord["B3"];
 
+  // S_data_r is a constant, the radius of the fixed domain
+  DType r_loc = S_data_r.val();
+  SacadoDepVar s_block;
+
   for ( int i = 0; i < num; i++ ) {
-    s_srce[i] += std::pow( l_x_c[i] * S_data_r, tdSetup->dim-1 ) * ( decay_b2 * 
-        icalc_scal_block_potassium( k, B2Ps, s_p[i], b2_block ) * s_b2[i] );
+    iset_scal_block_potassium( s_block, k, B2Ps, s_p[i], b2_block );
+    s_srce[i] += geom_fac( l_x_c[i] * r_loc, tdSetup->dim ) * ( decay_b2 * 
+        s_block * s_b2[i] );
   }
 
   return;
@@ -3730,38 +3811,34 @@ void TDSolveSacado::calc_chem_srce_p_potassium(std::string chemname, const int n
   SacadoIndVarArray& s_chem  = S_data_var[chemname]; // This is just "P"
 
   DType theta   = tdCoef->theta;
-  DType rho     = 1.0;
-  if (tdCoef->probVarParVals[prob_name].find("global") != tdCoef->probVarParVals[prob_name].end() &&
-      tdCoef->probVarParVals[prob_name]["global"].find("ie_ratio") != tdCoef->probVarParVals[prob_name]["global"].end()) {
-    rho = tdCoef->probVarParVals[prob_name]["global"]["ie_ratio"];
+  DType rho     = potPar.rho;
+  if ( potPar.has_rho ) {
     theta = theta * rho / (1.0+rho);
   }
 
-  DType k       = tdCoef->probVarParVals[prob_name]["P"]["slope"];
-  DType Ps      = tdCoef->probVarParVals[prob_name]["P"]["threshold"];
-  DType B2Ps    = ( tdCoef->probVarParVals[prob_name]["B2"].find( "threshold" ) ==
-                    tdCoef->probVarParVals[prob_name]["B2"].end() ) ?  Ps :
-                  tdCoef->probVarParVals[prob_name]["B2"]["threshold"];
-  DType prod_b2 = rho * tdCoef->probVarParVals[prob_name][chemname]["burst"] *
-                  tdCoef->probVarParVals[prob_name]["B2"]["grow_neg"] * theta;
-  DType b2_block = ( tdCoef->probVarParVals[prob_name]["B2"].find( "grow_block" ) == 
-                     tdCoef->probVarParVals[prob_name]["B2"].end() ) ? 0.0 : 
-                     tdCoef->probVarParVals[prob_name]["B2"]["grow_block"];
-  DType decay   = chemPar.decay;
+  DType k        = potPar.p_slope;
+  DType B2Ps     = potPar.b2_thres;
+  DType prod_b2  = rho * potPar.p_burst * potPar.b2_decay * theta;
+  DType b2_block = potPar.b2_block;
+  DType decay    = chemPar.decay;
   int num = s_chem.size();
+  SacadoDepVar s_block;
 
   if ( enable_time_delay ) {
-    DType delay_loc_base = 1.0/tdCoef->probVarParVals[prob_name]["B2"]["grow_neg"];
+    DType delay_loc_base = 1.0/potPar.b2_decay;
+    const std::vector<HVEC*>& prev_b2 = prev_cell["B2"];
+    PrevInterp interp;
 
     for ( int i = 0; i < num; i++ ) {
-      s_srce[i] += std::pow( l_x_c[i] * data_r[nt], tdSetup->dim-1 ) * ( - decay * s_chem[i] );
+      DType geom = geom_fac( l_x_c[i] * data_r[nt], tdSetup->dim );
+      s_srce[i] += geom * ( - decay * s_chem[i] );
 
-      DType delay_loc = delay_loc_base/icalc_scal_block_potassium( k, B2Ps, s_chem[i], b2_block ).val();
-      std::map<std::string,DType> pst_data;
-      pst_data.clear();
-      bool find_prev = get_prev_cell( tsol_loc-delay_loc, i, pst_data );
+      DType delay_loc = delay_loc_base/icalc_scal_block_potassium( k, B2Ps, s_chem[i].val(), b2_block );
+      bool find_prev = get_prev_interp( tsol_loc-delay_loc, interp );
       if ( find_prev ) {
-        s_srce[i] += std::pow( l_x_c[i] * data_r[nt], tdSetup->dim-1 ) * prod_b2 * icalc_scal_block_potassium( k, B2Ps, s_chem[i], b2_block ) * pst_data["B2"];
+        DType pst_b2 = calc_prev_data( prev_b2, i, interp );
+        iset_scal_block_potassium( s_block, k, B2Ps, s_chem[i], b2_block );
+        s_srce[i] += geom * prod_b2 * s_block * pst_b2;
       }
     }
   }
@@ -3769,8 +3846,9 @@ void TDSolveSacado::calc_chem_srce_p_potassium(std::string chemname, const int n
     SacadoIndVarArray& s_b2 = S_data_var["B2"];
 
     for ( int i = 0; i < num; i++ ) {
-      s_srce[i] += std::pow( l_x_c[i] * data_r[nt], tdSetup->dim-1 ) *
-        ( prod_b2 * icalc_scal_block_potassium( k, B2Ps, s_chem[i], b2_block ) * s_b2[i] - decay * s_chem[i] );
+      iset_scal_block_potassium( s_block, k, B2Ps, s_chem[i], b2_block );
+      s_srce[i] += geom_fac( l_x_c[i] * data_r[nt], tdSetup->dim ) *
+        ( prod_b2 * s_block * s_b2[i] - decay * s_chem[i] );
     }
   }
 
@@ -3786,49 +3864,48 @@ void TDSolveSacado::calc_chem_srce_v_potassium(std::string chemname, const int n
   SacadoIndVarArray& s_p     = S_data_var["P"];
 
   DType theta   = tdCoef->theta;
-  DType rho     = 1.0;
-  if (tdCoef->probVarParVals[prob_name].find("global") != tdCoef->probVarParVals[prob_name].end() &&
-      tdCoef->probVarParVals[prob_name]["global"].find("ie_ratio") != tdCoef->probVarParVals[prob_name]["global"].end()) {
-    rho = tdCoef->probVarParVals[prob_name]["global"]["ie_ratio"];
+  DType rho     = potPar.rho;
+  if ( potPar.has_rho ) {
     theta = theta * rho / (1.0+rho);
   }
 
-  DType prod_b2 = rho * tdCoef->probVarParVals[prob_name][chemname]["burst"] *
-                  tdCoef->probVarParVals[prob_name]["B2"]["grow_neg"] * theta;
-  DType v_block  = ( tdCoef->probVarParVals[prob_name]["V"].find( "burst_block" ) ==
-                     tdCoef->probVarParVals[prob_name]["V"].end() ) ? 0.0 :
-                     tdCoef->probVarParVals[prob_name]["V"]["burst_block"];
-  DType b1_block = ( tdCoef->probVarParVals[prob_name]["B1"].find( "grow_block" ) == 
-                     tdCoef->probVarParVals[prob_name]["B1"].end() ) ? 1.0 : 
-                     tdCoef->probVarParVals[prob_name]["B1"]["grow_block"];
-  DType b2_block = ( tdCoef->probVarParVals[prob_name]["B2"].find( "grow_block" ) == 
-                     tdCoef->probVarParVals[prob_name]["B2"].end() ) ? 0.0 : 
-                     tdCoef->probVarParVals[prob_name]["B2"]["grow_block"];
-  DType decay_b = tdCoef->probVarParVals[prob_name]["B1"]["grow_neg_virus"] * theta;
-  DType decay   = chemPar.decay;
-  DType k       = tdCoef->probVarParVals[prob_name]["P"]["slope"];
-  DType Ps      = tdCoef->probVarParVals[prob_name]["P"]["threshold"];
-  DType B2Ps    = ( tdCoef->probVarParVals[prob_name]["B2"].find( "threshold" ) ==
-                    tdCoef->probVarParVals[prob_name]["B2"].end() ) ?  Ps :
-                  tdCoef->probVarParVals[prob_name]["B2"]["threshold"];
+  DType prod_b2  = rho * potPar.v_burst * potPar.b2_decay * theta;
+  DType v_block  = potPar.v_block;
+  DType b1_block = potPar.b1_block;
+  DType b2_block = potPar.b2_block;
+  DType decay_b  = potPar.b1_decay * theta;
+  DType decay    = chemPar.decay;
+  DType k        = potPar.p_slope;
+  DType Ps       = potPar.p_thres;
+  DType B2Ps     = potPar.b2_thres;
 
   int num = s_chem.size();
+  SacadoDepVar s_block_v, s_block_b1, s_block_b2;
 
   if ( enable_time_delay ) {
-    DType delay_loc_base = 1.0/tdCoef->probVarParVals[prob_name]["B2"]["grow_neg"];
+    DType delay_loc_base = 1.0/potPar.b2_decay;
+    const std::vector<HVEC*>& prev_b1 = prev_cell["B1"];
+    const std::vector<HVEC*>& prev_b2 = prev_cell["B2"];
+    const std::vector<HVEC*>& prev_v  = prev_cell["V"];
+    PrevInterp interp;
 
     for ( int i = 0; i < num; i++ ) {
-      s_srce[i] += std::pow( l_x_c[i] * data_r[nt], tdSetup->dim-1 ) * ( - decay * s_chem[i] );
+      DType geom = geom_fac( l_x_c[i] * data_r[nt], tdSetup->dim );
+      s_srce[i] += geom * ( - decay * s_chem[i] );
 
-      DType delay_loc = delay_loc_base/icalc_scal_block_potassium( k, B2Ps, s_p[i], b2_block ).val();
-      std::map<std::string,DType> pst_data;
-      pst_data.clear();
-      bool find_prev = get_prev_cell( tsol_loc-delay_loc, i, pst_data );
+      DType delay_loc = delay_loc_base/icalc_scal_block_potassium( k, B2Ps, s_p[i].val(), b2_block );
+      bool find_prev = get_prev_interp( tsol_loc-delay_loc, interp );
       if ( find_prev ) {
-        s_srce[i] += std::pow( l_x_c[i] * data_r[nt], tdSetup->dim-1 ) * 
-          ( prod_b2 * icalc_scal_block_potassium( k, Ps, s_p[i], v_block ) 
-                    * icalc_scal_block_potassium( k, B2Ps, s_p[i], b2_block ) * pst_data["B2"] - 
-            decay_b * icalc_scal_block_potassium( k, Ps, s_p[i], b1_block ) * pst_data["B1"] * pst_data["V"] );
+        DType pst_b1 = calc_prev_data( prev_b1, i, interp );
+        DType pst_b2 = calc_prev_data( prev_b2, i, interp );
+        DType pst_v  = calc_prev_data( prev_v,  i, interp );
+        iset_scal_block_potassium( s_block_v,  k, Ps, s_p[i], v_block );
+        iset_scal_block_potassium( s_block_b2, k, B2Ps, s_p[i], b2_block );
+        iset_scal_block_potassium( s_block_b1, k, Ps, s_p[i], b1_block );
+        s_srce[i] += geom * 
+          ( prod_b2 * s_block_v 
+                    * s_block_b2 * pst_b2 - 
+            decay_b * s_block_b1 * pst_b1 * pst_v );
       }
     }
   }
@@ -3837,10 +3914,13 @@ void TDSolveSacado::calc_chem_srce_v_potassium(std::string chemname, const int n
     SacadoIndVarArray& s_b2 = S_data_var["B2"];
 
     for ( int i = 0; i < num; i++ ) {
-      s_srce[i] += std::pow( l_x_c[i] * data_r[nt], tdSetup->dim-1 ) *
-        ( prod_b2 * icalc_scal_block_potassium( k, Ps, s_p[i], v_block )
-                  * icalc_scal_block_potassium( k, B2Ps, s_p[i], b2_block ) * s_b2[i] - 
-          decay_b * icalc_scal_block_potassium( k, Ps, s_p[i], b1_block ) * s_b1[i] * s_chem[i] -
+      iset_scal_block_potassium( s_block_v,  k, Ps, s_p[i], v_block );
+      iset_scal_block_potassium( s_block_b2, k, B2Ps, s_p[i], b2_block );
+      iset_scal_block_potassium( s_block_b1, k, Ps, s_p[i], b1_block );
+      s_srce[i] += geom_fac( l_x_c[i] * data_r[nt], tdSetup->dim ) *
+        ( prod_b2 * s_block_v
+                  * s_block_b2 * s_b2[i] - 
+          decay_b * s_block_b1 * s_b1[i] * s_chem[i] -
           decay * s_chem[i] );
         // Below is used in <= r168, but may not be reasonable
         //( icalc_scal_block_potassium( k, Ps, s_p[i], b1_block ) * ( prod_b2 * 
@@ -4360,30 +4440,22 @@ void TDSolveSacado::update_ale_chems_by_res_imp(const int nt) {
 }
 
 void TDSolveSacado::update_ale_chem_by_res_var_imp(HVEC& h_var, HVEC& h_res, SacadoDepVarArray& s_flx_r, SacadoDepVarArray& s_flx_d, SacadoDepVarArray& s_src, const int s_offset, LSPack& lsPack, const int nt) {
-  lsPack.mat->reset( 0.0 );
-  lsPack.rhs->reset( 0.0 );
-  lsPack.sol->reset( 0.0 );
-
-  VComp comp(1,0.0);
-  Entry elem(1,0.0);
+  LinBandSys& sys = *lsPack.sys;
+  sys.reset();
 
   // RHS
   for ( int i = 0; i < Na; i++ ) {
-    comp = h_res[i];
-    lsPack.rhs->set(i,comp);
+    sys.rhs(i) = h_res[i];
   }
 
   // Matrix
   // - mass matrix
   for ( int i = 0; i < Na; i++ ) {
-    elem = 1.0;
-    lsPack.mat->set(i,i,elem);
+    sys.add(i,i,1.0);
   }
   // - source terms - assuming no nearby data is needed!
   for ( int i = 0; i < Na; i++ ) {
-    elem = lsPack.mat->get(i,i);
-    elem -= dtn * s_src[i].dx( s_offset+i );
-    lsPack.mat->set(i,i,elem);
+    sys.add(i,i,-( dtn * s_src[i].dx( seed_idx(s_offset,i) ) ));
   }
   // - fluxes -
   int sten = 1;
@@ -4392,24 +4464,18 @@ void TDSolveSacado::update_ale_chem_by_res_var_imp(HVEC& h_var, HVEC& h_res, Sac
     int i_max = min(Na-1,i+sten);
     DType denom = x_ale_c[nt][i] * x_ale_c[nt][i] * dx_ale[nt][i];
     for ( int j = i_min; j <= i_max; j++ ) {
-      elem = lsPack.mat->get(i,j);
-      elem += (dtn/denom) * (s_flx_d[i+1].dx(s_offset+j)-s_flx_d[i].dx(s_offset+j)); 
-      elem += dtn*s_flx_r[i].dx(s_offset+j);
-      lsPack.mat->set(i,j,elem);
+      sys.add(i,j,(dtn/denom) * (s_flx_d[i+1].dx(seed_idx(s_offset,j))-s_flx_d[i].dx(seed_idx(s_offset,j))));
+      sys.add(i,j,dtn*s_flx_r[i].dx(seed_idx(s_offset,j)));
     }
   }
 
   // Solve the linear system
-  lsPack.linSolve->solve();
+  solve_linsys( lsPack );
 
   // Fetch and update solution
   for ( int i = 0; i < Na; i++ ) {
-    comp = lsPack.sol->get(i);
-    HVEC vsol(1);
-    vsol = comp.getVal();
-    h_var[i] -= vsol[0];
+    h_var[i] -= sys.sol(i);
   }
 
   return;
 }
-

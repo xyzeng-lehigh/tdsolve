@@ -119,6 +119,7 @@ struct TDSetup {
   int   dr_opt, r_opt;
   bool  jac_lim;
   bool  jac_vel;
+  bool  jac_comp; // Compressed derivative components, see S_seed_wid in TDSolveSacado.h
   bool  slim_tot;
   bool  diagn_vcoup;
   bool  silence_screen;
@@ -142,6 +143,7 @@ struct TDSetup {
 
 struct TDLin {
   ChoiceLSysType   Type;
+  ChoiceLSysDirect Direct; // Only used by the Sacado framework
   bool             Print;
   ChoiceLSysIter   Iter;
   ChoiceLSysKrylov Krylov;

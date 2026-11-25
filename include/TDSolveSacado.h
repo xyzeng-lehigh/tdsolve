@@ -4,12 +4,16 @@
 #include <iostream>
 #include <cstdio>
 #include <cstring>
+#include <cmath>
 #include <set>
 #include <map>
 #include <vector>
 #include <string>
 #include "Data_Type.h"
+#include "HighDim_Alg.h"
 #include "TDSolve.h"
+
+class LinBandSys;
 
 // Automatic differentiation: the built-in AutoDiff::Fad::DFad by default.
 // Configuring with -DUSE_TRILINOS=ON switches back to the Sacado package of
@@ -66,12 +70,24 @@ class TDSolveSacado : public TDSolve {
   protected:
     bool enable_time_delay;
     DType time_delay_max;
-    std::vector<DType>                       prev_time; // Decreasing order
-    std::vector<std::map<std::string,HVEC*>> prev_cell;
+    // Solutions at previous times: prev_cell[name][n] is the variable name
+    // at the time prev_time[n]
+    std::vector<DType>                       prev_time; // Increasing order
+    std::map<std::string,std::vector<HVEC*>> prev_cell;
+    // Linear interpolation in time between two consecutive stored solutions
+    struct PrevInterp {
+      int   i_left, i_rght;
+      DType coef_left, coef_rght;
+    };
     void clear_prev_cell(int i);
     void push_to_prev_cells(DType cur_time, int nt);
+    bool get_prev_interp(DType pst_time, PrevInterp& interp);
     bool get_prev_cell(DType pst_time, std::map<std::string,HVEC*>& pst_cell);
     bool get_prev_cell(DType pst_time, int i, std::map<std::string,DType>& pst_data);
+    // Variable stored in data (= prev_cell[name]) in the i-th interval
+    inline DType calc_prev_data(const std::vector<HVEC*>& data, const int i, const PrevInterp& interp) {
+      return interp.coef_left * (*data[interp.i_left])[i] + interp.coef_rght * (*data[interp.i_rght])[i];
+    }
     
     // Specific toggle options for oncolyticOld model
     bool in_oncolyticOld_stage[3];
@@ -144,6 +160,12 @@ class TDSolveSacado : public TDSolve {
       // Testing options
       int test_opt;
     };
+    // A linear system is always assembled in sys (see Alg_BandSolve.h). It
+    // is solved there if a direct solver is requested (lsysType = DIR with
+    // lsysDirect = LU and without preconditioner); otherwise it is copied
+    // to mat and rhs, solved by linSolve, and the solution is copied back.
+    // mat, ..., linSolve are shared by all variables of the same size, while
+    // each use has its own sys so that sparsity patterns do not mix.
     struct LSPack {
       LinMat*   mat;
       LinMat*   prc;
@@ -151,6 +173,7 @@ class TDSolveSacado : public TDSolve {
       LinVec*   rhs;
       LinVec*   res;
       LinSolve* linSolve;
+      LinBandSys* sys;
     };
     // Variable names
     std::vector<std::string> cellnames;   // All cell species name
@@ -176,6 +199,34 @@ class TDSolveSacado : public TDSolve {
     std::map<std::string, SacadoIndVarArray> S_data_var;
     std::map<std::string, int> S_data_offset;
     int S_data_num;
+    // Derivative components of the independent variables
+    //   S_seed_wid = 0: The i-th unknown of a variable is the independent
+    //     variable number S_data_offset[name]+i, and S_data_num is the total
+    //     number of unknowns. A derivative costs S_data_num operations.
+    //   S_seed_wid > 0: The unknowns i, i+S_seed_wid, i+2*S_seed_wid, ...
+    //     of a variable share the derivative component
+    //     S_data_offset[name] + i % S_seed_wid, so that S_data_num is only
+    //     S_seed_wid times the number of variables, whatever Nx is. Then
+    //     f.dx( seed_idx(S_data_offset[name],j) ) is the derivative of f
+    //     with respect to the j-th unknown of the variable name PROVIDED
+    //     THAT f depends on no other unknown j+m*S_seed_wid of that variable.
+    //     This holds for all derivatives used for the Jacobians if
+    //       1. source terms in an interval only depend on the unknowns in
+    //          the same interval, and
+    //       2. the fluxes of the interval i only depend on the unknowns in
+    //          the intervals i-sten to i+sten, with 2*sten+1 <= S_seed_wid.
+    //     A setup_var_* function may set S_seed_wid if its problem meets
+    //     these conditions (see setup_var_potassium); the input toggle
+    //     Jacobian_compress = 0 keeps it zero.
+    int S_seed_wid;
+    // Number of derivative components used by a variable with num unknowns
+    inline int num_seed(const int num) const {
+      return ( S_seed_wid > 0 && num > S_seed_wid ) ? S_seed_wid : num;
+    }
+    // Derivative component of the i-th unknown of a variable
+    inline int seed_idx(const int s_offset, const int i) const {
+      return s_offset + ( S_seed_wid > 0 ? i % S_seed_wid : i );
+    }
     // HVEC version
     std::map<std::string, HVEC**> H_data_var;
     std::map<std::string, HVEC**> H_data_res;
@@ -258,6 +309,7 @@ class TDSolveSacado : public TDSolve {
 
   private:
     void setup_new_lin_solve(const int num);
+    void solve_linsys(LSPack& lsPack);
 
     void calc_total_inc_viol(const int nt);
     void compute_vel_u(const DType tsol_loc);
@@ -305,7 +357,7 @@ class TDSolveSacado : public TDSolve {
 
     void reset_residual(void);
     void compute_cells_residual(const int fr, const int to);
-    void assemble_inertia_var(HVEC& h_res, DType r_fr, HVEC& h_var, DType r_to, SacadoIndVarArray s_var, DType* l_x_c);
+    void assemble_inertia_var(HVEC& h_res, DType r_fr, HVEC& h_var, DType r_to, SacadoIndVarArray& s_var, DType* l_x_c);
     void assemble_flux_var(HVEC& h_res, SacadoDepVarArray& s_flx);
     void assemble_srce_var(HVEC& h_res, SacadoDepVarArray& s_src);
     void compute_chems_residual(const int fr, const int to);
@@ -355,8 +407,8 @@ class TDSolveSacado : public TDSolve {
     void calc_srce_b2_potassium(SacadoDepVarArray& s_srce, const DType tsol_loc);
     void calc_srce_b3_potassium(SacadoDepVarArray& s_srce, const DType tsol_loc);
 
-    inline SacadoDepVar icalc_scal_logist_mm(DType,AutoDiff::Fad::DFad<DType>,DType,DType,DType,AutoDiff::Fad::DFad<DType>);
-    inline SacadoDepVar icalc_mm(DType mm_ceil, DType mm_half, AutoDiff::Fad::DFad<DType> s_var) {
+    inline SacadoDepVar icalc_scal_logist_mm(DType,const AutoDiff::Fad::DFad<DType>&,DType,DType,DType,const AutoDiff::Fad::DFad<DType>&);
+    inline SacadoDepVar icalc_mm(DType mm_ceil, DType mm_half, const AutoDiff::Fad::DFad<DType>& s_var) {
       SacadoDepVar result = 0.0;
       if ( std::fabs( s_var ) > 1.0 )
         result = mm_ceil * ( 1.0 / ( (mm_half/s_var) + 1.0 ) );
@@ -369,7 +421,7 @@ class TDSolveSacado : public TDSolve {
     void calc_srce_b_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
     void calc_srce_h_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
     void calc_srce_q_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
-    inline SacadoDepVar icalc_q_growth_oncolytic(AutoDiff::Fad::DFad<DType> s_q) { SacadoDepVar val = s_q * 0.0; return val;}
+    inline SacadoDepVar icalc_q_growth_oncolytic(const AutoDiff::Fad::DFad<DType>& s_q) { SacadoDepVar val = s_q * 0.0; return val;}
     void calc_srce_n_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
     void calc_srce_m1_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
     void calc_srce_m1e_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
@@ -393,8 +445,32 @@ class TDSolveSacado : public TDSolve {
 
     void calc_chem_srce_vi_oncolytic(std::string chemname, const int nt, const DType tsol_loc );
 
-    inline SacadoDepVar icalc_scal_block_potassium(DType,DType,AutoDiff::Fad::DFad<DType>,DType heaviside_scale);
+    inline SacadoDepVar icalc_scal_block_potassium(DType,DType,const AutoDiff::Fad::DFad<DType>&,DType heaviside_scale);
     //inline SacadoDepVar icalc_scal_block_potassium(DType,DType,AutoDiff::Fad::DFad<DType>,DType heaviside_scale = 1.0);
+    // The same function for values only (no derivatives)
+    inline DType icalc_scal_block_potassium(DType,DType,DType,DType heaviside_scale);
+    // The same function, storing the result in s_val. In a loop this avoids
+    // the allocation of a new variable for every result.
+    inline void iset_scal_block_potassium(SacadoDepVar& s_val,DType,DType,const AutoDiff::Fad::DFad<DType>&,DType heaviside_scale);
+
+    // Parameters of the potassium model, read once from
+    // tdCoef->probVarParVals["potassium"] by setup_par_potassium
+    struct PotassiumPar {
+      bool  has_rho;  // global/ie_ratio is given
+      DType rho;      // global/ie_ratio (1 if not given)
+      DType b1_decay; // B1/grow_neg_virus
+      DType b1_block; // B1/grow_block (1 if not given)
+      DType b2_decay; // B2/grow_neg
+      DType b2_block; // B2/grow_block (0 if not given)
+      DType b2_thres; // B2/threshold (P/threshold if not given)
+      DType p_slope;  // P/slope
+      DType p_thres;  // P/threshold
+      DType p_burst;  // P/burst
+      DType v_burst;  // V/burst
+      DType v_block;  // V/burst_block (0 if not given)
+    };
+    PotassiumPar potPar;
+    void setup_par_potassium(void);
 
     // Other functions
     DType calc_n_bc( const DType tsol_loc );
@@ -447,7 +523,7 @@ inline DType TDSolveSacado::calc_wupw( const DType l_x, const DType l_dx ) {
   return l_x * ( l_x * l_x - 0.25 * l_dx * l_dx );
 }
 
-inline TDSolveSacado::SacadoDepVar TDSolveSacado::icalc_scal_logist_mm(DType scal, AutoDiff::Fad::DFad<DType> s_logist, DType mm_const, DType mm_ceil, DType mm_half, AutoDiff::Fad::DFad<DType> s_mm) {
+inline TDSolveSacado::SacadoDepVar TDSolveSacado::icalc_scal_logist_mm(DType scal, const AutoDiff::Fad::DFad<DType>& s_logist, DType mm_const, DType mm_ceil, DType mm_half, const AutoDiff::Fad::DFad<DType>& s_mm) {
   SacadoDepVar s_val;
   if ( s_logist >= 1.0 )
     s_val = 0.0;
@@ -458,8 +534,13 @@ inline TDSolveSacado::SacadoDepVar TDSolveSacado::icalc_scal_logist_mm(DType sca
   return s_val;
 }
 
-inline TDSolveSacado::SacadoDepVar TDSolveSacado::icalc_scal_block_potassium(DType k, DType Ps, AutoDiff::Fad::DFad<DType> s_P, DType heaviside_scale) {
+inline TDSolveSacado::SacadoDepVar TDSolveSacado::icalc_scal_block_potassium(DType k, DType Ps, const AutoDiff::Fad::DFad<DType>& s_P, DType heaviside_scale) {
   SacadoDepVar s_val;
+  iset_scal_block_potassium( s_val, k, Ps, s_P, heaviside_scale );
+  return s_val;
+}
+
+inline void TDSolveSacado::iset_scal_block_potassium(SacadoDepVar& s_val, DType k, DType Ps, const AutoDiff::Fad::DFad<DType>& s_P, DType heaviside_scale) {
   if ( k > 0.0 )
     s_val = 1.0 - heaviside_scale/(1.0+std::exp(-2.0*k*(s_P-Ps)));
   else if ( k == 0.0 ) {
@@ -471,7 +552,23 @@ inline TDSolveSacado::SacadoDepVar TDSolveSacado::icalc_scal_block_potassium(DTy
     else
       s_val = 1.0 - heaviside_scale;
   }
-  return s_val;
+  return;
+}
+
+inline DType TDSolveSacado::icalc_scal_block_potassium(DType k, DType Ps, DType P, DType heaviside_scale) {
+  DType val;
+  if ( k > 0.0 )
+    val = 1.0 - heaviside_scale/(1.0+std::exp(-2.0*k*(P-Ps)));
+  else if ( k == 0.0 ) {
+    val = 1.0;
+  }
+  else {
+    if ( P < Ps )
+      val = 1.0;
+    else
+      val = 1.0 - heaviside_scale;
+  }
+  return val;
 }
 
 #endif

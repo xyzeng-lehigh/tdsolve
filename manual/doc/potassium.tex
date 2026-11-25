@@ -1,0 +1,613 @@
+% A short documentation of the potassium model of TDSolve.
+% Build (in this directory):   sh convert.sh potassium
+%   (two runs of pdflatex; the PDF is moved to ../potassium.pdf)
+% The file is self-contained: the example input file of Section 5 is a copy
+% of ../demo/input_potassium.hcl and the data of Figure 1 are stored below.
+\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{pgfplots}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+\pgfplotsset{compat=1.15}
+
+% Where the source code can be obtained; set this to the address of the
+% repository before distributing the document.
+\newcommand{\repourl}{\textit{<address of the repository>}}
+
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\pp}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\pph}[1]{\partial #1/\partial r}
+\newcommand{\Dr}{\Delta r}
+\newcommand{\Dt}{\Delta t}
+\newcommand{\thetae}{\theta_e}
+
+\lstset{
+  basicstyle=\small\ttfamily,
+  backgroundcolor=\color{black!6},
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  xleftmargin=0.2cm,
+  xrightmargin=0.2cm,
+  aboveskip=0.6em,
+  belowskip=0.4em
+}
+\setlist{itemsep=0.15em,topsep=0.3em}
+
+% Results of the example of Section 5 (manual/demo/input_potassium.hcl):
+% r, B1, B2, B3 at t = 400, and P at t = 100, 200, 300, 400.
+\pgfplotstableread{
+    r     B1      B2      B3      Pa         Pb         Pc         Pd
+    0.5  0.0003  0.0015  0.9982  3.862e+01  2.378e+02  5.340e+02  7.161e+02
+    1.5  0.0005  0.0029  0.9967  2.573e+01  2.170e+02  5.333e+02  7.219e+02
+    2.5  0.0012  0.0068  0.9921  1.520e+01  1.767e+02  5.198e+02  7.321e+02
+    3.5  0.0037  0.0170  0.9792  6.786e+00  1.308e+02  4.795e+02  7.436e+02
+    4.5  0.0128  0.0404  0.9468  2.818e+00  9.070e+01  4.096e+02  7.488e+02
+    5.5  0.0417  0.0814  0.8770  1.142e+00  6.006e+01  3.246e+02  7.345e+02
+    6.5  0.1140  0.1289  0.7571  4.580e-01  3.666e+01  2.425e+02  6.870e+02
+    7.5  0.2438  0.1565  0.5998  1.823e-01  2.187e+01  1.738e+02  6.047e+02
+    8.5  0.4099  0.1510  0.4391  7.208e-02  1.190e+01  1.208e+02  5.012e+02
+    9.5  0.5722  0.1239  0.3039  2.832e-02  6.296e+00  8.216e+01  3.948e+02
+   10.5  0.7046  0.0919  0.2035  1.105e-02  3.285e+00  5.473e+01  2.988e+02
+   11.5  0.8017  0.0645  0.1339  4.271e-03  1.694e+00  3.459e+01  2.192e+02
+   12.5  0.8689  0.0438  0.0873  1.633e-03  8.628e-01  2.147e+01  1.569e+02
+   13.5  0.9140  0.0293  0.0566  6.159e-04  4.342e-01  1.247e+01  1.101e+02
+   14.5  0.9440  0.0194  0.0366  2.286e-04  2.158e-01  7.108e+00  7.584e+01
+   15.5  0.9638  0.0127  0.0235  8.333e-05  1.059e-01  4.018e+00  5.132e+01
+   16.5  0.9756  0.0097  0.0147  2.977e-05  5.125e-02  2.257e+00  3.290e+01
+   17.5  0.9890  0.0057  0.0054  1.041e-05  2.449e-02  1.260e+00  2.074e+01
+   18.5  0.9982  0.0010  0.0008  3.556e-06  1.154e-02  6.984e-01  1.233e+01
+   19.5  0.9997  0.0001  0.0001  1.186e-06  5.368e-03  3.845e-01  7.213e+00
+   20.5  1.0000  0.0000  0.0000  3.861e-07  2.464e-03  2.100e-01  4.195e+00
+   21.5  1.0000  0.0000  0.0000  1.226e-07  1.116e-03  1.138e-01  2.432e+00
+   22.5  1.0000  0.0000  0.0000  3.793e-08  4.986e-04  6.110e-02  1.407e+00
+   23.5  1.0000  0.0000  0.0000  1.145e-08  2.200e-04  3.252e-02  8.112e-01
+   24.5  1.0000  0.0000  0.0000  3.368e-09  9.584e-05  1.715e-02  4.662e-01
+}\potdata
+
+\title{The Potassium Model of \code{TDSolve}:\\ Equations, Numerical Method, and Usage}
+\author{\code{TDSolve} documentation}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Overview}
+\code{TDSolve} is a \code{C++} code for one-dimensional (planar, radially or spherically symmetric) models of cell populations coupled to diffusing substances.
+This note documents one of its models, the \emph{potassium model}: the spread of a virus through a population of cells in which the potassium released by dying cells hinders the infection.
+It states the equations that the code solves and the parameters that enter them, summarizes the numerical method, and explains how to install the code, write an input file, run a simulation and read the results.
+
+In short, once the code is built (Section~\ref{sec:install}), a simulation is run by
+\begin{lstlisting}
+$ cp <TDSolve>/manual/demo/input_potassium.hcl input.hcl
+$ <TDSolve>/TumorDynRun -i input.hcl
+\end{lstlisting}
+where \code{<TDSolve>} denotes the top directory of the code and a line starting with \code{\$} is a command to be typed in a terminal.
+The run takes about one second and writes the solution to the file \code{sol.dat}.
+
+\section{Installation}
+\label{sec:install}
+
+\subsection{Requirements}
+The code runs on Linux and macOS. The following are needed:
+\begin{itemize}
+  \item a \code{C++17} compiler (for example GCC~9 or newer, or Apple clang), \code{make}, and CMake~3.9 or newer;
+  \item the libraries BLAS and LAPACK (any implementation; on macOS they are part of the system);
+  \item OpenMP (optional; only used to run several simulations at once, Section~\ref{sec:paranal}).
+\end{itemize}
+No other library is required.
+Typical commands to install these are:
+\begin{lstlisting}
+# Red Hat Enterprise Linux, Fedora, ...
+$ sudo dnf install gcc-c++ gcc-gfortran make cmake blas-devel lapack-devel
+# Debian, Ubuntu, ...
+$ sudo apt install g++ gfortran make cmake libblas-dev liblapack-dev
+# macOS (with Homebrew)
+$ xcode-select --install
+$ brew install cmake libomp
+\end{lstlisting}
+(On Linux the Fortran runtime library that comes with \code{gfortran} is needed to link with BLAS and LAPACK.)
+
+\subsection{Building}
+Obtain the source code, e.g.\ by cloning the repository \repourl, and run the build script in its top directory:
+\begin{lstlisting}
+$ cd <TDSolve>
+$ sh build_cmake.sh
+\end{lstlisting}
+The script configures the code with CMake in the directory \code{build/}, compiles it, and creates links to the two programs in the top directory:
+\begin{center}
+\begin{tabular}{ll}
+  \code{TumorDynRun} & runs one simulation from one input file (Section~\ref{sec:run}); \\
+  \code{ParAnalRun}  & runs a series of simulations with different parameters (Section~\ref{sec:paranal}).
+\end{tabular}
+\end{center}
+Arguments given to the script are passed on to \code{cmake}, for example to choose a compiler:
+\begin{lstlisting}
+$ sh build_cmake.sh -DCMAKE_CXX_COMPILER=g++-14
+\end{lstlisting}
+After the source code has been modified, \code{make} in the directory \code{build/} recompiles what is needed; run the script again if source files were added.
+
+\subsection{Checking the installation}
+\label{sec:check}
+A small reference case of the potassium model ($N_x=10$ mesh intervals, $0\le t\le 100$) is stored in \code{benchmark/Sacado/potassium/pot\_test\_be/}.
+Run it in an empty directory,
+\begin{lstlisting}
+$ cp <TDSolve>/benchmark/Sacado/potassium/pot_test_be/input.hcl .
+$ <TDSolve>/TumorDynRun -i input.hcl
+\end{lstlisting}
+and compare the file \code{sol.dat} with the one in the sub-directory \code{benchmark/} of the case.
+The last two blocks of ten lines with seven columns hold the solution at $t=100$; their first line should read (rounded here)
+\begin{lstlisting}
+5.000000  0.980158  0.009714  0.010128  0.000000  5.103330  3094412.5
+\end{lstlisting}
+The numbers of the two files agree to about 14 significant digits; the last digits depend on the compiler and on the BLAS/LAPACK library.
+(The script \code{run.sh} in the same directory runs the case into a directory named after the revision of the code; it needs the environment variable \code{TDS} set to \code{<TDSolve>} and Mercurial.)
+
+Two test programs verify the building blocks of the solver, namely the automatic differentiation and the solver for the linear systems.
+Each prints a summary and returns the exit status~0 if all its checks pass:
+\begin{lstlisting}
+$ cd <TDSolve>/tests/AutoDiff;  sh build_cmake.sh;  sh run_gnu.sh
+$ cd <TDSolve>/tests/BandSolve; sh build_cmake.sh;  sh run_gnu.sh
+\end{lstlisting}
+
+\section{The model}
+\label{sec:model}
+
+\subsection{Unknowns and equations}
+The domain is $0\le r\le R$ with a fixed radius $R$, where $r$ is the distance to the origin in $d$ space dimensions ($d=1$: slab, $d=2$: radial symmetry in the plane, $d=3$: spherical symmetry).
+The unknowns are functions of $r$ and the time $t$:
+\begin{center}
+\begin{tabular}{ll}
+  $B_1$, $B_2$, $B_3$ & fractions of uninfected, infected and dead cells ($B_1+B_2+B_3=1$), \\
+  $P$ & concentration of potassium, \\
+  $V$ & concentration of the virus.
+\end{tabular}
+\end{center}
+The cells do not move; potassium and virus diffuse.
+With the abbreviation
+\begin{equation*}
+  \Delta_r u = \frac{1}{r^{d-1}}\pp{}{r}\left(r^{d-1}\pp{u}{r}\right)
+\end{equation*}
+the equations are, without time delay (\code{enable\_delay = 0}),
+\begin{align}
+  \pp{B_1}{t} &= -\beta\,\Phi_1(P)\,B_1V\,, \label{eq:b1}\\
+  \pp{B_2}{t} &= \beta\,\Phi_1(P)\,B_1V - \delta\,\Phi_2(P)\,B_2\,, \label{eq:b2}\\
+  \pp{B_3}{t} &= \delta\,\Phi_2(P)\,B_2\,, \label{eq:b3}\\
+  \pp{P}{t} &= D_P\,\Delta_rP + a\,\rho\,\thetae\,\delta\,\Phi_2(P)\,B_2 - \tau P\,, \label{eq:p}\\
+  \pp{V}{t} &= D_V\,\Delta_rV + b\,\rho\,\thetae\,\delta\,\Phi_V(P)\,\Phi_2(P)\,B_2 - \beta\,\thetae\,\Phi_1(P)\,B_1V - \gamma V\,. \label{eq:v}
+\end{align}
+Uninfected cells become infected at the rate $\beta V$ and infected cells die at the rate $\delta$, both reduced by the factors $\Phi_1$ and $\Phi_2$.
+A dying cell releases potassium (amount $a$) and new viruses (number $b$); viruses are consumed when they infect cells; potassium and virus decay at the rates $\tau$ and $\gamma$.
+The functions $\Phi_1$, $\Phi_2$, $\Phi_V$ take values between 0 and 1 and describe how potassium blocks the infection, the death of infected cells and the release of viruses (Section~\ref{sec:block}).
+The constant $\theta$ is the number of cells per unit volume, and $\rho$ is the ratio between the intracellular and the extracellular space, which enters through
+\begin{equation}
+  \thetae = \theta\,\frac{\rho}{1+\rho}\,,
+  \label{eq:thetae}
+\end{equation}
+through the factors $\rho$ in \eqref{eq:p} and \eqref{eq:v}, and through the initial condition \eqref{eq:ic}.
+If $\rho$ is not given in the input file, $\rho=1$ and $\thetae=\theta$ are used.
+
+\subsection{Blocking by potassium}
+\label{sec:block}
+Let $k$ be the steepness parameter of the model and
+\begin{equation}
+  \Phi(P;P_*,c) = 1 - c\,H_k(P-P_*)\,,\qquad
+  H_k(x) =
+  \begin{cases}
+    1/(1+e^{-2kx}) & \text{if } k>0\,, \\
+    0 & \text{if } k=0\,, \\
+    1 \text{ if } x\ge0,\ \text{ and } 0 \text{ if } x<0 & \text{if } k<0\,.
+  \end{cases}
+  \label{eq:phi}
+\end{equation}
+For $k>0$, $\Phi$ decreases smoothly from $1$ to $1-c$ when $P$ grows beyond the threshold $P_*$, over a range of $P$ of width about $1/k$; hence $c$ is the fraction of the process that is blocked at high potassium concentration.
+A negative $k$ gives a jump at $P_*$, and $k=0$ switches all blocking off.
+The three functions in \eqref{eq:b1}--\eqref{eq:v} are
+\begin{equation*}
+  \Phi_1(P) = \Phi(P;P_s,c_1)\,,\qquad
+  \Phi_2(P) = \Phi(P;P_2,c_2)\,,\qquad
+  \Phi_V(P) = \Phi(P;P_s,c_V)\,,
+\end{equation*}
+with the fractions $c_1$, $c_2$, $c_V$ and the thresholds $P_s$, $P_2$ of Table~\ref{tab:par}.
+
+\subsection{Time delay}
+\label{sec:delay}
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+Symbol & Sub-block & Name & Meaning (value used if the line is missing) \\
+\midrule
+$\theta$ & --- & \code{theta} & number of cells per unit volume (1) \\
+$R$ & --- & \code{r\_0} & radius of the domain (1) \\
+$d$ & --- & \code{dimension} & 1, 2 or 3 (3) \\
+\midrule
+$\rho$ & \code{global} & \code{ie\_ratio} & ratio between intra- and extracellular space ($\rho=1$, $\thetae=\theta$) \\
+       & \code{global} & \code{enable\_delay} & 1: equations \eqref{eq:pd}, \eqref{eq:vd} with time delay; 0: without (0) \\
+\midrule
+$\beta$ & \code{B1} & \code{grow\_neg\_virus} & infection rate (0) \\
+$c_1$ & \code{B1} & \code{grow\_block} & blocked fraction of the infection (1) \\
+$\delta$ & \code{B2} & \code{grow\_neg} & death rate of infected cells (0; must be positive with delay) \\
+$c_2$ & \code{B2} & \code{grow\_block} & blocked fraction of the death rate (0) \\
+$P_2$ & \code{B2} & \code{threshold} & threshold of potassium for $\Phi_2$ ($P_s$) \\
+\midrule
+$\tau$ & \code{P} & \code{grow\_neg} & decay rate of potassium (0) \\
+$D_P$ & \code{P} & \code{diffusion} & diffusion coefficient of potassium (0) \\
+$k$ & \code{P} & \code{slope} & steepness of the blocking functions, see \eqref{eq:phi} (0: no blocking) \\
+$P_s$ & \code{P} & \code{threshold} & threshold of potassium for $\Phi_1$ and $\Phi_V$ (0) \\
+$a$ & \code{P} & \code{burst} & potassium released by a dying cell (0) \\
+\midrule
+$\gamma$ & \code{V} & \code{grow\_neg} & decay rate of the virus (0) \\
+$D_V$ & \code{V} & \code{diffusion} & diffusion coefficient of the virus (0) \\
+$N_V$ & \code{V} & \code{init\_num} & number of viruses at the initial time, see \eqref{eq:ic} (0) \\
+$b$ & \code{V} & \code{burst} & viruses released by a dying cell (0) \\
+$c_V$ & \code{V} & \code{burst\_block} & blocked fraction of the release of viruses (0) \\
+\bottomrule
+\end{tabular}
+\caption{Parameters of the potassium model and their names in the input file.}
+\label{tab:par}
+\end{table}
+
+With \code{enable\_delay = 1} the release of potassium and virus at the time $t$ is computed from the state at the earlier time $t-\sigma$, where
+\begin{equation}
+  \sigma = \frac{1}{\delta\,\Phi_2(P(r,t))}
+  \label{eq:sigma}
+\end{equation}
+is the mean life time of an infected cell at the present potassium concentration.
+Equations \eqref{eq:b1}--\eqref{eq:b3} are unchanged, and \eqref{eq:p}, \eqref{eq:v} are replaced by
+\begin{align}
+  \pp{P}{t} &= D_P\,\Delta_rP - \tau P + a\,\rho\,\thetae\,\delta\,\Phi_2(P)\,B_2^\sigma\,, \label{eq:pd}\\
+  \pp{V}{t} &= D_V\,\Delta_rV - \gamma V + b\,\rho\,\thetae\,\delta\,\Phi_V(P)\,\Phi_2(P)\,B_2^\sigma - \beta\,\thetae\,\Phi_1(P)\,B_1^\sigma V^\sigma\,, \label{eq:vd}
+\end{align}
+where $u^\sigma$ stands for $u(r,t-\sigma)$ while $P$ in the functions $\Phi$ is taken at the time $t$.
+As long as $t-\sigma$ is smaller than the initial time, the terms with a superscript $\sigma$ are zero.
+Since $1-c_2\le\Phi_2\le1$, the delay lies between $1/\delta$ and $1/(\delta(1-c_2))$.
+
+\subsection{Initial and boundary conditions}
+At the initial time all cells are uninfected and there is no potassium:
+$B_1=1$, $B_2=B_3=0$, $P=0$.
+The virus is placed at the origin: $V=0$ except in the innermost mesh interval $0\le r\le\Dr$ (Section~\ref{sec:num}), where
+\begin{equation}
+  V = \frac{\rho\,N_V}{\omega_d\,\Dr^{\,d}}\,,\qquad \omega_1=2\,,\quad \omega_2=\pi\,,\quad \omega_3=\frac{4\pi}{3}\,,
+  \label{eq:ic}
+\end{equation}
+i.e.\ $\rho N_V$ viruses are spread over the ball of radius $\Dr$.
+Potassium and virus do not cross the boundary: $\pph{P}=\pph{V}=0$ at $r=R$, and by symmetry at $r=0$.
+No boundary condition is needed for the cells.
+
+\subsection{Parameters}
+\label{sec:par}
+Table~\ref{tab:par} lists the parameters of the model with their names in the input file.
+All except $\theta$ and $R$ are given inside the block \code{potassium} of the input file, in the sub-block shown in the second column (Section~\ref{sec:input}).
+The code does not prescribe units; any consistent set may be used.
+
+\section{Numerical method}
+\label{sec:num}
+\paragraph{Mesh.}
+The interval $[0,R]$ is divided into $N_x$ intervals of the width $\Dr=R/N_x$.
+One value of each unknown is stored per interval, $u_i\approx u(r_i)$ at the midpoint $r_i=(i-\frac12)\Dr$, $i=1,\dots,N_x$; the end points of the intervals are $r_{i\pm1/2}=r_i\pm\Dr/2$.
+
+\paragraph{Diffusion.}
+The diffusion terms are discretized in conservation form,
+\begin{equation*}
+  (\Delta_ru)_i = \frac{1}{r_i^{d-1}\,\Dr}\left[r_{i+1/2}^{d-1}\,\frac{u_{i+1}-u_i}{\Dr} - r_{i-1/2}^{d-1}\,\frac{u_i-u_{i-1}}{\Dr}\right],
+\end{equation*}
+where the first term in the bracket is omitted for $i=N_x$ and the second one for $i=1$ (no flux through $r=R$ and $r=0$).
+This is second-order accurate in $\Dr$.
+
+\paragraph{Time integration.}
+With \code{assemble = 1} all equations are advanced by the backward Euler method, which is first-order accurate in the time step $\Dt$:
+\begin{equation*}
+  \frac{u_i^{n+1}-u_i^n}{\Dt} = D_u\,(\Delta_ru^{n+1})_i + S_u(B_1,B_2,B_3,P,V)_i^{n+1}\,,
+\end{equation*}
+where $S_u$ denotes the remaining terms of the equation of $u$ (and $D_u=0$ for the cells).
+Delayed values $u(r_i,t^{n+1}-\sigma)$ are obtained by linear interpolation in time between the solutions of the previous time steps, which are stored as far back as the largest possible delay requires.
+
+\paragraph{Nonlinear iteration.}
+The equations of a time step are solved iteratively. Each iteration consists of
+\begin{enumerate}
+  \item one step of Newton's method for the $3N_x$ values of $B_1$, $B_2$, $B_3$, with $P$ and $V$ fixed;
+  \item with the new values of the cells, one step of Newton's method for the $N_x$ values of $P$ with $V$ fixed, and one for $V$ with $P$ fixed.
+\end{enumerate}
+The iteration stops when the largest change of a value in one iteration, divided by $\max(1,\max_i|u_i|)$ of the variable concerned, is below \code{newton\_tol}, or after \code{newton\_iter} iterations.
+A Newton step is skipped when the Euclidean norm of the residual of its equations, $u_i-u_i^n-\Dt\,(\ldots)_i$, is below $10^{-12}$.
+The equations of a time step are therefore satisfied up to this absolute level whatever the value of \code{newton\_tol}, which limits the relative accuracy of unknowns that are very small in absolute value (a relative error of about $10^{-7}$ was observed for $B_2\approx10^{-5}$ in a run without time delay).
+The derivatives for Newton's method are computed by automatic differentiation of the code that evaluates the equations, and the linear systems, which have a few non-zero entries per row, are solved by Gaussian elimination for banded matrices; the work per iteration is proportional to $N_x$.
+
+\paragraph{Explicit variant.}
+With \code{assemble = 0} the cells are advanced by the forward Euler method, followed by one linearized backward Euler step for $P$ and for $V$. No iteration takes place.
+
+\paragraph{Time step.}
+The first time step is \code{dt\_init}. Afterwards the time step grows by the factor \code{dt\_growth} in every step until it reaches \code{dt\_max}, and it is never smaller than \code{dt\_min}.
+It is shortened where necessary to arrive exactly at the output times and at the final time.
+Since nothing is transported in this model, there is no stability limit of the time step for the implicit method (the key \code{cfl} has no effect); the time step is chosen for accuracy.
+With time delay it must not exceed the smallest delay $1/\delta$.
+
+\section{The input file}
+\label{sec:input}
+
+\subsection{Format}
+An input file is a text file with one statement per line:
+\begin{itemize}
+  \item A statement has the form \code{name = value}. Name and value may also be separated by a colon, spaces or tabs.
+  \item Lines starting with \code{//} or \code{\#} are comments, and empty lines are ignored. The order of the statements does not matter.
+  \item The parameters of the model form a block that starts with the line \code{potassium} and ends with the line \code{end}. Inside, each of the sub-blocks \code{global}, \code{B1}, \code{B2}, \code{P}, \code{V} starts with its name and ends with \code{end} as well.
+  \item A line outside the block whose name is not known produces a warning and is ignored. \emph{Inside the block an unknown (e.g.\ misspelled) name is not reported}, and the parameter concerned keeps the value given in the last column of Table~\ref{tab:par}.
+\end{itemize}
+
+\subsection{An example}
+The following file is \code{manual/demo/input\_potassium.hcl}. It contains every statement that is needed for the potassium model.
+\begin{lstlisting}[basicstyle=\footnotesize\ttfamily]
+// Example input file for the potassium model (see manual/doc/potassium.tex)
+//   TumorDynRun -i input_potassium.hcl
+// Lines that start with // or # are comments.
+
+// ---- Model and geometry -----------------------------------------------
+// potassium model (3), solved by the generic framework (3)
+prob_id   = 3
+framework = 3
+// 1: slab, 2: radial symmetry in the plane, 3: spherical symmetry
+dimension = 2
+// radius R of the (fixed) domain
+r_0       = 100.0
+// number of cells per unit volume
+theta     = 2.96e+5
+
+// ---- Parameters of the model ------------------------------------------
+potassium
+  global
+    // ratio rho between the intracellular and the extracellular space
+    ie_ratio       = 10.0
+    // 1: release of P and V with a time delay, 0: without
+    enable_delay   = 1.0
+  end
+
+  B1
+    // infection rate beta
+    grow_neg_virus = 0.5e-9
+    // fraction c_1 of the infection that is blocked by potassium
+    grow_block     = 0.75
+  end
+
+  B2
+    // death rate delta of the infected cells
+    grow_neg       = 0.08
+    // fraction c_2 of the death rate that is blocked by potassium
+    grow_block     = 0.5
+  end
+
+  P
+    // decay rate tau and diffusion coefficient D_P
+    grow_neg       = 0.0
+    diffusion      = 1.0e-1
+    // steepness k and threshold P_s of the blocking function
+    slope          = 4.0
+    threshold      = 25.0
+    // potassium released by a dying cell (a)
+    burst          = 5.0625e-4
+  end
+
+  V
+    // decay rate gamma and diffusion coefficient D_V
+    grow_neg       = 0.0
+    diffusion      = 1.0e-2
+    // number of viruses N_V placed at the origin at the initial time
+    init_num       = 1.0e+5
+    // viruses released by a dying cell (b), and the blocked fraction c_V
+    burst          = 3.0e+2
+    burst_block    = 0.5
+  end
+end
+
+// ---- Mesh and time stepping -------------------------------------------
+// number of mesh intervals in [0, R]
+Nx             = 100
+// initial and final time
+Tinit          = 0.0
+Tterm          = 400.0
+// first time step, largest and smallest time step, growth per step
+dt_init        = 0.2
+dt_max         = 0.2
+dt_min         = 0.2
+dt_growth      = 1.2
+// largest number of time steps
+max_iter       = 10000000
+
+// ---- Numerical method -------------------------------------------------
+// 1: implicit (backward Euler with Newton's method), 0: explicit for B1-B3
+assemble       = 1
+// keep 0 for this model when enable_delay = 1
+time_method    = 0
+// largest number of Newton iterations per time step, and their tolerance
+newton_iter    = 100
+newton_tol     = 1.0e-8
+// direct solver for the linear systems, without printing their residuals
+lsysType       = DIR
+lsysPrint      = 0
+
+// ---- Output -----------------------------------------------------------
+// time between two outputs of the solution
+Tfreq           = 100.0
+outputDataFile  = sol.dat
+radiusDataFile  = rad.dat
+\end{lstlisting}
+
+\subsection{Statements outside the block}
+Table~\ref{tab:keys} lists the statements other than the parameters of the model that matter for the potassium model.
+Three statements should always be present because their default values are not what is wanted here: \code{framework} (only the framework~3 contains this model), \code{assemble} (the default is the explicit variant) and \code{lsysPrint} (by default two lines are printed for every linear system).
+
+\begin{table}[htb]
+\centering
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Name & Default & Meaning \\
+\midrule
+\code{prob\_id} & 0 & model; 3 for the potassium model \\
+\code{framework} & 0 & 3 for the potassium model \\
+\code{dimension}, \code{r\_0}, \code{theta} & 3, 1, 1 & see Table~\ref{tab:par} \\
+\midrule
+\code{Nx} & 100 & number of mesh intervals $N_x$ \\
+\code{Tinit}, \code{Tterm} & 0, 1 & initial and final time \\
+\code{dt\_init} & $10^{-10}$ & first time step \\
+\code{dt\_growth} & 1.2 & largest ratio of two successive time steps \\
+\code{dt\_max}, \code{dt\_min} & $\infty$, 0 & largest and smallest time step \\
+\code{max\_iter} & $10^7$ & largest number of time steps \\
+\midrule
+\code{assemble} & 0 & 1: implicit method; 0: explicit variant (Section~\ref{sec:num}) \\
+\code{time\_method} & 1 & 0: every time step is accepted; 1: see Section~\ref{sec:remarks} \\
+\code{newton\_iter} & 50 & largest number of iterations per time step \\
+\code{newton\_tol} & $10^{-6}$ & tolerance of the iteration \\
+\code{newton\_display} & 1 & 1: print the number of iterations of every time step \\
+\code{lsysType} & \code{DIR} & \code{DIR}: direct solver for the linear systems (recommended) \\
+\code{lsysPrint} & 1 & 1: print the residuals of every linear system \\
+\midrule
+\code{Tfreq} & $-1$ & time between two outputs of the solution; if negative, the solution is \\
+ & & written every \code{frequency} time steps instead (default: every step) \\
+\code{outputDataFile} & \code{sol.dat} & name of the solution file \\
+\code{radiusDataFile} & \code{rad.dat} & name of the time history file \\
+\code{silence\_screen} & 0 & 1: nothing is printed on the screen for the time steps \\
+\bottomrule
+\end{tabular}
+\caption{Statements of the input file outside the block \code{potassium}.}
+\label{tab:keys}
+\end{table}
+
+\begin{sloppypar}\noindent
+The statements \code{cfl}, \code{Rterm}, \code{Rdead}, \code{ic}, \code{space\_cell} and \code{space\_chem}, which are found in input files of other models, have no effect on the potassium model.
+\end{sloppypar}
+
+\section{Running a simulation and reading the results}
+\label{sec:run}
+
+\subsection{Running}
+A simulation is started in the directory that is to receive the results:
+\begin{lstlisting}
+$ <TDSolve>/TumorDynRun -i input.hcl
+\end{lstlisting}
+For each time step the program prints the number of the step, the time, the size of the next time step and, with the implicit method, the number of iterations together with the last value of the quantity that is compared with \code{newton\_tol}:
+\begin{lstlisting}
+Iter   0: Time 0.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 8.482259e-18.
+Iter   1: Time 0.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.262223e-17.
+\end{lstlisting}
+If the iteration of a time step ends without reaching the tolerance, a line \code{Newton method not converging, reduce dt by half} is printed. With \code{time\_method = 0} the time step is in fact not changed and the result of the last iteration is accepted; a smaller time step or a larger \code{newton\_iter} should then be tried.
+The example of Section~\ref{sec:input} takes about 2000 time steps and one second.
+The exit status of the program is 1 also after a successful run, so that it cannot be used to detect failures in a script.
+
+\subsection{Output files}
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=0.45\textwidth, height=0.36\textwidth,
+  xlabel={$r$}, ylabel={fraction of cells},
+  xmin=0, xmax=25, ymin=0, ymax=1.05,
+  title={Cells at $t=400$},
+  legend style={at={(0.5,-0.32)},anchor=north,font=\footnotesize,draw=none,/tikz/every even column/.append style={column sep=0.4em}},
+  legend columns=-1,
+  ]
+  \addplot[thick,blue] table[x=r,y=B1]{\potdata};
+  \addplot[thick,red,dashed] table[x=r,y=B2]{\potdata};
+  \addplot[thick,black,dotted] table[x=r,y=B3]{\potdata};
+  \legend{$B_1$,$B_2$,$B_3$}
+\end{axis}
+\end{tikzpicture}%
+\hfill
+\begin{tikzpicture}
+\begin{semilogyaxis}[
+  width=0.45\textwidth, height=0.36\textwidth,
+  xlabel={$r$}, ylabel={$P$},
+  xmin=0, xmax=25, ymin=1e-3, ymax=3e3,
+  title={Potassium},
+  legend style={at={(0.5,-0.32)},anchor=north,font=\footnotesize,draw=none,/tikz/every even column/.append style={column sep=0.4em}},
+  legend columns=-1,
+  ]
+  \addplot[thick,blue!30] table[x=r,y=Pa]{\potdata};
+  \addplot[thick,blue!55] table[x=r,y=Pb]{\potdata};
+  \addplot[thick,blue!80] table[x=r,y=Pc]{\potdata};
+  \addplot[thick,blue!50!black] table[x=r,y=Pd]{\potdata};
+  \addplot[black,dashed,domain=0:25,samples=2] {25};
+  \legend{$t{=}100$,$200$,$300$,$400$,$P_s$}
+\end{semilogyaxis}
+\end{tikzpicture}
+\caption{Solution of the example input file \code{manual/demo/input\_potassium.hcl} for $0\le r\le25$ (the domain extends to $R=100$).}
+\label{fig:example}
+\end{figure}
+
+\paragraph{Solution file (\code{sol.dat}).}
+The first line names the columns. It is followed by one block for each output time (the initial time, every multiple of \code{Tfreq}, and the final time, which is written twice). A block consists of
+\begin{itemize}
+  \item one line with $t$, the next time step $\Dt$, the radius $R$, and the two integers $N_x$ and $N_x+1$;
+  \item $N_x$ lines, one for each mesh interval, with the seven columns
+  \begin{center}
+    $r_i$ \quad $B_1$ \quad $B_2$ \quad $B_3$ \quad $1-B_1-B_2-B_3$ \quad $P$ \quad $V$
+  \end{center}
+  (the fifth column should be zero up to rounding errors of the order $10^{-15}$);
+  \item $N_x+1$ lines with the end points $r_{i+1/2}$ of the mesh intervals.
+\end{itemize}
+An existing file of the same name is overwritten.
+
+\paragraph{Time history file (\code{rad.dat}).}
+One line per time step with the time and the radius; the radius is constant in this model, hence the file is of little use here.
+Note that new lines are \emph{appended} to an existing file of this name.
+
+\subsection{Reading the results with MATLAB}
+The function \code{read\_sol\_1d\_sacado} in the directory \code{tools/} reads a solution file:
+\begin{lstlisting}
+>> addpath('<TDSolve>/tools');
+>> [data, ~, time, ~, cols] = read_sol_1d_sacado('sol.dat');
+>> r  = squeeze(data(end, cols('X_c'), :));
+>> B2 = squeeze(data(end, cols('B2'),  :));
+>> plot(r, B2);
+\end{lstlisting}
+Here \code{data(n,j,i)} is the value of the column \code{j} in the mesh interval \code{i} at the output time \code{time(n)}, and \code{cols} translates the names of the columns in the first line of the file (\code{X\_c}, \code{B1}, \code{B2}, \code{B3}, \code{Inc-Viol}, \code{P}, \code{V}) into their numbers.
+The files are plain text and can be read by any other program as well.
+
+Figure~\ref{fig:example} shows the result of the example of Section~\ref{sec:input}: by the time $t=400$ most cells within $r<5$ have died, and the infection is spreading outwards while the potassium concentration behind the front exceeds the threshold $P_s$ by far.
+
+\section{Series of simulations}
+\label{sec:paranal}
+The program \code{ParAnalRun} runs the potassium model for all combinations of the values of one or several parameters, in parallel if the code was built with OpenMP:
+\begin{lstlisting}
+$ export OMP_NUM_THREADS=4
+$ <TDSolve>/ParAnalRun -i input.hcl -p input.par -n Potassium
+\end{lstlisting}
+Here \code{input.hcl} is a complete input file as above, and each line of \code{input.par} gives a name and the values to be used, for example
+\begin{lstlisting}
+theta: 2.0e5 2.96e5 4.0e5
+r_0:   50.0 100.0
+\end{lstlisting}
+for six simulations.
+For each simulation two lines are appended to the file \code{regression.dat} (another name can be given by the option \code{-d}): the values of the varied parameters, in the alphabetical order of their names, and five numbers computed from the solution at the final time,
+\begin{center}
+\begin{tabular}{ll}
+  \code{B2peak} & the position $r$ at which $B_2$ is largest, \\
+  \code{B2ttl}, \code{B3ttl} & the integrals of $B_2$ and of $B_3$ over the domain, \\
+  \code{Pttl}, \code{Vttl} & reserved for the integrals of $P$ and $V$; at present always zero.
+\end{tabular}
+\end{center}
+With the additional options \code{-Sk 1 -Sd <dir>} the solution files of all simulations are kept in sub-directories of \code{<dir>} (default: \code{data}); \emph{this directory is deleted first if it exists}.
+Only real-valued statements outside the block \code{potassium} can be varied in this way (\code{theta}, \code{r\_0}, \code{Tterm}, \code{dt\_max}, \ldots); any other name, in particular one from inside the block, is ignored without a message, i.e.\ the simulations are run with the value of \code{input.hcl}.
+\code{ParAnalRun -h} lists all options.
+
+\section{Remarks and limitations}
+\label{sec:remarks}
+\begin{itemize}
+  \item \emph{Time step and delay.} With \code{enable\_delay = 1} a time step larger than $1/\delta$ stops the program with the message \code{pst\_time not in the range of prev\_time}. Always set \code{dt\_max} to a value below $1/\delta$; without this statement the time step keeps growing.
+  \item \emph{Repeating a time step.} With \code{time\_method = 1} a time step whose iteration did not converge is repeated with half the time step. This is not available together with the time delay: the program stops with the message \code{cur\_time needs to be larger than previous times}. Use \code{time\_method = 0} as in the example.
+  \item \emph{Dependence on the mesh.} By \eqref{eq:ic} the initial virus occupies one mesh interval; solutions for different $N_x$ therefore start from different (ever more concentrated) initial data and differ at early times.
+  \item \emph{Memory.} With time delay the solutions of the last $1.1/(\delta(1-c_2))$ units of time are kept in memory; for $c_2\ge0.999$ all time steps are kept.
+  \item \emph{Blocking switched off.} $k=0$, in particular a missing line \code{slope}, removes all blocking; a warning is printed.
+  \item \emph{Where to look in the source code.} The model is implemented in \code{src/TDSolveSacado.cc}: the functions \code{setup\_var\_potassium} and \code{setup\_par\_potassium} (variables and parameters), \code{setup\_ic\_potassium} (initial condition), \code{calc\_srce\_b1\_potassium}, \ldots (right hand sides of \eqref{eq:b1}--\eqref{eq:b3}) and \code{calc\_chem\_srce\_p\_potassium}, \code{calc\_chem\_srce\_v\_potassium} (those of \eqref{eq:p}, \eqref{eq:v} and \eqref{eq:pd}, \eqref{eq:vd}). The file \code{manual/dev/linsolve.txt} describes the solution of the linear systems.
+\end{itemize}
+
+\end{document}
