@@ -1,0 +1,114 @@
+Built-in automatic differentiation (replacement of Sacado/Trilinos)
+**************************************************************************************************************************
+
+Files
+-----
+  include/AutoDiff.h         The only header to include. Pulls in the three below and makes the math functions
+                             callable as std::exp(x), std::pow(x,2), ... (the same is done by Sacado.hpp).
+  include/AutoDiff_Expr.h    Expression templates: Expr (base), UnaryExpr, BinaryExpr.
+  include/AutoDiff_DFad.h    The variable AutoDiff::Fad::DFad<T>: storage, constructors, =, +=, -=, *=, /=, <<.
+  include/AutoDiff_Ops.h     All differentiation rules (one small "Op" class per operation) and the overloaded
+                             operators/functions that build expressions.
+  src/AutoDiff.cc            Error messages (kept out of the inlined code).
+  tests/AutoDiff/            Verification program (see "Verification").
+
+Usage (identical to Sacado, with the namespace Sacado replaced by AutoDiff)
+---------------------------------------------------------------------------
+  AutoDiff::Fad::DFad<DType> c(3.0);        constant: size() == 0, dx(j) == 0 for all j
+  AutoDiff::Fad::DFad<DType> x(n, i, 3.0);  the i-th of n independent variables: dx(i) == 1, others 0
+  AutoDiff::Fad::DFad<DType> f = x*x + c;   dependent variable
+  f.val()                                   value
+  f.dx(j)                                   derivative w.r.t. the j-th independent variable
+  f.size()                                  number of derivative components (0 or n)
+  f = 2.0;                                  f becomes a constant again (derivatives dropped, memory kept)
+
+  Supported: + - * / (also unary and += -= *= /=), == != < > <= >= and ! (act on values),
+             exp log log10 sqrt cbrt sin cos tan asin acos atan sinh cosh tanh asinh acosh atanh abs fabs
+             pow atan2 max min, each between two variables/expressions or with a DType/int on either side,
+             output with <<, and DFad< DFad<DType> > for second derivatives.
+  Also available: diff(i,n), zero(), resize(n), resizeAndZero(n), expand(n), fastAccessDx(i), hasFastAccess(),
+             isPassive(), dx() (pointer to the derivative array).
+
+Rules
+-----
+  1. Constants (size 0) and variables (size n) can be mixed freely, but all variables in one expression must have
+     the same n. Otherwise a std::logic_error is thrown and the left hand side is left untouched.
+  2. Do not hold an expression in an "auto" variable; an expression refers to its operands and is only valid
+     within the statement that creates it. Always assign to a DFad (SacadoDepVar in TDSolveSacado).
+        auto s_bad = s_a * s_b;            WRONG
+        SacadoDepVar s_good = s_a * s_b;   right
+  3. A function template called with an expression deduces the expression type. Spell out the type
+     (f<SacadoDepVar>(s_a*s_b)) or declare the parameter as SacadoDepVar, as the icalc_* functions do.
+  4. The left hand side may appear on the right hand side: s = s + 2.0*s_a; s *= s; ... are all fine.
+  5. abs/fabs use the derivative +1 at zero; max(a,b) and min(a,b) take the first argument on a tie; pow(x,c) has
+     derivative zero at x = 0 unless c == 1. (All as in Sacado.)
+
+How it works
+------------
+  s_f = s_a * s_b + std::exp(s_c) does not create a temporary DFad for s_a*s_b or std::exp(s_c). Each operator
+  returns a small object (UnaryExpr/BinaryExpr) that stores
+    - references to its DFad operands (copies of its sub-expressions),
+    - an "Op" object holding the value of the operation and whatever the derivative formula needs that depends
+      on values only (e.g. exp(c) for the derivative of exp).
+  Values are therefore computed once, when the expression is built. The assignment to s_f then runs one loop
+  over the derivative components i, asking the expression for dx(i), which only costs additions,
+  multiplications and divisions. (Sacado's DFad recomputes exp(c), pow(a,b), ... for every i.)
+
+  Since constants and variables are mixed, a binary operation has three derivative formulas: both operands have
+  derivatives (dx), only the first (dx1), only the second (dx2). Which one applies is decided once per
+  assignment by prepare(), not for every i. If all DFad's in the expression have derivatives, the loop uses
+  fastAccessDx(i), which has no checks at all.
+
+Adding a function
+-----------------
+  1. AutoDiff_Ops.h, part 1a: a class with a constructor from the argument value x, val(), and dx(d) returning
+     the derivative given the derivative d of the argument. Compute everything that does not depend on d in the
+     constructor. For example
+        template <typename T> class ErfOp {
+          public:
+            explicit ErfOp(const T& x) { using std::erf; using std::exp; f_ = erf(x); a_ = T(1.1283791670955126)*exp(-x*x); }
+            AUTODIFF_INLINE const T& val(void) const { return f_; }
+            AUTODIFF_INLINE T dx(const T& d) const { return d*a_; }
+          private:
+            T f_, a_;
+        };
+  2. AutoDiff_Ops.h, part 2:   AUTODIFF_UNARY_FUN(erf, ErfOp)
+  3. AutoDiff.h:               using AutoDiff::Fad::erf;      (to allow std::erf(x))
+  4. tests/AutoDiff/TestAutoDiff.cc, test_functions():
+        check_fun( "erf", FUN( std::erf(x[0]) ), {a}, {1.1283791670955126*std::exp(-a*a)} );
+     and rerun the test. The finite-difference check catches a wrong formula even without the exact derivative.
+
+Verification
+------------
+  tests/AutoDiff:  sh build_cmake.sh; sh run_gnu.sh [-v]
+    Checks every operator and function against central finite differences and exact derivatives, the mixing of
+    constants and variables, expressions of the kind used in TDSolveSacado (Michaelis-Menten terms, source terms
+    with pow(x*R,dim-1), limited fluxes), +=/-=/*=//= and self-referencing assignments, second derivatives
+    (the three cases of tests/SacadoHess), and error handling. Returns 0 if everything passes.
+
+  Against Sacado (Trilinos 16.2, gcc 14.4, done when the replacement was written):
+    - 34200 expressions evaluated with both Sacado::Fad::DFad<double> and AutoDiff::Fad::DFad<double>: values and
+      all derivatives are identical to the last bit when compiled with -ffp-contract=off.
+    - All cases in benchmark/Sacado (model, pdgf, oncolytic, potassium; FE and BE) run with TDSolve built against
+      Sacado (-DUSE_TRILINOS=ON) and built with AutoDiff, both with -ffp-contract=off: sol.dat, rad.dat and the
+      screen output (Newton iterations and residuals) are identical byte for byte.
+
+Round-off and the stored benchmark results
+------------------------------------------
+  The derivative formulas are written in the same form as in Sacado, hence the bitwise agreement above. With
+  default compiler flags this agreement is only up to round-off on machines where the compiler may merge a
+  multiplication and an addition into one fused multiply-add instruction (FMA; gcc does so by default when the
+  target has it, e.g. -march=x86-64-v3 on RHEL 10). Which products get merged depends on how the code is
+  organized, so two implementations of the same formula can differ in the last digit. The same happens to any
+  other floating-point code that is refactored or compiled with a different compiler.
+  Consequently, results of the default build may differ from benchmark/ references generated with the Trilinos
+  build in the trailing digits (the model cases still agree exactly; the pdgf, oncolytic and potassium cases
+  agree to round-off). To compare the two implementations exactly, build both with
+     sh build_cmake.sh -DCMAKE_CXX_FLAGS=-ffp-contract=off [-DUSE_TRILINOS=ON -DTrilinos_DIR:PATH=...]
+
+Switching back to Sacado
+------------------------
+  sh build_cmake.sh -DUSE_TRILINOS=ON -DTrilinos_DIR:PATH=$CSUPPROOT/$TDSUPPNAME/trilinos
+  defines TDS_USE_TRILINOS, which makes TDSolveSacado.h include Sacado.hpp and declare
+  "namespace AutoDiff = Sacado;". No other source changes are needed. The option is remembered in build/;
+  use -DUSE_TRILINOS=OFF to return to the built-in implementation.

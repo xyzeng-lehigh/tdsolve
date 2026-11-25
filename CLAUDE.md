@@ -20,7 +20,8 @@ sh build_cmake.sh          # configures into build/, make -j8, symlinks ./TumorD
 cd build && make -j8       # incremental rebuild after the first configure
 ```
 
-- Requires BLAS, LAPACK, OpenMP (optional), and **Trilinos** (for Sacado automatic differentiation). The script locates Trilinos at `$CSUPPROOT/$TDSUPPNAME/trilinos`; `build_cmake_repo.sh` is the same but uses `$GENSUPPROOT/$GENSUPPNAME/trilinos` (shared `/repo` install) and does not create the `./ParAnalRun` symlink. These env vars come from the user's shell profile.
+- Requires BLAS, LAPACK and OpenMP (optional). **Trilinos is no longer required**: automatic differentiation is provided by the built-in `AutoDiff` classes (see below). `build_cmake_repo.sh` is the same script except that it does not create the `./ParAnalRun` symlink.
+- Both scripts pass extra arguments on to `cmake`. `sh build_cmake.sh -DUSE_TRILINOS=ON -DTrilinos_DIR:PATH=$CSUPPROOT/$TDSUPPNAME/trilinos` builds against `Sacado::Fad::DFad` of Trilinos instead (defines `TDS_USE_TRILINOS`; only meant for cross-checking the built-in implementation). The option is cached in `build/`, so pass `-DUSE_TRILINOS=OFF` to switch back.
 - `CMakeLists.txt` globs `src/*.cc`, so new source files need a CMake re-configure (rerun the script), not just `make`.
 - Build type is hard-coded to Release. There is no lint target.
 - Precision is `DType` (`include/Data_Type.h`): `double` unless `FLOAT_ALG` is defined. Use `DType`, not `double`, in solver code.
@@ -40,7 +41,8 @@ Outputs are `outputDataFile` (`sol.dat`) and `radiusDataFile` (`rad.dat`) in the
 There is no unit-test framework. Regression checking is by comparison against stored reference output:
 
 - `benchmark/Sacado/{model,pdgf}/<case>/` each hold `input.hcl`, `run.sh`, and a `benchmark/` directory with reference `sol.dat`, `rad.dat`, `report`. `run.sh` needs `$TDS` set to the repo root; it runs the case into `data_r<hg revision>/`, which you then diff against `benchmark/`. Run one case with `cd benchmark/Sacado/pdgf/pdgf_case_be && sh run.sh`.
-- `tests/Sacado*` are standalone Sacado/Trilinos smoke programs with their own CMake + `build_cmake.sh` (paths there still point at an old gcc-9.3.0/Trilinos-12.7 toolchain). `tests/potassium_ode/` is a MATLAB reference implementation for the potassium ODE model.
+- `tests/AutoDiff/` verifies the built-in automatic differentiation (every operator and function against finite differences and exact derivatives, self-referencing assignments, second derivatives, error handling): `cd tests/AutoDiff && sh build_cmake.sh && sh run_gnu.sh` (add `-v` to list every check; exit status 0 means all passed). Run it after any change to `include/AutoDiff*.h`.
+- `tests/Sacado*` are standalone Sacado/Trilinos smoke programs with their own CMake + `build_cmake.sh` (paths there still point at an old gcc-9.3.0/Trilinos-12.7 toolchain); they are the only part of the repository that still needs Trilinos. `tests/potassium_ode/` is a MATLAB reference implementation for the potassium ODE model.
 
 ## Architecture
 
@@ -61,13 +63,22 @@ A line consisting of a problem name (`model`, `pdgf`, `opn`, `oncolyticOld`, `po
 | 2 | `TDSolveFVMMod` (extends FVM) | modified FVM; MUSCL, Radau RK |
 | 3 (and any other value) | `TDSolveSacado` | current, actively developed path |
 
-Frameworks 0–2 hard-code the PDGF/OPN variables (`data_g`, `data_h`, `data_n`, `data_a`, `data_p1`, …) and are legacy. **`TDSolveSacado`** is generic: variables are stored in name-keyed maps, Jacobians come from `Sacado::Fad::DFad`, and each model is plugged in through member-function-pointer maps keyed by `prob_id` (−1 model, 0 pdgf, 1 opn, 2 oncolyticOld, 3 potassium, 4 oncolytic, 5 onc_model). Adding a model means writing `setup_var_*`, `setup_ic_*`, `setup_srce_*` (plus optional velocity/aux/extra-flux hooks), registering them in the maps in the `TDSolveSacado` constructor/`setup`, and adding the name to `probNames` in `TDInput`.
+Frameworks 0–2 hard-code the PDGF/OPN variables (`data_g`, `data_h`, `data_n`, `data_a`, `data_p1`, …) and are legacy. **`TDSolveSacado`** is generic: variables are stored in name-keyed maps, Jacobians come from `AutoDiff::Fad::DFad` (the class and file names keep "Sacado" for historical reasons), and each model is plugged in through member-function-pointer maps keyed by `prob_id` (−1 model, 0 pdgf, 1 opn, 2 oncolyticOld, 3 potassium, 4 oncolytic, 5 onc_model). Adding a model means writing `setup_var_*`, `setup_ic_*`, `setup_srce_*` (plus optional velocity/aux/extra-flux hooks), registering them in the maps in the `TDSolveSacado` constructor/`setup`, and adding the name to `probNames` in `TDInput`.
 
 ### Time-stepping lives in the drivers, not the solver
 
 The time-integration loop is written out in `main/TumorDyn.cc` in terms of `TDSolve` primitives (`update_sol(fr,to,…)`, `copy_data`, `average_sol`, `update_rad_radau`, `compute_rhs`, `check_conv_*`, `reduce_dtn`). There are two branches: a short "classical" loop for the Sacado framework (`time_method` 0/1 = explicit/implicit Euler with Newton and automatic dt halving) and a longer legacy branch for frameworks 0–2 (TVD RK2, DIRK2, 2-stage Radau with direct or predictor/multi-corrector solves, selected by `time_method`, `vel_couple`, `use_pmc`). Convention: the accepted solution at t_{n+1} must end up in `data_*[1]` and is then copied to `[0]`. `manual/dev/radau.txt` documents which arrays each step of the Radau PMC loop reads and writes — consult it before touching that path.
 
 `TDFactory` (`src/TDSolve_API.cc`) **duplicates** this loop for `ParAnalRun` (same `framework` switch as `TumorDyn.cc`; `run_pdgf` / `run_opn` / `run_potassium` each return model-specific output quantities via `get_gperc`, `get_total`, `get_argmax`, …). A change to stepping logic in `TumorDyn.cc` generally needs the matching change there.
+
+### Automatic differentiation (`AutoDiff`)
+
+`AutoDiff::Fad::DFad<T>` is a self-contained forward-mode AD variable (value + dynamically sized derivative array) with the same interface as `Sacado::Fad::DFad<T>`: `DFad(n, i, val)` for the i-th of n independent variables, `.val()`, `.dx(i)`, `.size()`, arithmetic, comparisons, and `std::exp/pow/fabs/min/max/...` (injected into `std` by `AutoDiff.h`, as Sacado does). A `DFad` of size 0 is a constant and mixes freely with variables.
+
+- `include/AutoDiff.h` — the only header to include; `AutoDiff_Expr.h` — expression templates; `AutoDiff_DFad.h` — the variable (storage, assignment, `+=` …); `AutoDiff_Ops.h` — all differentiation rules (one small `Op` class per operation); `src/AutoDiff.cc` — error handling.
+- To add a math function: add an `Op` class and one `AUTODIFF_UNARY_FUN` line in `AutoDiff_Ops.h`, one `using` line in `AutoDiff.h`, and a `check_fun` line in `tests/AutoDiff/TestAutoDiff.cc`.
+- Never hold an expression in an `auto` variable (it references its operands); assign to a `DFad`/`SacadoDepVar`. Function templates called with an expression need the type spelled out (`f<SacadoDepVar>(a*b)`).
+- The derivative formulas are written in the same form as Sacado's, so results are bit-for-bit those of the Trilinos build when floating-point contraction is off (`-ffp-contract=off`). With GCC's default FMA contraction (e.g. `-march=x86-64-v3` on RHEL 10) the two differ at round-off level, as does any refactoring of floating-point code. `manual/dev/autodiff.txt` has the details.
 
 ### Supporting numerics (own implementations, no external linear algebra beyond BLAS/LAPACK)
 

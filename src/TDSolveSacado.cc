@@ -1,4 +1,5 @@
 #include <cmath>
+#include <algorithm>
 #include <stdexcept>
 #include "TDSolveSacado.h"
 #include "Alloc_Utils.h"
@@ -1445,7 +1446,7 @@ void TDSolveSacado::alloc_sacado_ind_array(std::string name, const int num) {
   }
   SacadoIndVarArray S_array;
   for ( int n = 0; n < num; n++ ) {
-    Sacado::Fad::DFad<DType> value(S_data_num,cur_num+n,0.0);
+    AutoDiff::Fad::DFad<DType> value(S_data_num,cur_num+n,0.0);
     S_array.push_back(value);
   }
   S_data_var.insert( std::pair<std::string, SacadoIndVarArray>(name, S_array) );
@@ -1592,7 +1593,7 @@ void TDSolveSacado::set_sacado_ind_array(std::string name, const int nt) {
   HVEC& data = *H_data_var[it->first][nt];
   int num = s_var.size();
   for ( int i = 0; i < num; i++ ) {
-    s_var[i] = Sacado::Fad::DFad<DType>(S_data_num,s_offset+i,data[i]);
+    s_var[i] = AutoDiff::Fad::DFad<DType>(S_data_num,s_offset+i,data[i]);
   }
   return;
 }
@@ -1667,7 +1668,7 @@ void TDSolveSacado::reset_sacado_ind_array(void) {
 
 void TDSolveSacado::reset_sacado_ind_array(SacadoIndVarArray& s_var, const int s_offset, DType val) {
   for ( int i = 0; i < s_var.size(); i++ ) {
-    s_var[i] = Sacado::Fad::DFad<DType>(S_data_num, s_offset+i, val);
+    s_var[i] = AutoDiff::Fad::DFad<DType>(S_data_num, s_offset+i, val);
   }
   return;
 }
@@ -4222,14 +4223,14 @@ void TDSolveSacado::calc_ale_srce_chem_var(std::string chemname, const int nt, c
     }
   }
   else if ( chemPar.test_opt == 1 ) {
-    Sacado::Fad::DFad<DType> tot_cell = 0.0;
-    Sacado::Fad::DFad<DType> tot_vlmn = 0.0;
+    AutoDiff::Fad::DFad<DType> tot_cell = 0.0;
+    AutoDiff::Fad::DFad<DType> tot_vlmn = 0.0;
     for ( int i = 0; i < Nx; i++ ) {
       tot_cell = x_c[i] * x_c[i] * s_cell[i];
       tot_vlmn = x_c[i] * x_c[i];
     }
     tot_cell = tot_cell/tot_vlmn;
-    Sacado::Fad::DFad<DType> growth = ( chemPar.mm_ceil * tot_cell ) / ( chemPar.mm_half + tot_cell );
+    AutoDiff::Fad::DFad<DType> growth = ( chemPar.mm_ceil * tot_cell ) / ( chemPar.mm_half + tot_cell );
     for ( int i = 0; i < Nx; i++ ) {
       s_srce[i] += growth * s_chem[i];
     }

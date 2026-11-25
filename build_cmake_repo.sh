@@ -1,3 +1,7 @@
+# Trilinos is no longer needed. Extra arguments are passed on to cmake, e.g.
+# to use the Sacado package of Trilinos for automatic differentiation instead
+# of the built-in one:
+#   sh build_cmake_repo.sh -DUSE_TRILINOS=ON -DTrilinos_DIR:PATH=$GENSUPPROOT/$GENSUPPNAME/trilinos
 BDIR=build
 PROG=TumorDynRun
 PROGPAR=ParAnalRun
@@ -14,15 +18,12 @@ case ${OSTYPE//[0-9.]/} in
     /opt/homebrew/bin/cmake \
       -DCMAKE_C_COMPILER=/opt/homebrew/bin/gcc-12 \
       -DCMAKE_CXX_COMPILER=/opt/homebrew/bin/g++-12 \
-      -DTrilinos_DIR:PATH=$CSUPPROOT/gcc-12/trilinos-13.4.0 \
       -DCMAKE_CXX_EXTENSIONS=Off \
-      ../
+      "$@" ../
     NP=4
     ;;
   linux-gnu)
-    cmake \
-      -DTrilinos_DIR:PATH=$GENSUPPROOT/$GENSUPPNAME/trilinos \
-      ../ 
+    cmake "$@" ../
 
     #cmake3 \
     #  -DCMAKE_C_COMPILER=$CSUPPROOT/gcc-9.3.0/gcc/bin/gcc \

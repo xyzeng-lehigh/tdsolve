@@ -1,4 +1,5 @@
 #include <cmath>
+#include <cassert>
 #include "TDSolve_API.h"
 #include "TDInput.h"
 #include "TDSolve.h"

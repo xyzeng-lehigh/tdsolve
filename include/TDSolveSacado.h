@@ -5,9 +5,22 @@
 #include <cstdio>
 #include <cstring>
 #include <set>
+#include <map>
+#include <vector>
+#include <string>
 #include "Data_Type.h"
 #include "TDSolve.h"
+
+// Automatic differentiation: the built-in AutoDiff::Fad::DFad by default.
+// Configuring with -DUSE_TRILINOS=ON switches back to the Sacado package of
+// Trilinos, which provides the same class as Sacado::Fad::DFad; this is only
+// meant for cross-checking the two.
+#ifdef TDS_USE_TRILINOS
 #include "Sacado.hpp"
+namespace AutoDiff = Sacado;
+#else
+#include "AutoDiff.h"
+#endif
 
 // Essentially FVMMod, but with Sacado arrays
 class TDSolveSacado : public TDSolve {
@@ -107,7 +120,7 @@ class TDSolveSacado : public TDSolve {
 
   protected:
     // Dependent variables
-    typedef Sacado::Fad::DFad<DType> SacadoDepVar;
+    typedef AutoDiff::Fad::DFad<DType> SacadoDepVar;
     typedef std::vector<SacadoDepVar> SacadoDepVarArray;
     typedef std::map<std::string, SacadoDepVarArray> SacadoDepVarMap;
     typedef std::map<std::string, SacadoDepVarMap> SacadoDepVarMapMap;
@@ -159,7 +172,7 @@ class TDSolveSacado : public TDSolve {
     void add_vel_to_cellvels(std::string, std::string);
 
     // Independent variables (cell numbers and chemicals)
-    typedef std::vector<Sacado::Fad::DFad<DType>> SacadoIndVarArray;
+    typedef std::vector<AutoDiff::Fad::DFad<DType>> SacadoIndVarArray;
     std::map<std::string, SacadoIndVarArray> S_data_var;
     std::map<std::string, int> S_data_offset;
     int S_data_num;
@@ -185,7 +198,7 @@ class TDSolveSacado : public TDSolve {
     SacadoDepVarMap    S_rec_ppm_cell;
     SacadoDepVarMap    S_lim_ppm_cell[2];
     SacadoDepVarArray  S_lim_ppm_sync[2];
-    //std::vector<Sacado::Fad::DFad<DType>> S_lim_cell_sync; // MUSCL
+    //std::vector<AutoDiff::Fad::DFad<DType>> S_lim_cell_sync; // MUSCL
     //SacadoDepVarMap S_slope_cell; // MUSCL
 
     // Chemoattractant/OPN 
@@ -193,8 +206,8 @@ class TDSolveSacado : public TDSolve {
     SacadoDepVarMap S_flux_chem;
     SacadoDepVarMap S_flux_chem_r;
     SacadoDepVarMap S_flux_chem_d;
-    //std::map<std::string, std::vector<Sacado::Fad::DFad<DType>>> S_slope_chem; // MUSCL or PPM
-    //std::map<std::string, std::vector<Sacado::Fad::DFad<DType>>> S_slope_p;
+    //std::map<std::string, std::vector<AutoDiff::Fad::DFad<DType>>> S_slope_chem; // MUSCL or PPM
+    //std::map<std::string, std::vector<AutoDiff::Fad::DFad<DType>>> S_slope_p;
     
     // Additional setup functions
     void setup_chem_par(std::string chemname, const DType decay, const DType diffusion,
@@ -342,8 +355,8 @@ class TDSolveSacado : public TDSolve {
     void calc_srce_b2_potassium(SacadoDepVarArray& s_srce, const DType tsol_loc);
     void calc_srce_b3_potassium(SacadoDepVarArray& s_srce, const DType tsol_loc);
 
-    inline SacadoDepVar icalc_scal_logist_mm(DType,Sacado::Fad::DFad<DType>,DType,DType,DType,Sacado::Fad::DFad<DType>);
-    inline SacadoDepVar icalc_mm(DType mm_ceil, DType mm_half, Sacado::Fad::DFad<DType> s_var) {
+    inline SacadoDepVar icalc_scal_logist_mm(DType,AutoDiff::Fad::DFad<DType>,DType,DType,DType,AutoDiff::Fad::DFad<DType>);
+    inline SacadoDepVar icalc_mm(DType mm_ceil, DType mm_half, AutoDiff::Fad::DFad<DType> s_var) {
       SacadoDepVar result = 0.0;
       if ( std::fabs( s_var ) > 1.0 )
         result = mm_ceil * ( 1.0 / ( (mm_half/s_var) + 1.0 ) );
@@ -356,7 +369,7 @@ class TDSolveSacado : public TDSolve {
     void calc_srce_b_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
     void calc_srce_h_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
     void calc_srce_q_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
-    inline SacadoDepVar icalc_q_growth_oncolytic(Sacado::Fad::DFad<DType> s_q) { SacadoDepVar val = s_q * 0.0; return val;}
+    inline SacadoDepVar icalc_q_growth_oncolytic(AutoDiff::Fad::DFad<DType> s_q) { SacadoDepVar val = s_q * 0.0; return val;}
     void calc_srce_n_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
     void calc_srce_m1_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
     void calc_srce_m1e_oncolytic(SacadoDepVarArray& s_srce, const DType tsol_loc);
@@ -380,8 +393,8 @@ class TDSolveSacado : public TDSolve {
 
     void calc_chem_srce_vi_oncolytic(std::string chemname, const int nt, const DType tsol_loc );
 
-    inline SacadoDepVar icalc_scal_block_potassium(DType,DType,Sacado::Fad::DFad<DType>,DType heaviside_scale);
-    //inline SacadoDepVar icalc_scal_block_potassium(DType,DType,Sacado::Fad::DFad<DType>,DType heaviside_scale = 1.0);
+    inline SacadoDepVar icalc_scal_block_potassium(DType,DType,AutoDiff::Fad::DFad<DType>,DType heaviside_scale);
+    //inline SacadoDepVar icalc_scal_block_potassium(DType,DType,AutoDiff::Fad::DFad<DType>,DType heaviside_scale = 1.0);
 
     // Other functions
     DType calc_n_bc( const DType tsol_loc );
@@ -434,7 +447,7 @@ inline DType TDSolveSacado::calc_wupw( const DType l_x, const DType l_dx ) {
   return l_x * ( l_x * l_x - 0.25 * l_dx * l_dx );
 }
 
-inline TDSolveSacado::SacadoDepVar TDSolveSacado::icalc_scal_logist_mm(DType scal, Sacado::Fad::DFad<DType> s_logist, DType mm_const, DType mm_ceil, DType mm_half, Sacado::Fad::DFad<DType> s_mm) {
+inline TDSolveSacado::SacadoDepVar TDSolveSacado::icalc_scal_logist_mm(DType scal, AutoDiff::Fad::DFad<DType> s_logist, DType mm_const, DType mm_ceil, DType mm_half, AutoDiff::Fad::DFad<DType> s_mm) {
   SacadoDepVar s_val;
   if ( s_logist >= 1.0 )
     s_val = 0.0;
@@ -445,7 +458,7 @@ inline TDSolveSacado::SacadoDepVar TDSolveSacado::icalc_scal_logist_mm(DType sca
   return s_val;
 }
 
-inline TDSolveSacado::SacadoDepVar TDSolveSacado::icalc_scal_block_potassium(DType k, DType Ps, Sacado::Fad::DFad<DType> s_P, DType heaviside_scale) {
+inline TDSolveSacado::SacadoDepVar TDSolveSacado::icalc_scal_block_potassium(DType k, DType Ps, AutoDiff::Fad::DFad<DType> s_P, DType heaviside_scale) {
   SacadoDepVar s_val;
   if ( k > 0.0 )
     s_val = 1.0 - heaviside_scale/(1.0+std::exp(-2.0*k*(s_P-Ps)));

@@ -19,3 +19,4 @@ debug/**
 tests/Sacado/TestSacado
 tests/SacadoDup/TestSacadoDup
 tests/SacadoHess/TestSacadoHess
+tests/AutoDiff/TestAutoDiff
