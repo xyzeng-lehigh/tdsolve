@@ -14,12 +14,10 @@ cd ${BDIR}
 NP=8
 case ${OSTYPE//[0-9.]/} in
   darwin)
-    export 
-    /opt/homebrew/bin/cmake \
-      -DCMAKE_C_COMPILER=/opt/homebrew/bin/gcc-12 \
-      -DCMAKE_CXX_COMPILER=/opt/homebrew/bin/g++-12 \
-      -DCMAKE_CXX_EXTENSIONS=Off \
-      "$@" ../
+    # Apple clang, with BLAS/LAPACK from Accelerate and OpenMP from the
+    # libomp of Homebrew (see CMakeLists.txt). To use a Homebrew gcc instead:
+    #   sh build_cmake.sh -DCMAKE_C_COMPILER=gcc-16 -DCMAKE_CXX_COMPILER=g++-16
+    cmake -DCMAKE_CXX_EXTENSIONS=Off "$@" ../
     NP=4
     ;;
   linux-gnu)

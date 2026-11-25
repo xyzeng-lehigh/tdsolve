@@ -1,0 +1,25 @@
+# Build products
+build/
+debug/
+*.o
+/TumorDynRun
+/ParAnalRun
+/tests/Sacado/TestSacado
+/tests/SacadoDup/TestSacadoDup
+/tests/SacadoHess/TestSacadoHess
+/tests/AutoDiff/TestAutoDiff
+
+# Editor and system files
+*.swp
+.DS_Store
+
+# LaTeX by-products
+*.out
+*.toc
+*.bbl
+*.blg
+*.log
+*.aux
+/manual/*.pdf
+/manual/numerics/*.pdf
+/manual/numerics/figs_oncolytic/etc_h/

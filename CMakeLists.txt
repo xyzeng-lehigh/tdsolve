@@ -1,8 +1,31 @@
-cmake_minimum_required(VERSION 3.9)
+cmake_minimum_required(VERSION 3.9...3.31)
 #set(CMAKE_C_COMPILER "gcc")
 #set(CMAKE_CXX_COMPILER "g++")
 project(TDSolve)
+
+# macOS with Apple clang: OpenMP is not shipped with the compiler; use the
+# libomp of Homebrew (brew install libomp) unless OpenMP_ROOT is given.
+# BLAS and LAPACK are found in the Accelerate framework.
+if(APPLE AND CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang" AND NOT DEFINED OpenMP_ROOT)
+  find_program(BREW_EXECUTABLE brew PATHS /opt/homebrew/bin /usr/local/bin)
+  if(BREW_EXECUTABLE)
+    execute_process(COMMAND ${BREW_EXECUTABLE} --prefix libomp
+                    OUTPUT_VARIABLE BREW_LIBOMP_PREFIX
+                    OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+    if(EXISTS "${BREW_LIBOMP_PREFIX}/include/omp.h")
+      set(OpenMP_ROOT "${BREW_LIBOMP_PREFIX}")
+    endif()
+  endif()
+endif()
 set(CMAKE_BUILD_TYPE Release)
+
+# C++17 without GNU extensions (-std=c++17)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# macOS with Apple clang: make sure that the C++ standard library is found
+include(cmake/AppleClangStdlib.cmake)
 
 # The major version number: Number of problems supported
 set(TDS_MAJOR_VERSION 2)
@@ -60,7 +83,11 @@ if(USE_TRILINOS)
   target_link_libraries(TumorDynRun ${Trilinos_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
 endif()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -lgfortran")
+# The Fortran runtime is needed by the reference BLAS/LAPACK on Linux, but
+# not by the Accelerate framework of macOS (and clang has no libgfortran).
+if(NOT APPLE)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lgfortran")
+endif()
 
 # OpenMP support (avaiable after CMake 3.9)
 find_package(OpenMP)

@@ -22,6 +22,7 @@ cd build && make -j8       # incremental rebuild after the first configure
 
 - Requires BLAS, LAPACK and OpenMP (optional). **Trilinos is no longer required**: automatic differentiation is provided by the built-in `AutoDiff` classes (see below). `build_cmake_repo.sh` is the same script except that it does not create the `./ParAnalRun` symlink.
 - Both scripts pass extra arguments on to `cmake`. `sh build_cmake.sh -DUSE_TRILINOS=ON -DTrilinos_DIR:PATH=$CSUPPROOT/$TDSUPPNAME/trilinos` builds against `Sacado::Fad::DFad` of Trilinos instead (defines `TDS_USE_TRILINOS`; only meant for cross-checking the built-in implementation). The option is cached in `build/`, so pass `-DUSE_TRILINOS=OFF` to switch back.
+- macOS: the scripts use Apple clang, BLAS/LAPACK from the Accelerate framework and OpenMP from Homebrew's `libomp` (located automatically; without it the build is serial). `cmake/AppleClangStdlib.cmake` works around Command Line Tools installations whose stale `usr/include/c++/v1` hides `<iostream>`. Output differs from the Linux reference at round-off level (~1e-14).
 - `CMakeLists.txt` globs `src/*.cc`, so new source files need a CMake re-configure (rerun the script), not just `make`.
 - Build type is hard-coded to Release. There is no lint target.
 - Precision is `DType` (`include/Data_Type.h`): `double` unless `FLOAT_ALG` is defined. Use `DType`, not `double`, in solver code.
