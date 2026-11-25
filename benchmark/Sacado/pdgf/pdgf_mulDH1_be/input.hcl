@@ -17,7 +17,7 @@ Nx            = 050
 cfl           = 8.0
 Tinit         = 0.0
 Tterm         = 100.0
-Rterm         = 0.5
+Rterm         = 0.22
 //Rterm         = 5.5
 Rdead         = 0.01
 Tfreq         = 0.02
@@ -25,6 +25,7 @@ Tfreq         = 0.02
 max_iter      = 10000000
 dt_init       = 1.0e-6
 dt_growth     = 1.2
+auto_reduce_dt = 0
 
 outputDataFile  = sol.dat
 radiusDataFile  = rad.dat

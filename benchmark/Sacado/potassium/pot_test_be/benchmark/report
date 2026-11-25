@@ -1,0 +1,1015 @@
+TDSolve revision r197+
+
+*************************
+* Tumor Dynamics Solver *
+*************************
+
+Iter   0: Time 0.00000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.273171e-11.
+Iter   1: Time 0.20000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.273107e-11.
+Iter   2: Time 0.40000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.273034e-11.
+Iter   3: Time 0.60000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.272965e-11.
+Iter   4: Time 0.80000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.272900e-11.
+Iter   5: Time 1.00000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.272826e-11.
+Iter   6: Time 1.20000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.272765e-11.
+Iter   7: Time 1.40000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.272690e-11.
+Iter   8: Time 1.60000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.272620e-11.
+Iter   9: Time 1.80000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.272556e-11.
+Iter  10: Time 2.00000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.272487e-11.
+Iter  11: Time 2.20000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.272416e-11.
+Iter  12: Time 2.40000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.272349e-11.
+Iter  13: Time 2.60000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.272282e-11.
+Iter  14: Time 2.80000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.272210e-11.
+Iter  15: Time 3.00000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.272145e-11.
+Iter  16: Time 3.20000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.272083e-11.
+Iter  17: Time 3.40000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.272015e-11.
+Iter  18: Time 3.60000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.271943e-11.
+Iter  19: Time 3.80000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.271876e-11.
+Iter  20: Time 4.00000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.271801e-11.
+Iter  21: Time 4.20000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.271737e-11.
+Iter  22: Time 4.40000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.271665e-11.
+Iter  23: Time 4.60000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.271601e-11.
+Iter  24: Time 4.80000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.271533e-11.
+Iter  25: Time 5.00000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.271464e-11.
+Iter  26: Time 5.20000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.271398e-11.
+Iter  27: Time 5.40000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.271333e-11.
+Iter  28: Time 5.60000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.271258e-11.
+Iter  29: Time 5.80000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.271193e-11.
+Iter  30: Time 6.00000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.271124e-11.
+Iter  31: Time 6.20000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.271051e-11.
+Iter  32: Time 6.40000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.270990e-11.
+Iter  33: Time 6.60000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.270914e-11.
+Iter  34: Time 6.80000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.270848e-11.
+Iter  35: Time 7.00000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.270785e-11.
+Iter  36: Time 7.20000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.270712e-11.
+Iter  37: Time 7.40000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.270647e-11.
+Iter  38: Time 7.60000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.270573e-11.
+Iter  39: Time 7.80000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.270515e-11.
+Iter  40: Time 8.00000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.270445e-11.
+Iter  41: Time 8.20000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.270371e-11.
+Iter  42: Time 8.40000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.270310e-11.
+Iter  43: Time 8.60000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.270236e-11.
+Iter  44: Time 8.80000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.270172e-11.
+Iter  45: Time 9.00000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.270098e-11.
+Iter  46: Time 9.20000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.270036e-11.
+Iter  47: Time 9.40000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.269961e-11.
+Iter  48: Time 9.60000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.269902e-11.
+Iter  49: Time 9.80000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.269832e-11.
+Iter  50: Time 10.00000000; Time step 0.00000000.
+    --- Newton method:   1 iterations, Linf residual 0.000000e+00.
+Iter  51: Time 10.00000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.269757e-11.
+Iter  52: Time 10.20000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.269690e-11.
+Iter  53: Time 10.40000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.269622e-11.
+Iter  54: Time 10.60000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.269558e-11.
+Iter  55: Time 10.80000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.269489e-11.
+Iter  56: Time 11.00000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.269416e-11.
+Iter  57: Time 11.20000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.269352e-11.
+Iter  58: Time 11.40000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.269281e-11.
+Iter  59: Time 11.60000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.269216e-11.
+Iter  60: Time 11.80000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.269147e-11.
+Iter  61: Time 12.00000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.269081e-11.
+Iter  62: Time 12.20000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.269007e-11.
+Iter  63: Time 12.40000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.810585e-10.
+Iter  64: Time 12.60000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 5.824826e-10.
+Iter  65: Time 12.80000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 9.775523e-10.
+Iter  66: Time 13.00000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.366368e-09.
+Iter  67: Time 13.20000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 1.749028e-09.
+Iter  68: Time 13.40000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 2.125628e-09.
+Iter  69: Time 13.60000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 2.496266e-09.
+Iter  70: Time 13.80000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 2.861033e-09.
+Iter  71: Time 14.00000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 3.220024e-09.
+Iter  72: Time 14.20000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 3.573329e-09.
+Iter  73: Time 14.40000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 3.921037e-09.
+Iter  74: Time 14.60000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 4.263237e-09.
+Iter  75: Time 14.80000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 4.600014e-09.
+Iter  76: Time 15.00000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 4.931456e-09.
+Iter  77: Time 15.20000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 5.257645e-09.
+Iter  78: Time 15.40000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 5.578665e-09.
+Iter  79: Time 15.60000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 5.894597e-09.
+Iter  80: Time 15.80000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 6.205520e-09.
+Iter  81: Time 16.00000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 6.511514e-09.
+Iter  82: Time 16.20000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 6.812657e-09.
+Iter  83: Time 16.40000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 7.109025e-09.
+Iter  84: Time 16.60000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 7.400692e-09.
+Iter  85: Time 16.80000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 7.687734e-09.
+Iter  86: Time 17.00000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 7.970223e-09.
+Iter  87: Time 17.20000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 8.248230e-09.
+Iter  88: Time 17.40000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 8.521826e-09.
+Iter  89: Time 17.60000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 8.791081e-09.
+Iter  90: Time 17.80000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 9.056063e-09.
+Iter  91: Time 18.00000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 9.316839e-09.
+Iter  92: Time 18.20000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 9.573475e-09.
+Iter  93: Time 18.40000000; Time step 0.20000000.
+    --- Newton method:   2 iterations, Linf residual 9.826038e-09.
+Iter  94: Time 18.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter  95: Time 18.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter  96: Time 19.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter  97: Time 19.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter  98: Time 19.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter  99: Time 19.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 100: Time 19.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 101: Time 20.00000000; Time step 0.00000000.
+    --- Newton method:   1 iterations, Linf residual 3.677984e-15.
+Iter 102: Time 20.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 103: Time 20.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 104: Time 20.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 105: Time 20.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 106: Time 20.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 107: Time 21.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 108: Time 21.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 109: Time 21.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 110: Time 21.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 111: Time 21.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 112: Time 22.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 113: Time 22.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 114: Time 22.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 115: Time 22.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 116: Time 22.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 117: Time 23.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 118: Time 23.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 119: Time 23.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 120: Time 23.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 121: Time 23.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 122: Time 24.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 123: Time 24.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 124: Time 24.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 125: Time 24.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 126: Time 24.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 127: Time 25.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 128: Time 25.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 129: Time 25.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 130: Time 25.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 131: Time 25.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 132: Time 26.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 133: Time 26.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 134: Time 26.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 135: Time 26.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 136: Time 26.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 137: Time 27.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 138: Time 27.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 139: Time 27.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 140: Time 27.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 141: Time 27.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 142: Time 28.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 143: Time 28.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 144: Time 28.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 145: Time 28.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 146: Time 28.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 147: Time 29.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 148: Time 29.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 149: Time 29.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 150: Time 29.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 151: Time 29.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 152: Time 30.00000000; Time step 0.00000000.
+    --- Newton method:   1 iterations, Linf residual 2.685417e-15.
+Iter 153: Time 30.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 154: Time 30.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 155: Time 30.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 156: Time 30.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 157: Time 30.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 158: Time 31.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 159: Time 31.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 160: Time 31.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 161: Time 31.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 162: Time 31.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 163: Time 32.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 164: Time 32.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 165: Time 32.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 7.005256e-17.
+Iter 166: Time 32.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 8.257836e-17.
+Iter 167: Time 32.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 168: Time 33.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 169: Time 33.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 170: Time 33.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 171: Time 33.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 8.483080e-17.
+Iter 172: Time 33.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.683262e-17.
+Iter 173: Time 34.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 9.395092e-17.
+Iter 174: Time 34.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 175: Time 34.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 176: Time 34.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 177: Time 34.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 7.817073e-17.
+Iter 178: Time 35.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 179: Time 35.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 180: Time 35.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 181: Time 35.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 182: Time 35.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 183: Time 36.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 184: Time 36.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 185: Time 36.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 186: Time 36.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.557686e-17.
+Iter 187: Time 36.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.142403e-17.
+Iter 188: Time 37.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.486666e-17.
+Iter 189: Time 37.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 190: Time 37.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.729154e-17.
+Iter 191: Time 37.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 192: Time 37.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 193: Time 38.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.586676e-17.
+Iter 194: Time 38.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.870911e-17.
+Iter 195: Time 38.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.165027e-17.
+Iter 196: Time 38.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 197: Time 38.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.296782e-17.
+Iter 198: Time 39.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 199: Time 39.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.397904e-17.
+Iter 200: Time 39.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 201: Time 39.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 202: Time 39.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.476376e-17.
+Iter 203: Time 40.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 204: Time 40.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 205: Time 40.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.336867e-17.
+Iter 206: Time 40.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 207: Time 40.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 208: Time 41.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.591771e-17.
+Iter 209: Time 41.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 210: Time 41.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.478698e-17.
+Iter 211: Time 41.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.616896e-17.
+Iter 212: Time 41.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 8.670269e-17.
+Iter 213: Time 42.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 214: Time 42.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 9.243153e-17.
+Iter 215: Time 42.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 8.791843e-17.
+Iter 216: Time 42.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.615273e-17.
+Iter 217: Time 42.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 7.701036e-17.
+Iter 218: Time 43.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 219: Time 43.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 220: Time 43.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 221: Time 43.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 2.913633e-17.
+Iter 222: Time 43.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.824961e-17.
+Iter 223: Time 44.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 224: Time 44.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.616116e-17.
+Iter 225: Time 44.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 226: Time 44.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.853348e-17.
+Iter 227: Time 44.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.315078e-17.
+Iter 228: Time 45.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.377966e-17.
+Iter 229: Time 45.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.626023e-17.
+Iter 230: Time 45.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.853946e-17.
+Iter 231: Time 45.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 232: Time 45.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.354370e-17.
+Iter 233: Time 46.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.861019e-17.
+Iter 234: Time 46.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 2.532201e-17.
+Iter 235: Time 46.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.067055e-17.
+Iter 236: Time 46.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.307244e-17.
+Iter 237: Time 46.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.756459e-17.
+Iter 238: Time 47.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 2.496281e-17.
+Iter 239: Time 47.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.514556e-17.
+Iter 240: Time 47.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.371271e-17.
+Iter 241: Time 47.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.198683e-17.
+Iter 242: Time 47.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.555288e-17.
+Iter 243: Time 48.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 244: Time 48.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.939203e-17.
+Iter 245: Time 48.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 2.484438e-17.
+Iter 246: Time 48.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.161321e-17.
+Iter 247: Time 48.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.581928e-17.
+Iter 248: Time 49.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 2.846141e-17.
+Iter 249: Time 49.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.795321e-17.
+Iter 250: Time 49.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 251: Time 49.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 252: Time 49.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.448596e-17.
+Iter 253: Time 50.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.614515e-17.
+Iter 254: Time 50.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.984317e-17.
+Iter 255: Time 50.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.047242e-16.
+Iter 256: Time 50.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.019243e-16.
+Iter 257: Time 50.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 9.779596e-17.
+Iter 258: Time 51.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.748806e-17.
+Iter 259: Time 51.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 8.758439e-17.
+Iter 260: Time 51.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 9.721823e-17.
+Iter 261: Time 51.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.116372e-17.
+Iter 262: Time 51.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 263: Time 52.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 8.039072e-17.
+Iter 264: Time 52.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 8.984762e-17.
+Iter 265: Time 52.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 8.123625e-17.
+Iter 266: Time 52.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 9.063507e-17.
+Iter 267: Time 52.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 9.071200e-17.
+Iter 268: Time 53.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 269: Time 53.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 8.123225e-17.
+Iter 270: Time 53.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 7.477182e-17.
+Iter 271: Time 53.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.038706e-17.
+Iter 272: Time 53.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 273: Time 54.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.247787e-17.
+Iter 274: Time 54.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.245850e-17.
+Iter 275: Time 54.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.308913e-17.
+Iter 276: Time 54.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.510922e-17.
+Iter 277: Time 54.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.851688e-17.
+Iter 278: Time 55.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.421391e-17.
+Iter 279: Time 55.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 7.359055e-17.
+Iter 280: Time 55.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.304662e-17.
+Iter 281: Time 55.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 2.222027e-17.
+Iter 282: Time 55.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.965066e-17.
+Iter 283: Time 56.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.399831e-17.
+Iter 284: Time 56.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 285: Time 56.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.007204e-17.
+Iter 286: Time 56.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.557159e-17.
+Iter 287: Time 56.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.587043e-17.
+Iter 288: Time 57.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.371387e-17.
+Iter 289: Time 57.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.831084e-17.
+Iter 290: Time 57.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 9.776376e-18.
+Iter 291: Time 57.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.416704e-17.
+Iter 292: Time 57.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.643207e-17.
+Iter 293: Time 58.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.020996e-17.
+Iter 294: Time 58.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.840086e-17.
+Iter 295: Time 58.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 296: Time 58.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 2.873445e-17.
+Iter 297: Time 58.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.913269e-17.
+Iter 298: Time 59.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.264122e-17.
+Iter 299: Time 59.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.569304e-17.
+Iter 300: Time 59.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.511889e-17.
+Iter 301: Time 59.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 8.407128e-17.
+Iter 302: Time 59.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 8.494502e-17.
+Iter 303: Time 60.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.170356e-17.
+Iter 304: Time 60.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.517183e-17.
+Iter 305: Time 60.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.391897e-17.
+Iter 306: Time 60.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 7.486668e-17.
+Iter 307: Time 60.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.308461e-17.
+Iter 308: Time 61.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.911862e-17.
+Iter 309: Time 61.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.309462e-17.
+Iter 310: Time 61.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 311: Time 61.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.611286e-17.
+Iter 312: Time 61.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.031311e-17.
+Iter 313: Time 62.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.990491e-17.
+Iter 314: Time 62.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 7.322488e-17.
+Iter 315: Time 62.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.232175e-17.
+Iter 316: Time 62.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.122947e-17.
+Iter 317: Time 62.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.564716e-17.
+Iter 318: Time 63.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.137004e-17.
+Iter 319: Time 63.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.756879e-17.
+Iter 320: Time 63.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 8.050159e-18.
+Iter 321: Time 63.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.577799e-17.
+Iter 322: Time 63.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.867262e-17.
+Iter 323: Time 64.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.643630e-17.
+Iter 324: Time 64.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.512372e-17.
+Iter 325: Time 64.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 7.305487e-17.
+Iter 326: Time 64.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 2.824938e-17.
+Iter 327: Time 64.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.169939e-17.
+Iter 328: Time 65.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.077957e-17.
+Iter 329: Time 65.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.879812e-17.
+Iter 330: Time 65.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.966547e-17.
+Iter 331: Time 65.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.808365e-17.
+Iter 332: Time 65.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 2.869830e-17.
+Iter 333: Time 66.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.764197e-17.
+Iter 334: Time 66.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.197944e-17.
+Iter 335: Time 66.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.432145e-17.
+Iter 336: Time 66.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 2.826267e-17.
+Iter 337: Time 66.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 2.918479e-17.
+Iter 338: Time 67.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.528252e-17.
+Iter 339: Time 67.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.652139e-17.
+Iter 340: Time 67.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.059941e-17.
+Iter 341: Time 67.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.872799e-17.
+Iter 342: Time 67.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 343: Time 68.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.777003e-17.
+Iter 344: Time 68.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.934750e-17.
+Iter 345: Time 68.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.025316e-16.
+Iter 346: Time 68.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 7.268695e-17.
+Iter 347: Time 68.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 7.169647e-17.
+Iter 348: Time 69.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.441602e-17.
+Iter 349: Time 69.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.341168e-17.
+Iter 350: Time 69.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 8.126313e-17.
+Iter 351: Time 69.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.639508e-17.
+Iter 352: Time 69.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.904857e-17.
+Iter 353: Time 70.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 7.541063e-17.
+Iter 354: Time 70.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.512904e-17.
+Iter 355: Time 70.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 8.702027e-17.
+Iter 356: Time 70.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.324090e-17.
+Iter 357: Time 70.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.776344e-17.
+Iter 358: Time 71.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.805541e-17.
+Iter 359: Time 71.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.264327e-17.
+Iter 360: Time 71.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.670863e-17.
+Iter 361: Time 71.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 362: Time 71.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 7.936426e-17.
+Iter 363: Time 72.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.494144e-17.
+Iter 364: Time 72.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.749893e-17.
+Iter 365: Time 72.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.495057e-17.
+Iter 366: Time 72.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.675283e-17.
+Iter 367: Time 72.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.369183e-17.
+Iter 368: Time 73.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.502833e-17.
+Iter 369: Time 73.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.712986e-17.
+Iter 370: Time 73.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.240977e-17.
+Iter 371: Time 73.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 2.432695e-17.
+Iter 372: Time 73.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.707763e-17.
+Iter 373: Time 74.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 2.430701e-17.
+Iter 374: Time 74.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.428332e-17.
+Iter 375: Time 74.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 2.596233e-17.
+Iter 376: Time 74.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.555508e-17.
+Iter 377: Time 74.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.372307e-17.
+Iter 378: Time 75.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.151315e-17.
+Iter 379: Time 75.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.042197e-17.
+Iter 380: Time 75.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.169208e-17.
+Iter 381: Time 75.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.733678e-17.
+Iter 382: Time 75.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 2.104088e-17.
+Iter 383: Time 76.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.523501e-17.
+Iter 384: Time 76.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.452287e-17.
+Iter 385: Time 76.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 2.176121e-17.
+Iter 386: Time 76.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.998115e-18.
+Iter 387: Time 76.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 2.562248e-17.
+Iter 388: Time 77.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 8.175686e-17.
+Iter 389: Time 77.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 9.359947e-17.
+Iter 390: Time 77.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.017257e-16.
+Iter 391: Time 77.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 8.586307e-17.
+Iter 392: Time 77.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 2.048587e-17.
+Iter 393: Time 78.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.117202e-17.
+Iter 394: Time 78.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.717655e-17.
+Iter 395: Time 78.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.584567e-17.
+Iter 396: Time 78.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.010461e-18.
+Iter 397: Time 78.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 8.899860e-17.
+Iter 398: Time 79.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 2.237560e-17.
+Iter 399: Time 79.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.174817e-17.
+Iter 400: Time 79.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.706671e-17.
+Iter 401: Time 79.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 8.512517e-17.
+Iter 402: Time 79.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.177779e-17.
+Iter 403: Time 80.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 2.674172e-17.
+Iter 404: Time 80.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 405: Time 80.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.400910e-17.
+Iter 406: Time 80.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.151762e-17.
+Iter 407: Time 80.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.086642e-18.
+Iter 408: Time 81.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.499870e-17.
+Iter 409: Time 81.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 2.457887e-18.
+Iter 410: Time 81.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.696805e-17.
+Iter 411: Time 81.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 412: Time 81.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.767731e-17.
+Iter 413: Time 82.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 2.091573e-17.
+Iter 414: Time 82.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.299832e-17.
+Iter 415: Time 82.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.614459e-17.
+Iter 416: Time 82.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 8.742346e-18.
+Iter 417: Time 82.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.958705e-17.
+Iter 418: Time 83.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.697642e-18.
+Iter 419: Time 83.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.675614e-17.
+Iter 420: Time 83.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.550182e-17.
+Iter 421: Time 83.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.107375e-17.
+Iter 422: Time 83.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.456663e-17.
+Iter 423: Time 84.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.006538e-17.
+Iter 424: Time 84.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.014353e-17.
+Iter 425: Time 84.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.461540e-17.
+Iter 426: Time 84.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 2.796672e-17.
+Iter 427: Time 84.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.906765e-17.
+Iter 428: Time 85.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.804687e-18.
+Iter 429: Time 85.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 2.778528e-17.
+Iter 430: Time 85.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.293983e-17.
+Iter 431: Time 85.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.568450e-17.
+Iter 432: Time 85.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.890280e-17.
+Iter 433: Time 86.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.709503e-18.
+Iter 434: Time 86.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.851354e-17.
+Iter 435: Time 86.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.152262e-17.
+Iter 436: Time 86.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.588576e-17.
+Iter 437: Time 86.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.892972e-18.
+Iter 438: Time 87.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.395603e-17.
+Iter 439: Time 87.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.492647e-17.
+Iter 440: Time 87.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 9.408397e-17.
+Iter 441: Time 87.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.615854e-17.
+Iter 442: Time 87.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.197915e-17.
+Iter 443: Time 88.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.096051e-18.
+Iter 444: Time 88.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.065793e-17.
+Iter 445: Time 88.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.028927e-17.
+Iter 446: Time 88.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 8.497078e-18.
+Iter 447: Time 88.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.293350e-17.
+Iter 448: Time 89.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 2.873255e-17.
+Iter 449: Time 89.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.073735e-17.
+Iter 450: Time 89.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 0.000000e+00.
+Iter 451: Time 89.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.576729e-17.
+Iter 452: Time 89.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.144688e-17.
+Iter 453: Time 90.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.796501e-18.
+Iter 454: Time 90.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 2.889393e-17.
+Iter 455: Time 90.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.562097e-17.
+Iter 456: Time 90.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 7.335989e-17.
+Iter 457: Time 90.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.636000e-17.
+Iter 458: Time 91.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.813643e-17.
+Iter 459: Time 91.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.499189e-17.
+Iter 460: Time 91.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.928812e-17.
+Iter 461: Time 91.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.173525e-17.
+Iter 462: Time 91.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.187611e-17.
+Iter 463: Time 92.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.569655e-17.
+Iter 464: Time 92.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.932274e-18.
+Iter 465: Time 92.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 2.722384e-17.
+Iter 466: Time 92.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.904803e-17.
+Iter 467: Time 92.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.580855e-17.
+Iter 468: Time 93.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 2.402928e-17.
+Iter 469: Time 93.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.227421e-17.
+Iter 470: Time 93.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.769963e-17.
+Iter 471: Time 93.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.973985e-17.
+Iter 472: Time 93.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.752014e-17.
+Iter 473: Time 94.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 2.683704e-17.
+Iter 474: Time 94.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.090429e-18.
+Iter 475: Time 94.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 7.154088e-18.
+Iter 476: Time 94.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.069784e-17.
+Iter 477: Time 94.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 2.910139e-17.
+Iter 478: Time 95.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.062858e-16.
+Iter 479: Time 95.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.302464e-17.
+Iter 480: Time 95.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 8.545512e-17.
+Iter 481: Time 95.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 2.943932e-18.
+Iter 482: Time 95.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 8.966295e-17.
+Iter 483: Time 96.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.004228e-16.
+Iter 484: Time 96.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.830903e-17.
+Iter 485: Time 96.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.577243e-17.
+Iter 486: Time 96.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 7.128524e-17.
+Iter 487: Time 96.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 9.407165e-18.
+Iter 488: Time 97.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 7.404850e-18.
+Iter 489: Time 97.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.589983e-17.
+Iter 490: Time 97.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.351049e-17.
+Iter 491: Time 97.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.930978e-17.
+Iter 492: Time 97.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 1.232471e-17.
+Iter 493: Time 98.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 5.061321e-17.
+Iter 494: Time 98.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 2.640478e-17.
+Iter 495: Time 98.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.688922e-17.
+Iter 496: Time 98.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.403906e-17.
+Iter 497: Time 98.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 4.874500e-17.
+Iter 498: Time 99.00000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 6.639478e-17.
+Iter 499: Time 99.20000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 7.180361e-17.
+Iter 500: Time 99.40000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 8.455745e-18.
+Iter 501: Time 99.60000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 3.773281e-17.
+Iter 502: Time 99.80000000; Time step 0.20000000.
+    --- Newton method:   3 iterations, Linf residual 7.169433e-17.
+Iter 503: Time 100.00000000; Time step 0.00000000.
+    --- Newton method:   1 iterations, Linf residual 3.009691e-17.
+Iter 504: Time 100.00000000; Time step 0.00000000.

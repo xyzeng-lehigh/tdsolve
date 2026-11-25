@@ -73,7 +73,7 @@ int main(int argc, char** argv) {
             bool newton_converge;
             while (1) {
               newton_converge = tdSolve->update_sol(0,1);
-              if ( !newton_converge && tdInput.tdSetup.auto_red_dt ) {
+              if ( tdInput.tdSetup.tmeth==1 && !newton_converge && tdInput.tdSetup.auto_red_dt ) {
                 tdSolve->reduce_dtn( 0.5 );
                 tdSolve->diagnostic(0);
                 continue;

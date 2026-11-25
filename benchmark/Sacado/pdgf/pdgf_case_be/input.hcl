@@ -24,6 +24,7 @@ Tfreq         = 0.2
 max_iter      = 100000
 dt_init       = 1.0
 dt_growth     = 1.2
+auto_reduce_dt = 0
 
 outputDataFile  = sol.dat
 radiusDataFile  = rad.dat

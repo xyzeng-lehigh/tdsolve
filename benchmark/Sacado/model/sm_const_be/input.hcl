@@ -17,6 +17,7 @@ Tfreq         = 0.5
 max_iter      = 100000
 dt_init       = 1.0
 dt_growth     = 1.2
+auto_reduce_dt = 0
 
 lsysType      = DIR
 lsysPrint     = 0

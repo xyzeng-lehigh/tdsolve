@@ -1,0 +1,203 @@
+TDSolve revision r197+
+
+*************************
+* Tumor Dynamics Solver *
+*************************
+
+Iter   0: Time 0.00000000; Time step 0.00000100; CFL 0.0000; Radius 0.20000000; Front-velocity -0.00000000.
+    --- Newton method:   2 iterations, Linf residual 0.000000e+00.
+Iter   1: Time 0.00000100; Time step 0.00000120; CFL 0.0000; Radius 0.20000000; Front-velocity -0.00000000.
+    --- Newton method:   2 iterations, Linf residual 0.000000e+00.
+Iter   2: Time 0.00000220; Time step 0.00000144; CFL 0.0000; Radius 0.20000000; Front-velocity -0.00000000.
+    --- Newton method:   2 iterations, Linf residual 0.000000e+00.
+Iter   3: Time 0.00000364; Time step 0.00000173; CFL 0.0000; Radius 0.20000000; Front-velocity -0.00000000.
+    --- Newton method:   2 iterations, Linf residual 0.000000e+00.
+Iter   4: Time 0.00000537; Time step 0.00000207; CFL 0.0000; Radius 0.20000000; Front-velocity -0.00000000.
+    --- Newton method:   2 iterations, Linf residual 0.000000e+00.
+Iter   5: Time 0.00000744; Time step 0.00000249; CFL 0.0000; Radius 0.20000000; Front-velocity -0.00000000.
+    --- Newton method:   2 iterations, Linf residual 0.000000e+00.
+Iter   6: Time 0.00000993; Time step 0.00000299; CFL 0.0000; Radius 0.20000000; Front-velocity -0.00000000.
+    --- Newton method:   2 iterations, Linf residual 0.000000e+00.
+Iter   7: Time 0.00001292; Time step 0.00000358; CFL 0.0000; Radius 0.20000000; Front-velocity -0.00000000.
+    --- Newton method:   2 iterations, Linf residual 0.000000e+00.
+Iter   8: Time 0.00001650; Time step 0.00000430; CFL 0.0000; Radius 0.20000000; Front-velocity -0.00000000.
+    --- Newton method:   2 iterations, Linf residual 0.000000e+00.
+Iter   9: Time 0.00002080; Time step 0.00000516; CFL 0.0000; Radius 0.20000000; Front-velocity -0.00000000.
+    --- Newton method:   2 iterations, Linf residual 0.000000e+00.
+Iter  10: Time 0.00002596; Time step 0.00000619; CFL 0.0000; Radius 0.20000000; Front-velocity -0.00000000.
+    --- Newton method:   2 iterations, Linf residual 0.000000e+00.
+Iter  11: Time 0.00003215; Time step 0.00000743; CFL 0.0000; Radius 0.20000000; Front-velocity -0.00000000.
+    --- Newton method:   2 iterations, Linf residual 0.000000e+00.
+Iter  12: Time 0.00003958; Time step 0.00000892; CFL 0.0000; Radius 0.20000000; Front-velocity -0.00000000.
+    --- Newton method:   2 iterations, Linf residual 0.000000e+00.
+Iter  13: Time 0.00004850; Time step 0.00001070; CFL 0.0000; Radius 0.20000000; Front-velocity 0.00000000.
+    --- Newton method:   2 iterations, Linf residual 0.000000e+00.
+Iter  14: Time 0.00005920; Time step 0.00001284; CFL 0.0000; Radius 0.20000000; Front-velocity 0.00000000.
+    --- Newton method:   2 iterations, Linf residual 0.000000e+00.
+Iter  15: Time 0.00007204; Time step 0.00001541; CFL 0.0000; Radius 0.20000000; Front-velocity 0.00000000.
+    --- Newton method:   2 iterations, Linf residual 0.000000e+00.
+Iter  16: Time 0.00008744; Time step 0.00001849; CFL 0.0000; Radius 0.20000000; Front-velocity 0.00000000.
+    --- Newton method:   2 iterations, Linf residual 0.000000e+00.
+Iter  17: Time 0.00010593; Time step 0.00002219; CFL 0.0000; Radius 0.20000000; Front-velocity 0.00000000.
+    --- Newton method:   2 iterations, Linf residual 0.000000e+00.
+Iter  18: Time 0.00012812; Time step 0.00002662; CFL 0.0000; Radius 0.20000000; Front-velocity 0.00000001.
+    --- Newton method:   2 iterations, Linf residual 0.000000e+00.
+Iter  19: Time 0.00015474; Time step 0.00003195; CFL 0.0000; Radius 0.20000000; Front-velocity 0.00000001.
+    --- Newton method:   2 iterations, Linf residual 0.000000e+00.
+Iter  20: Time 0.00018669; Time step 0.00003834; CFL 0.0000; Radius 0.20000000; Front-velocity 0.00000001.
+    --- Newton method:   2 iterations, Linf residual 0.000000e+00.
+Iter  21: Time 0.00022503; Time step 0.00004601; CFL 0.0000; Radius 0.20000000; Front-velocity 0.00000001.
+    --- Newton method:   2 iterations, Linf residual 0.000000e+00.
+Iter  22: Time 0.00027103; Time step 0.00005521; CFL 0.0000; Radius 0.20000000; Front-velocity 0.00000002.
+    --- Newton method:   2 iterations, Linf residual 0.000000e+00.
+Iter  23: Time 0.00032624; Time step 0.00006625; CFL 0.0000; Radius 0.20000000; Front-velocity 0.00000002.
+    --- Newton method:   2 iterations, Linf residual 0.000000e+00.
+Iter  24: Time 0.00039248; Time step 0.00007950; CFL 0.0000; Radius 0.20000000; Front-velocity 0.00000003.
+    --- Newton method:   2 iterations, Linf residual 0.000000e+00.
+Iter  25: Time 0.00047198; Time step 0.00009540; CFL 0.0000; Radius 0.20000000; Front-velocity 0.00000003.
+    --- Newton method:   2 iterations, Linf residual 0.000000e+00.
+Iter  26: Time 0.00056738; Time step 0.00011448; CFL 0.0000; Radius 0.20000000; Front-velocity 0.00000004.
+    --- Newton method:   2 iterations, Linf residual 0.000000e+00.
+Iter  27: Time 0.00068185; Time step 0.00013737; CFL 0.0000; Radius 0.20000000; Front-velocity 0.00000005.
+    --- Newton method:   2 iterations, Linf residual 0.000000e+00.
+Iter  28: Time 0.00081922; Time step 0.00016484; CFL 0.0000; Radius 0.20000000; Front-velocity 0.00000006.
+    --- Newton method:   2 iterations, Linf residual 0.000000e+00.
+Iter  29: Time 0.00098407; Time step 0.00019781; CFL 0.0000; Radius 0.20000000; Front-velocity 0.00000007.
+    --- Newton method:   2 iterations, Linf residual 1.801071e-13.
+Iter  30: Time 0.00118188; Time step 0.00023738; CFL 0.0000; Radius 0.20000000; Front-velocity 0.00000009.
+    --- Newton method:   2 iterations, Linf residual 3.112091e-13.
+Iter  31: Time 0.00141926; Time step 0.00028485; CFL 0.0000; Radius 0.20000000; Front-velocity 0.00000010.
+    --- Newton method:   2 iterations, Linf residual 5.377150e-13.
+Iter  32: Time 0.00170411; Time step 0.00034182; CFL 0.0000; Radius 0.20000000; Front-velocity 0.00000013.
+    --- Newton method:   2 iterations, Linf residual 9.291101e-13.
+Iter  33: Time 0.00204593; Time step 0.00041019; CFL 0.0000; Radius 0.20000000; Front-velocity 0.00000015.
+    --- Newton method:   2 iterations, Linf residual 1.605510e-12.
+Iter  34: Time 0.00245612; Time step 0.00049222; CFL 0.0000; Radius 0.20000000; Front-velocity 0.00000018.
+    --- Newton method:   2 iterations, Linf residual 2.773848e-12.
+Iter  35: Time 0.00294834; Time step 0.00059067; CFL 0.0000; Radius 0.20000000; Front-velocity 0.00000022.
+    --- Newton method:   2 iterations, Linf residual 4.792816e-12.
+Iter  36: Time 0.00353901; Time step 0.00070880; CFL 0.0000; Radius 0.20000000; Front-velocity 0.00000026.
+    --- Newton method:   2 iterations, Linf residual 8.281212e-12.
+Iter  37: Time 0.00424781; Time step 0.00085056; CFL 0.0000; Radius 0.20000000; Front-velocity 0.00000032.
+    --- Newton method:   2 iterations, Linf residual 1.430758e-11.
+Iter  38: Time 0.00509837; Time step 0.00102067; CFL 0.0000; Radius 0.20000000; Front-velocity 0.00000038.
+    --- Newton method:   2 iterations, Linf residual 2.471876e-11.
+Iter  39: Time 0.00611905; Time step 0.00122481; CFL 0.0000; Radius 0.20000000; Front-velocity 0.00000046.
+    --- Newton method:   2 iterations, Linf residual 4.270477e-11.
+Iter  40: Time 0.00734386; Time step 0.00146977; CFL 0.0000; Radius 0.20000000; Front-velocity 0.00000055.
+    --- Newton method:   2 iterations, Linf residual 7.377439e-11.
+Iter  41: Time 0.00881363; Time step 0.00176373; CFL 0.0000; Radius 0.20000000; Front-velocity 0.00000066.
+    --- Newton method:   2 iterations, Linf residual 1.274428e-10.
+Iter  42: Time 0.01057736; Time step 0.00211647; CFL 0.0000; Radius 0.20000000; Front-velocity 0.00000080.
+    --- Newton method:   2 iterations, Linf residual 2.201399e-10.
+Iter  43: Time 0.01269383; Time step 0.00253977; CFL 0.0000; Radius 0.20000001; Front-velocity 0.00000096.
+    --- Newton method:   2 iterations, Linf residual 3.802320e-10.
+Iter  44: Time 0.01523359; Time step 0.00304772; CFL 0.0000; Radius 0.20000001; Front-velocity 0.00000115.
+    --- Newton method:   2 iterations, Linf residual 6.566833e-10.
+Iter  45: Time 0.01828131; Time step 0.00365726; CFL 0.0000; Radius 0.20000001; Front-velocity 0.00000138.
+    --- Newton method:   2 iterations, Linf residual 1.134028e-09.
+Iter  46: Time 0.02193857; Time step 0.00438871; CFL 0.0000; Radius 0.20000002; Front-velocity 0.00000165.
+    --- Newton method:   2 iterations, Linf residual 1.958101e-09.
+Iter  47: Time 0.02632729; Time step 0.00526646; CFL 0.0000; Radius 0.20000003; Front-velocity 0.00000198.
+    --- Newton method:   2 iterations, Linf residual 3.381077e-09.
+Iter  48: Time 0.03159374; Time step 0.00631975; CFL 0.0000; Radius 0.20000004; Front-velocity 0.00000238.
+    --- Newton method:   2 iterations, Linf residual 5.131662e-09.
+Iter  49: Time 0.03791349; Time step 0.00758370; CFL 0.0000; Radius 0.20000006; Front-velocity 0.00000286.
+    --- Newton method:   2 iterations, Linf residual 7.379674e-09.
+Iter  50: Time 0.04549719; Time step 0.00910044; CFL 0.0000; Radius 0.20000009; Front-velocity 0.00000343.
+    --- Newton method:   2 iterations, Linf residual 1.060961e-08.
+Iter  51: Time 0.05459763; Time step 0.01092053; CFL 0.0000; Radius 0.20000012; Front-velocity 0.00000411.
+    --- Newton method:   2 iterations, Linf residual 1.524847e-08.
+Iter  52: Time 0.06551815; Time step 0.01310463; CFL 0.0000; Radius 0.20000018; Front-velocity 0.00000493.
+    --- Newton method:   2 iterations, Linf residual 2.190741e-08.
+Iter  53: Time 0.07862279; Time step 0.01572556; CFL 0.0000; Radius 0.20000025; Front-velocity 0.00000590.
+    --- Newton method:   2 iterations, Linf residual 3.145995e-08.
+Iter  54: Time 0.09434834; Time step 0.01887067; CFL 0.0001; Radius 0.20000036; Front-velocity 0.00000708.
+    --- Newton method:   2 iterations, Linf residual 4.515342e-08.
+Iter  55: Time 0.11321901; Time step 0.02264480; CFL 0.0001; Radius 0.20000052; Front-velocity 0.00000848.
+    --- Newton method:   2 iterations, Linf residual 6.476529e-08.
+Iter  56: Time 0.13586381; Time step 0.02717376; CFL 0.0001; Radius 0.20000075; Front-velocity 0.00001015.
+    --- Newton method:   2 iterations, Linf residual 9.282326e-08.
+Iter  57: Time 0.16303758; Time step 0.03260852; CFL 0.0002; Radius 0.20000108; Front-velocity 0.00001215.
+    --- Newton method:   2 iterations, Linf residual 1.329137e-07.
+Iter  58: Time 0.19564609; Time step 0.03913022; CFL 0.0002; Radius 0.20000156; Front-velocity 0.00001454.
+    --- Newton method:   2 iterations, Linf residual 1.901096e-07.
+Iter  59: Time 0.23477631; Time step 0.04695626; CFL 0.0003; Radius 0.20000224; Front-velocity 0.00001738.
+    --- Newton method:   2 iterations, Linf residual 2.715604e-07.
+Iter  60: Time 0.28173257; Time step 0.05634751; CFL 0.0005; Radius 0.20000321; Front-velocity 0.00002077.
+    --- Newton method:   2 iterations, Linf residual 3.873021e-07.
+Iter  61: Time 0.33808009; Time step 0.06761702; CFL 0.0007; Radius 0.20000461; Front-velocity 0.00002480.
+    --- Newton method:   2 iterations, Linf residual 5.513487e-07.
+Iter  62: Time 0.40569710; Time step 0.08114042; CFL 0.0010; Radius 0.20000661; Front-velocity 0.00002957.
+    --- Newton method:   2 iterations, Linf residual 7.831523e-07.
+Iter  63: Time 0.48683752; Time step 0.09736850; CFL 0.0014; Radius 0.20000947; Front-velocity 0.00003523.
+    --- Newton method:   3 iterations, Linf residual 2.717849e-09.
+Iter  64: Time 0.58420603; Time step 0.11684221; CFL 0.0020; Radius 0.20001355; Front-velocity 0.00004191.
+    --- Newton method:   3 iterations, Linf residual 5.469074e-09.
+Iter  65: Time 0.70104823; Time step 0.14021065; CFL 0.0028; Radius 0.20001936; Front-velocity 0.00004977.
+    --- Newton method:   3 iterations, Linf residual 1.094290e-08.
+Iter  66: Time 0.84125888; Time step 0.16825278; CFL 0.0040; Radius 0.20002764; Front-velocity 0.00005899.
+    --- Newton method:   3 iterations, Linf residual 2.174912e-08.
+Iter  67: Time 1.00951166; Time step 0.20190333; CFL 0.0056; Radius 0.20003937; Front-velocity 0.00006976.
+    --- Newton method:   3 iterations, Linf residual 4.288787e-08.
+Iter  68: Time 1.21141499; Time step 0.24228400; CFL 0.0080; Radius 0.20005599; Front-velocity 0.00008229.
+    --- Newton method:   3 iterations, Linf residual 8.379759e-08.
+Iter  69: Time 1.45369899; Time step 0.29074080; CFL 0.0112; Radius 0.20007944; Front-velocity 0.00009677.
+    --- Newton method:   3 iterations, Linf residual 1.619856e-07.
+Iter  70: Time 1.74443978; Time step 0.34888896; CFL 0.0158; Radius 0.20011241; Front-velocity 0.00011340.
+    --- Newton method:   3 iterations, Linf residual 3.092664e-07.
+Iter  71: Time 2.09332874; Time step 0.41866675; CFL 0.0221; Radius 0.20015860; Front-velocity 0.00013237.
+    --- Newton method:   3 iterations, Linf residual 5.820811e-07.
+Iter  72: Time 2.51199549; Time step 0.50240010; CFL 0.0309; Radius 0.20022300; Front-velocity 0.00015381.
+    --- Newton method:   3 iterations, Linf residual 1.077790e-06.
+    --- Newton method not converging, reduce dt by half.
+Iter  73: Time 3.01439559; Time step 0.60288012; CFL 0.0428; Radius 0.20031237; Front-velocity 0.00017783.
+    --- Newton method:   3 iterations, Linf residual 1.958934e-06.
+    --- Newton method not converging, reduce dt by half.
+Iter  74: Time 3.61727571; Time step 0.38272429; CFL 0.0312; Radius 0.20043568; Front-velocity 0.00020447.
+    --- Newton method:   3 iterations, Linf residual 5.045334e-07.
+Iter  75: Time 4.00000000; Time step 0.86814737; CFL 0.0763; Radius 0.20051999; Front-velocity 0.00022026.
+    --- Newton method:   3 iterations, Linf residual 6.079401e-06.
+    --- Newton method not converging, reduce dt by half.
+Iter  76: Time 4.86814737; Time step 1.04177684; CFL 0.1051; Radius 0.20074002; Front-velocity 0.00025331.
+    --- Newton method:   3 iterations, Linf residual 1.038307e-05.
+    --- Newton method not converging, reduce dt by half.
+Iter  77: Time 5.90992421; Time step 1.25013221; CFL 0.1435; Radius 0.20104086; Front-velocity 0.00028856.
+    --- Newton method:   3 iterations, Linf residual 1.719546e-05.
+    --- Newton method not converging, reduce dt by half.
+Iter  78: Time 7.16005642; Time step 0.83994358; CFL 0.1086; Radius 0.20144840; Front-velocity 0.00032567.
+    --- Newton method:   3 iterations, Linf residual 4.946238e-06.
+    --- Newton method not converging, reduce dt by half.
+Iter  79: Time 8.00000000; Time step 1.80019039; CFL 0.2483; Radius 0.20174085; Front-velocity 0.00034793.
+    --- Newton method:   3 iterations, Linf residual 4.456613e-05.
+    --- Newton method not converging, reduce dt by half.
+Iter  80: Time 9.80019039; Time step 2.16022846; CFL 0.3329; Radius 0.20244425; Front-velocity 0.00039005.
+    --- Newton method:   3 iterations, Linf residual 6.651922e-05.
+    --- Newton method not converging, reduce dt by half.
+Iter  81: Time 11.96041885; Time step 0.03958115; CFL 0.0067; Radius 0.20338082; Front-velocity 0.00043255.
+    --- Newton method:   2 iterations, Linf residual 2.893616e-07.
+Iter  82: Time 12.00000000; Time step 3.11072899; CFL 0.5300; Radius 0.20339797; Front-velocity 0.00043325.
+    --- Newton method:   3 iterations, Linf residual 1.587503e-04.
+    --- Newton method not converging, reduce dt by half.
+Iter  83: Time 15.11072899; Time step 0.88927101; CFL 0.1678; Radius 0.20490717; Front-velocity 0.00048337.
+    --- Newton method:   3 iterations, Linf residual 3.313030e-06.
+    --- Newton method not converging, reduce dt by half.
+Iter  84: Time 16.00000000; Time step 4.00000000; CFL 0.7723; Radius 0.20534845; Front-velocity 0.00049569.
+    --- Newton method:   3 iterations, Linf residual 2.283394e-04.
+    --- Newton method not converging, reduce dt by half.
+Iter  85: Time 20.00000000; Time step 4.00000000; CFL 0.8397; Radius 0.20753876; Front-velocity 0.00054468.
+    --- Newton method:   3 iterations, Linf residual 1.561914e-04.
+    --- Newton method not converging, reduce dt by half.
+Iter  86: Time 24.00000000; Time step 4.00000000; CFL 0.8913; Radius 0.20989088; Front-velocity 0.00058473.
+    --- Newton method:   3 iterations, Linf residual 1.003404e-04.
+    --- Newton method not converging, reduce dt by half.
+Iter  87: Time 28.00000000; Time step 4.00000000; CFL 0.9322; Radius 0.21238056; Front-velocity 0.00061877.
+    --- Newton method:   3 iterations, Linf residual 5.630081e-05.
+    --- Newton method not converging, reduce dt by half.
+Iter  88: Time 32.00000000; Time step 4.00000000; CFL 0.9653; Radius 0.21499084; Front-velocity 0.00064861.
+    --- Newton method:   3 iterations, Linf residual 2.094744e-05.
+    --- Newton method not converging, reduce dt by half.
+Iter  89: Time 36.00000000; Time step 4.00000000; CFL 0.9926; Radius 0.21770949; Front-velocity 0.00067542.
+    --- Newton method:   3 iterations, Linf residual 7.901678e-06.
+    --- Newton method not converging, reduce dt by half.
+Iter  90: Time 40.00000000; Time step 4.00000000; CFL 1.0156; Radius 0.22052752; Front-velocity 0.00070001.
